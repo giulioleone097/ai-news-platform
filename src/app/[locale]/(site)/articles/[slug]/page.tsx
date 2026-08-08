@@ -66,13 +66,18 @@ export async function generateMetadata({
   const messages = getMessages(locale);
   const article = await getCachedArticle(slug, locale);
   if (!article) return { title: messages.metadata.articleNotFoundTitle };
+  const alternates = await getArticleAlternates(article, locale);
 
   return {
     title: article.title,
     description: article.excerpt,
-    alternates: await getArticleAlternates(article, locale),
+    alternates,
     openGraph: {
       type: "article",
+      url: alternates.canonical,
+      locale: messages.metadata.openGraphLocale,
+      alternateLocale: locale === "en" ? ["it_IT"] : ["en_US"],
+      siteName: messages.common.brandName,
       title: article.title,
       description: article.excerpt,
       publishedTime: article.publishedAt ?? undefined,

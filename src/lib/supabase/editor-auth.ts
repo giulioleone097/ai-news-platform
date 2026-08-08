@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isDemoStudioEnabled } from "@/config/env";
 import type { Author } from "@/modules/editorial/domain/article";
 import { seedAuthor } from "@/modules/editorial/infrastructure/seed";
 import { createServerSupabaseClient } from "./server";
@@ -14,6 +15,8 @@ export interface EditorIdentity {
 export async function getCurrentEditor(): Promise<EditorIdentity | null> {
   const client = await createServerSupabaseClient();
   if (!client) {
+    if (!isDemoStudioEnabled()) return null;
+
     return {
       userId: "demo-editor",
       role: "admin",

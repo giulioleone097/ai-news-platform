@@ -1,0 +1,8 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Documented Supabase Auth UUID placeholder in pre-release seed history"
+paths = ['''^supabase/seed\.sql$''']
+regexTarget = "match"
+regexes = ['''AUTH_USER_UUID''']

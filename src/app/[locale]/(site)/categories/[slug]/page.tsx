@@ -13,6 +13,7 @@ import {
   getPublicCategories,
   searchPublishedArticles,
 } from "@/modules/editorial/application/queries";
+import { publicArchivePageSize } from "@/modules/editorial/application/public-feed";
 import type { Category } from "@/modules/editorial/domain/article";
 
 export const revalidate = 60;
@@ -89,7 +90,11 @@ export default async function CategoryPage({
     notFound();
   }
 
-  const page = await searchPublishedArticles({ locale, category: slug, limit: 30 });
+  const page = await searchPublishedArticles({
+    locale,
+    category: slug,
+    limit: publicArchivePageSize,
+  });
 
   return (
     <main id="main-content" className="site-shell archive-main">
@@ -100,6 +105,7 @@ export default async function CategoryPage({
         categories={categories}
         activeCategory={category.slug}
         locale={locale}
+        nextCursor={page.nextCursor}
       />
       <NewsletterForm
         locale={locale}

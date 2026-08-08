@@ -41,9 +41,17 @@ export function ArticleForm({
   const [status, setStatus] = useState(article?.status ?? "draft");
   const copy = studioSupplementalCopy[locale];
 
+  const fieldHasError = (name: string) => Boolean(state.fieldErrors?.[name]?.length);
+  const fieldErrorId = (name: string) => `article-${name}-error`;
+  const fieldAccessibility = (name: string) => ({
+    "aria-describedby": fieldHasError(name) ? fieldErrorId(name) : undefined,
+    "aria-invalid": fieldHasError(name) || undefined,
+  });
   const fieldError = (name: string) =>
-    state.fieldErrors?.[name]?.length ? (
-      <span className="studio-field__error">{state.fieldErrors[name][0]}</span>
+    fieldHasError(name) ? (
+      <span className="studio-field__error" id={fieldErrorId(name)}>
+        {state.fieldErrors?.[name]?.[0]}
+      </span>
     ) : null;
 
   return (
@@ -70,7 +78,7 @@ export function ArticleForm({
       </header>
 
       {state.status === "error" && state.message ? (
-        <p className="studio-alert studio-alert--error" role="alert">
+        <p className="studio-alert studio-alert--error" role="alert" aria-atomic="true">
           {state.message}
         </p>
       ) : null}
@@ -86,6 +94,7 @@ export function ArticleForm({
             <label className="studio-field studio-field--title">
               <span>{messages.studio.titleLabel}</span>
               <input
+                {...fieldAccessibility("title")}
                 defaultValue={article?.title}
                 maxLength={180}
                 minLength={8}
@@ -98,6 +107,7 @@ export function ArticleForm({
             <label className="studio-field">
               <span>{messages.studio.slugLabel}</span>
               <input
+                {...fieldAccessibility("slug")}
                 defaultValue={article?.slug}
                 maxLength={96}
                 name="slug"
@@ -110,6 +120,7 @@ export function ArticleForm({
             <label className="studio-field">
               <span>{messages.studio.excerptLabel}</span>
               <textarea
+                {...fieldAccessibility("excerpt")}
                 defaultValue={article?.excerpt}
                 maxLength={360}
                 minLength={20}
@@ -123,6 +134,7 @@ export function ArticleForm({
             <label className="studio-field">
               <span>{messages.studio.bodyLabel}</span>
               <textarea
+                {...fieldAccessibility("content")}
                 defaultValue={article?.content}
                 minLength={20}
                 name="content"
@@ -142,6 +154,7 @@ export function ArticleForm({
             <label className="studio-field">
               <span>{messages.studio.coverImageLabel}</span>
               <input
+                {...fieldAccessibility("coverImage")}
                 defaultValue={article?.coverImage ?? "/media/neura-agents-hero.webp"}
                 name="coverImage"
                 placeholder="/media/cover.png"
@@ -152,6 +165,7 @@ export function ArticleForm({
             <label className="studio-field">
               <span>{copy.coverAltLabel}</span>
               <input
+                {...fieldAccessibility("coverAlt")}
                 defaultValue={article?.coverAlt}
                 maxLength={240}
                 minLength={3}
@@ -175,12 +189,18 @@ export function ArticleForm({
               {article ? (
                 <>
                   <input name="locale" type="hidden" value={article.locale} />
-                  <select aria-label={copy.localeLabel} disabled value={article.locale}>
+                  <select
+                    {...fieldAccessibility("locale")}
+                    aria-label={copy.localeLabel}
+                    disabled
+                    value={article.locale}
+                  >
                     <option value={article.locale}>{article.locale === "en" ? "English" : "Italiano"}</option>
                   </select>
                 </>
               ) : (
                 <select
+                  {...fieldAccessibility("locale")}
                   name="locale"
                   onChange={(event) => {
                     const nextLocale = event.target.value as Locale;
@@ -199,6 +219,7 @@ export function ArticleForm({
             <label className="studio-field">
               <span>{messages.studio.categoryLabel}</span>
               <select
+                {...fieldAccessibility("categorySlug")}
                 name="categorySlug"
                 onChange={(event) => setCategorySlug(event.target.value)}
                 required
@@ -216,6 +237,7 @@ export function ArticleForm({
             <label className="studio-field">
               <span>{messages.studio.statusLabel}</span>
               <select
+                {...fieldAccessibility("status")}
                 name="status"
                 onChange={(event) => setStatus(event.target.value as Article["status"])}
                 value={status}
@@ -241,6 +263,7 @@ export function ArticleForm({
               <label className="studio-field">
                 <span>{messages.studio.publishAtLabel}</span>
                 <input
+                  {...fieldAccessibility("scheduledFor")}
                   defaultValue={toLocalDateTime(article?.scheduledFor ?? null)}
                   name="scheduledFor"
                   required
@@ -267,6 +290,7 @@ export function ArticleForm({
             {socialChannels.map((channel) => (
               <label className="studio-check" key={channel}>
                 <input
+                  {...fieldAccessibility("distribution")}
                   defaultChecked={article?.distribution.includes(channel)}
                   name="distribution"
                   type="checkbox"

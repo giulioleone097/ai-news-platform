@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, LockKeyhole, Sparkles } from "lucide-react";
 import { LoginForm } from "@/components/studio/login-form";
+import { isStudioAvailable } from "@/config/env";
 import { getMessages, isLocale } from "@/i18n";
 import { getEditorIdentity } from "@/lib/editor-auth";
 
@@ -27,7 +28,8 @@ export default async function LoginPage({
   if (!isLocale(locale)) notFound();
 
   const messages = getMessages(locale);
-  const editor = await getEditorIdentity();
+  const studioAvailable = isStudioAvailable();
+  const editor = studioAvailable ? await getEditorIdentity() : null;
   if (editor && !editor.isDemo) redirect(`/${locale}/studio`);
 
   const callbackError = query.error
@@ -63,7 +65,17 @@ export default async function LoginPage({
           </p>
         ) : null}
 
-        {editor?.isDemo ? (
+        {!studioAvailable ? (
+          <div className="auth-demo" role="status">
+            <span className="auth-demo__icon" aria-hidden="true">
+              <LockKeyhole size={20} />
+            </span>
+            <div>
+              <strong>{messages.auth.unavailableTitle}</strong>
+              <p>{messages.auth.unavailable}</p>
+            </div>
+          </div>
+        ) : editor?.isDemo ? (
           <div className="auth-demo">
             <span className="auth-demo__icon" aria-hidden="true">
               <Sparkles size={20} />

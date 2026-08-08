@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { StudioActionState } from "@/components/studio/action-state";
+import { isDemoStudioEnabled } from "@/config/env";
 import { getMessages, locales } from "@/i18n";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -37,7 +38,10 @@ export async function signInAction(
   const { locale, email, password } = parsed.data;
   const messages = getMessages(locale);
   const client = await createServerSupabaseClient();
-  if (!client) redirect(`/${locale}/studio`);
+  if (!client) {
+    if (isDemoStudioEnabled()) redirect(`/${locale}/studio`);
+    return { status: "error", message: messages.auth.unavailable };
+  }
 
   const { data, error } = await client.auth.signInWithPassword({ email, password });
   if (error || !data.user) {

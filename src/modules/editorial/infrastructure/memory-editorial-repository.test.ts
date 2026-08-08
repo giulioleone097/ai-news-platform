@@ -95,4 +95,11 @@ describe("MemoryEditorialRepository", () => {
     expect(seedCategories.filter((category) => category.locale === "en")).toHaveLength(5);
     expect(seedCategories.filter((category) => category.locale === "it")).toHaveLength(5);
   });
+
+  it("returns the same newsletter result for new and existing addresses", async () => {
+    const repository = new MemoryEditorialRepository();
+
+    await expect(repository.subscribe("reader@example.com", "test", "en")).resolves.toBeUndefined();
+    await expect(repository.subscribe("reader@example.com", "test", "it")).resolves.toBeUndefined();
+  });
 });

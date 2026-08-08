@@ -24,7 +24,7 @@ export interface NewsletterRepository {
     email: string,
     source: string,
     locale: Locale,
-  ): Promise<"created" | "existing">;
+  ): Promise<void>;
 }
 
 export interface EditorialRepositories {

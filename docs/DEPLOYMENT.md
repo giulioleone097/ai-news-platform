@@ -6,7 +6,7 @@ This runbook prepares NEURA for Vercel and Supabase without creating or mutating
 
 | Mode | Persistence | Intended use |
 | --- | --- | --- |
-| Demo | Process-local memory | Zero-config development, CI, visual review |
+| Demo | Process-local memory | Zero-config development; public CI and visual review |
 | Local Supabase | Docker-backed Supabase CLI stack | Migration, RLS, Auth, and integration verification |
 | Preview | Dedicated non-production Supabase project | Vercel branch/PR validation |
 | Production | Dedicated production Supabase project | Live editorial platform |
@@ -20,11 +20,14 @@ Never point a Preview deployment at the production database.
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | `http://localhost:3000` | Exact protected preview origin or canonical production origin | Canonical HTTPS origin | Public, build-time |
 | `NEXT_PUBLIC_SUPABASE_URL` | Empty | CLI API URL | Preview project URL | Production project URL | Public |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Empty | CLI anon key | Preview anon/publishable key | Production anon/publishable key | Public |
+| `NEURA_ENABLE_DEMO_STUDIO` | Empty | Empty | Empty unless the preview is intentionally ephemeral | Empty | Server-only |
 | `NEXT_PUBLIC_LINKEDIN_URL` | Empty | Empty or official profile | Preview-safe official profile | Official LinkedIn profile URL | Public, build-time |
 | `NEXT_PUBLIC_X_URL` | Empty | Empty or official profile | Preview-safe official profile | Official X profile URL | Public, build-time |
 | `MCP_ALLOWED_ORIGINS` | `http://localhost:3000` or empty | Local caller origins | Approved preview callers | Comma-separated production callers; empty for public wildcard | Server-only |
 
 Both Supabase variables are required to activate Supabase mode. Do not configure a service-role key in Vercel; the application does not need one.
+
+Without Supabase, public routes keep serving the read-only memory fallback. Studio is available automatically in local development, but fails closed in a production build. Set `NEURA_ENABLE_DEMO_STUDIO=true` only for an intentional disposable review deployment; never use it as a Production substitute for Supabase Auth and RLS.
 
 `NEXT_PUBLIC_*` values are frozen into client bundles during `next build`. Changing one requires a new deployment.
 

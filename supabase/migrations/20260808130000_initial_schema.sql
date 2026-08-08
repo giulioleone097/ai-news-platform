@@ -119,7 +119,10 @@ create table if not exists public.newsletter_subscriptions (
   unsubscribed_at timestamptz,
   created_at timestamptz not null default now(),
   constraint newsletter_email_normalized unique (email),
-  constraint newsletter_email_shape check (email = lower(trim(email)) and position('@' in email) > 1)
+  constraint newsletter_email_shape check (
+    email = lower(trim(email))
+    and email ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
+  )
 );
 
 create index if not exists profiles_author_id_idx on public.profiles (author_id);
@@ -205,6 +208,41 @@ $$;
 revoke all on function public.is_admin() from public;
 grant execute on function public.is_admin() to authenticated;
 
+create or replace function public.subscribe_newsletter(
+  p_email text,
+  p_source text,
+  p_locale text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  normalized_email text := lower(trim(p_email));
+  normalized_source text := trim(p_source);
+begin
+  if char_length(normalized_email) > 254
+    or normalized_email !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
+  then
+    raise exception 'Invalid newsletter email' using errcode = '22023';
+  end if;
+  if normalized_source !~ '^[a-z0-9:_-]{2,80}$' then
+    raise exception 'Invalid newsletter source' using errcode = '22023';
+  end if;
+  if p_locale not in ('en', 'it') then
+    raise exception 'Invalid newsletter locale' using errcode = '22023';
+  end if;
+
+  insert into public.newsletter_subscriptions (email, source, locale)
+  values (normalized_email, normalized_source, p_locale)
+  on conflict (email) do nothing;
+end;
+$$;
+
+revoke all on function public.subscribe_newsletter(text, text, text) from public;
+grant execute on function public.subscribe_newsletter(text, text, text) to anon, authenticated;
+
 alter table public.authors enable row level security;
 alter table public.categories enable row level security;
 alter table public.profiles enable row level security;
@@ -233,7 +271,11 @@ create policy categories_editor_write on public.categories
 drop policy if exists profiles_own_read on public.profiles;
 create policy profiles_own_read on public.profiles
   for select to authenticated
-  using (id = (select auth.uid()) or (select public.is_editor()));
+  using (id = (select auth.uid()));
+drop policy if exists profiles_admin_read on public.profiles;
+create policy profiles_admin_read on public.profiles
+  for select to authenticated
+  using ((select public.is_admin()));
 drop policy if exists profiles_admin_write on public.profiles;
 create policy profiles_admin_write on public.profiles
   for all to authenticated
@@ -270,9 +312,6 @@ create policy social_editor_access on public.social_publications
   with check ((select public.is_editor()));
 
 drop policy if exists newsletter_public_subscribe on public.newsletter_subscriptions;
-create policy newsletter_public_subscribe on public.newsletter_subscriptions
-  for insert to anon, authenticated
-  with check (position('@' in email) > 1 and status = 'active');
 drop policy if exists newsletter_editor_read on public.newsletter_subscriptions;
 create policy newsletter_editor_read on public.newsletter_subscriptions
   for select to authenticated using ((select public.is_editor()));
@@ -285,12 +324,11 @@ create policy newsletter_editor_update on public.newsletter_subscriptions
 revoke all on all tables in schema public from anon, authenticated;
 grant usage on schema public to anon, authenticated;
 grant select on public.authors, public.categories, public.articles to anon, authenticated;
-grant insert on public.newsletter_subscriptions to anon, authenticated;
 grant select, insert, update, delete on
   public.authors,
   public.categories,
   public.profiles,
   public.articles,
-  public.social_publications,
-  public.newsletter_subscriptions
+  public.social_publications
 to authenticated;
+grant select, update on public.newsletter_subscriptions to authenticated;

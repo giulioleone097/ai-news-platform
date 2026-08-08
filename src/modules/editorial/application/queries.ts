@@ -2,6 +2,7 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 import type { Locale } from "@/i18n";
+import type { ArticleQuery } from "../domain/article";
 import { getHomeFeed } from "../domain/editorial-service";
 import { getPublicEditorialRepositories } from "../infrastructure/container";
 
@@ -24,12 +25,7 @@ export const getCachedArticle = unstable_cache(
   { revalidate: 300, tags: ["articles"] },
 );
 
-export async function searchPublishedArticles(input: {
-  locale: Locale;
-  query?: string;
-  category?: string;
-  limit?: number;
-}) {
+export async function searchPublishedArticles(input: ArticleQuery) {
   const { articles } = getPublicEditorialRepositories();
   return articles.listPublished(input);
 }

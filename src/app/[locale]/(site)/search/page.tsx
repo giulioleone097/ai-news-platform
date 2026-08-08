@@ -6,6 +6,7 @@ import {
   getPublicCategories,
   searchPublishedArticles,
 } from "@/modules/editorial/application/queries";
+import { publicArchivePageSize } from "@/modules/editorial/application/public-feed";
 
 export async function generateMetadata({
   params,
@@ -19,6 +20,7 @@ export async function generateMetadata({
     title: messages.metadata.searchTitle,
     description: messages.metadata.searchDescription,
     alternates: getAlternates("/search", locale),
+    robots: { index: false, follow: true },
   };
 }
 
@@ -36,7 +38,11 @@ export default async function SearchPage({
   const normalizedQuery = q.trim().slice(0, 120);
   const [page, categories] = await Promise.all([
     normalizedQuery
-      ? searchPublishedArticles({ locale, query: normalizedQuery, limit: 30 })
+      ? searchPublishedArticles({
+          locale,
+          query: normalizedQuery,
+          limit: publicArchivePageSize,
+        })
       : Promise.resolve({ items: [], nextCursor: null }),
     getPublicCategories(locale),
   ]);
@@ -53,6 +59,7 @@ export default async function SearchPage({
         categories={categories}
         locale={locale}
         query={normalizedQuery}
+        nextCursor={page.nextCursor}
       />
     </main>
   );

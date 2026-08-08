@@ -38,6 +38,7 @@ The domain must not import Next.js, React, Supabase, browser APIs, or transport 
 2. The application query asks the `ArticleRepository` port for published content.
 3. The composition root selects the memory or Supabase adapter.
 4. Public pages return Server Component HTML; cached feed/article queries use explicit revalidation windows.
+5. Archive pages render their first slice in HTML, then the web delivery adapter requests compact list items with the same opaque composite cursor used by MCP.
 
 ### Editorial write
 
@@ -63,16 +64,16 @@ The domain must not import Next.js, React, Supabase, browser APIs, or transport 
 - Article/category foreign keys preserve locale consistency.
 - Search vectors use English or Italian dictionaries according to the row locale.
 - Social publication state records intent/status; outbound network posting is a separate authorized operation.
-- Newsletter emails are normalized and unique.
+- Newsletter emails are normalized and unique. Anonymous writes pass through a security-definer RPC that validates input, returns a uniform result, and leaves the table without a direct anonymous insert policy.
 
 ## Adapter selection
 
-Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` must be non-empty. If either is absent, the process uses the deterministic memory adapter. This is deliberate for local preview and CI, but production smoke checks must confirm the Supabase-backed content expected for that environment.
+Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` must be non-empty. If either is absent, public delivery uses the deterministic memory adapter. Studio uses that writable adapter only outside production or when `NEURA_ENABLE_DEMO_STUDIO=true` is explicitly set; otherwise its identity and composition boundaries fail closed. Production smoke checks must confirm the Supabase-backed content expected for that environment.
 
 ## Design principles
 
 - **KISS:** two persistence adapters, one port, one composition root.
-- **DRY:** site and MCP share editorial queries and serialization-ready domain objects.
+- **DRY:** site and MCP share editorial queries, cursor encoding, and serialization-ready domain objects.
 - **SOLID:** delivery depends on ports; adapters are substitutable; interfaces stay use-case sized.
 - **Fail visibly:** malformed input and unavailable data become bounded errors; no silent cross-locale content fallback.
 - **Least privilege:** the browser receives only the anon/publishable key; RLS and SQL grants enforce access.

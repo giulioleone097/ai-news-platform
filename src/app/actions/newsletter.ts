@@ -34,14 +34,8 @@ export async function subscribeToNewsletter(
 
   try {
     const { newsletter } = getPublicEditorialRepositories();
-    const outcome = await newsletter.subscribe(result.data.email, result.data.source, locale);
-    return {
-      status: "success",
-      message:
-        outcome === "created"
-          ? copy.success
-          : copy.alreadySubscribed,
-    };
+    await newsletter.subscribe(result.data.email, result.data.source, locale);
+    return { status: "success", message: copy.success };
   } catch {
     return {
       status: "error",

@@ -7,6 +7,15 @@ export function hasSupabaseEnvironment() {
   return requiredSupabaseKeys.every((key) => Boolean(process.env[key]?.trim()));
 }
 
+export function isDemoStudioEnabled() {
+  return process.env.NODE_ENV !== "production"
+    || process.env.NEURA_ENABLE_DEMO_STUDIO?.trim() === "true";
+}
+
+export function isStudioAvailable() {
+  return hasSupabaseEnvironment() || isDemoStudioEnabled();
+}
+
 export function getPublicSiteUrl() {
   const value = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   return new URL(value || "http://localhost:3000");

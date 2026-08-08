@@ -48,6 +48,11 @@ export const it = {
   latest: {
     title: "Ultime",
     description: "Il flusso essenziale di notizie, analisi e strumenti dal mondo AI, ordinato per rilevanza e scritto per essere utile.",
+    loadMore: "Carica altre notizie",
+    loadingMore: "Caricamento di altre notizie…",
+    retry: "Riprova il caricamento",
+    loadError: "Non è stato possibile caricare altre notizie. Riprova.",
+    endOfResults: "Hai letto tutte le notizie.",
   },
   search: {
     title: "Cerca in NEURA",
@@ -84,7 +89,6 @@ export const it = {
     privacy: "Nessuno spam. Disiscriviti quando vuoi.",
     invalidEmail: "Inserisci un indirizzo email valido.",
     success: "Iscrizione confermata. Benvenuto nel briefing.",
-    alreadySubscribed: "Sei già iscritto al briefing.",
     unavailable: "Il servizio è momentaneamente non disponibile. Riprova tra poco.",
   },
   share: {
@@ -152,7 +156,8 @@ export const it = {
     signOut: "Esci",
     forgotPassword: "Hai dimenticato la password?",
     invalidCredentials: "L’indirizzo email o la password non sono corretti.",
-    unavailable: "L’accesso è momentaneamente non disponibile. Riprova.",
+    unavailableTitle: "Studio bloccato",
+    unavailable: "Questa distribuzione di produzione non ha una configurazione Supabase. L’accesso editoriale è disabilitato.",
     demoNotice: "La modalità demo è attiva. I dati editoriali restano locali a questa istanza.",
     backToSite: "Torna a NEURA",
   },

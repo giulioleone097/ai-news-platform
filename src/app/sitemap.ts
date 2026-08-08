@@ -19,12 +19,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   );
 
   const absolute = (path: string) => new URL(path, base).toString();
-  const homeLanguages = Object.fromEntries(
+  const withDefault = (languages: Record<string, string>) => ({
+    ...languages,
+    "x-default": languages.en,
+  });
+  const homeLanguages = withDefault(Object.fromEntries(
     locales.map((locale) => [locale, absolute(localizedPath("/", locale))]),
-  );
-  const latestLanguages = Object.fromEntries(
+  ));
+  const latestLanguages = withDefault(Object.fromEntries(
     locales.map((locale) => [locale, absolute(localizedPath("/latest", locale))]),
-  );
+  ));
 
   return [
     ...localizedData.flatMap(({ locale, articles, categories }) => [
@@ -41,7 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         alternates: { languages: latestLanguages },
       },
       ...categories.map((category) => {
-        const languages = Object.fromEntries(
+        const languages = withDefault(Object.fromEntries(
           localizedData.map((localized) => {
             const peer = localized.categories.find(
               (item) => item.translationKey === category.translationKey,
@@ -51,7 +55,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               absolute(localizedPath(`/categories/${peer?.slug ?? category.slug}`, localized.locale)),
             ];
           }),
-        );
+        ));
         return {
           url: absolute(localizedPath(`/categories/${category.slug}`, locale)),
           changeFrequency: "daily" as const,
@@ -60,7 +64,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         };
       }),
       ...articles.map((article) => {
-        const languages = Object.fromEntries(
+        const languages = withDefault(Object.fromEntries(
           localizedData.map((localized) => {
             const peer = localized.articles.find(
               (item) => item.translationKey === article.translationKey,
@@ -70,7 +74,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               absolute(localizedPath(`/articles/${peer?.slug ?? article.slug}`, localized.locale)),
             ];
           }),
-        );
+        ));
         return {
           url: absolute(localizedPath(`/articles/${article.slug}`, locale)),
           lastModified: article.updatedAt,

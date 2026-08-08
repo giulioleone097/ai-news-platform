@@ -5,7 +5,7 @@ An English-first, internationalized AI news platform built with Next.js, Supabas
 ## What ships
 
 - English-first routes with Italian content parity: `/en` and `/it`.
-- Editorial home, latest feed, categories, search, article pages, localized RSS, newsletter capture, and social share intents.
+- Editorial home, infinite latest/category/search feeds, article pages, localized RSS, newsletter capture, and social share intents.
 - Supabase Postgres schema with full-text search, row-level security, editorial roles, publication state, translations, newsletter subscriptions, and social distribution state.
 - Public, stateless, read-only MCP server over Streamable HTTP at `/api/mcp`.
 - Hexagonal boundaries: domain and application code do not depend on Next.js or Supabase.
@@ -23,7 +23,7 @@ An English-first, internationalized AI news platform built with Next.js, Supabas
 
 ## Run locally
 
-Node.js 24 is used in CI and on Vercel. No environment variables are required for demo mode.
+Node.js 24 is used in CI and on Vercel. No environment variables are required for the public demo or for demo Studio during local development.
 
 ```bash
 npm ci
@@ -38,7 +38,7 @@ To make local settings explicit:
 cp .env.example .env.local
 ```
 
-Leave both Supabase variables empty for demo mode. Set both to switch the repository adapter to Supabase.
+Leave both Supabase variables empty for the public memory fallback. Local development also enables the ephemeral demo Studio. Production Studio fails closed without Supabase unless `NEURA_ENABLE_DEMO_STUDIO=true` is set explicitly for an intentional, disposable review deployment.
 
 ## Quality gate
 
@@ -86,13 +86,14 @@ Full instructions: [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 - [Internationalization and content model](docs/INTERNATIONALIZATION.md)
 - [MCP server and client usage](docs/MCP.md)
 - [Operations, performance budgets, troubleshooting, and rollback](docs/OPERATIONS.md)
+- [Independent optimization report](docs/OPTIMIZATION_REPORT.md)
 - [Design system source](DESIGN.md)
 
 ## Security model
 
 - The application uses only the public Supabase URL and anon/publishable key. Never add a service-role key to this project or to a `NEXT_PUBLIC_*` variable.
 - Supabase RLS is the authorization boundary. Proxy and UI checks are convenience layers, not authorization.
-- Anonymous users can read only published content and create newsletter subscriptions.
+- Anonymous users can read only published content and call the constrained, idempotent newsletter subscription RPC; direct table inserts are denied.
 - Only authenticated users mapped to an `editor` or `admin` profile can mutate editorial data.
 - The MCP surface is intentionally read-only and exposes only published content.
 

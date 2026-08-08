@@ -16,7 +16,7 @@ npx supabase start
 npx supabase db reset --local
 ```
 
-The CI build intentionally runs without Supabase credentials, proving the zero-config demo remains viable. A green CI build does not replace Preview smoke checks against Supabase.
+The CI build intentionally runs without Supabase credentials, proving the zero-config public demo remains viable while production Studio fails closed. A green CI build does not replace Preview smoke checks against Supabase.
 
 ## Performance budgets
 
@@ -48,6 +48,7 @@ Measure a cold navigation and a warm navigation for `/en`, `/it`, one category, 
 - Supabase and Vercel functions should share the nearest practical region.
 - MCP is stateless and has a 10-second hard function ceiling.
 - Search and feed queries use locale/status/category indexes and cursor pagination.
+- Latest, category, and search archives render six rows in the initial HTML, then prefetch compact list rows through `/api/articles` as the sentinel approaches the viewport. A visible load-more control remains as an accessible fallback.
 
 Never mark a regression acceptable because the second navigation is fast; cold-path behavior is part of the release gate.
 
@@ -85,7 +86,7 @@ Useful operational dimensions are route, locale, deployment ID, repository mode 
 ### Newsletter
 
 - Subscriptions are normalized to lower-case and unique.
-- Anonymous access can insert active subscriptions but cannot read the audience.
+- Anonymous visitors can invoke only the validated subscription RPC and cannot read the audience or insert directly into the table.
 - Editor access to subscription data is protected by RLS.
 - A production mailing provider is optional; the platform remains functional as a consented subscriber registry without one.
 

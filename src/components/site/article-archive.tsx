@@ -2,7 +2,12 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import type { Article, Category } from "@/modules/editorial/domain/article";
 import { getMessages, localizedPath, type Locale } from "@/i18n";
-import { StoryRow } from "./story-row";
+import {
+  encodeArticleCursor,
+  toArticleListItem,
+} from "@/modules/editorial/application/public-feed";
+import type { ArticleCursor } from "@/modules/editorial/domain/article";
+import { InfiniteArticleList } from "./infinite-article-list";
 
 export function ArticleArchive({
   title,
@@ -12,6 +17,7 @@ export function ArticleArchive({
   query = "",
   activeCategory,
   locale,
+  nextCursor,
 }: {
   title: string;
   description: string;
@@ -20,6 +26,7 @@ export function ArticleArchive({
   query?: string;
   activeCategory?: string;
   locale: Locale;
+  nextCursor: ArticleCursor | null;
 }) {
   const messages = getMessages(locale);
 
@@ -60,9 +67,14 @@ export function ArticleArchive({
 
       <div className="archive-list">
         {articles.length ? (
-          articles.map((article, index) => (
-            <StoryRow article={article} locale={locale} index={index} key={article.id} />
-          ))
+          <InfiniteArticleList
+            initialArticles={articles.map(toArticleListItem)}
+            initialNextCursor={encodeArticleCursor(nextCursor)}
+            locale={locale}
+            category={activeCategory}
+            query={query || undefined}
+            copy={messages.latest}
+          />
         ) : (
           <div className="empty-state">
             <h2>{messages.search.noResultsTitle}</h2>

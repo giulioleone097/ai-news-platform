@@ -26,6 +26,8 @@ export function NewsletterForm({
     subscribeToNewsletter,
     initialNewsletterState,
   );
+  const emailId = `newsletter-email-${source}`;
+  const messageId = `newsletter-message-${source}`;
 
   return (
     <section className="newsletter" aria-labelledby="newsletter-title">
@@ -39,21 +41,28 @@ export function NewsletterForm({
       <form action={action}>
         <input type="hidden" name="source" value={source} />
         <input type="hidden" name="locale" value={locale} />
-        <label className="sr-only" htmlFor={`newsletter-email-${source}`}>{copy.emailLabel}</label>
+        <label className="sr-only" htmlFor={emailId}>{copy.emailLabel}</label>
         <input
-          id={`newsletter-email-${source}`}
+          id={emailId}
           name="email"
           type="email"
           autoComplete="email"
           placeholder={copy.emailPlaceholder}
           required
           disabled={pending}
+          aria-describedby={state.message ? messageId : undefined}
+          aria-invalid={state.status === "error" || undefined}
         />
         <button type="submit" disabled={pending}>
           {pending ? copy.submitting : copy.submit}
         </button>
         <small>{copy.privacy}</small>
-        <p className={`form-message form-message--${state.status}`} role="status" aria-live="polite">
+        <p
+          className={`form-message form-message--${state.status}`}
+          id={messageId}
+          role="status"
+          aria-live="polite"
+        >
           {state.message}
         </p>
       </form>

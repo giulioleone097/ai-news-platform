@@ -46,6 +46,11 @@ export const en = {
   latest: {
     title: "Latest",
     description: "The essential stream of AI news, analysis and tools, ranked by relevance and written to be useful.",
+    loadMore: "Load more stories",
+    loadingMore: "Loading more stories…",
+    retry: "Try loading again",
+    loadError: "More stories could not be loaded. Try again.",
+    endOfResults: "You’re all caught up.",
   },
   search: {
     title: "Search NEURA",
@@ -82,7 +87,6 @@ export const en = {
     privacy: "No spam. Unsubscribe whenever you want.",
     invalidEmail: "Enter a valid email address.",
     success: "Subscription confirmed. Welcome to the briefing.",
-    alreadySubscribed: "You are already subscribed to the briefing.",
     unavailable: "The service is temporarily unavailable. Please try again shortly.",
   },
   share: {
@@ -150,7 +154,8 @@ export const en = {
     signOut: "Sign out",
     forgotPassword: "Forgot your password?",
     invalidCredentials: "The email address or password is incorrect.",
-    unavailable: "Sign-in is temporarily unavailable. Please try again.",
+    unavailableTitle: "Studio is locked",
+    unavailable: "This production deployment has no Supabase configuration. Editorial access is disabled.",
     demoNotice: "Demo mode is active. Editorial data stays local to this instance.",
     backToSite: "Back to NEURA",
   },

@@ -12,6 +12,12 @@ function shouldLocalize(pathname: string) {
     && !PUBLIC_FILE.test(pathname);
 }
 
+function isAuthSensitivePath(pathname: string) {
+  const [, localeSegment, section] = pathname.split("/");
+  return isLocale(localeSegment)
+    && (section === "studio" || section === "login" || section === "auth");
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -33,6 +39,8 @@ export async function proxy(request: NextRequest) {
   const nextResponse = () => NextResponse.next({
     request: { headers: requestHeaders },
   });
+  if (!isAuthSensitivePath(pathname)) return nextResponse();
+
   const environment = getSupabaseEnvironment();
   if (!environment) return nextResponse();
 

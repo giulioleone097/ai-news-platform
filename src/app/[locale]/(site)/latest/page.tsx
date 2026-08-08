@@ -7,6 +7,7 @@ import {
   getPublicCategories,
   searchPublishedArticles,
 } from "@/modules/editorial/application/queries";
+import { publicArchivePageSize } from "@/modules/editorial/application/public-feed";
 
 export const revalidate = 60;
 
@@ -34,7 +35,7 @@ export default async function LatestPage({
   if (!isLocale(locale)) notFound();
   const messages = getMessages(locale);
   const [page, categories] = await Promise.all([
-    searchPublishedArticles({ locale, limit: 30 }),
+    searchPublishedArticles({ locale, limit: publicArchivePageSize }),
     getPublicCategories(locale),
   ]);
 
@@ -46,6 +47,7 @@ export default async function LatestPage({
         articles={page.items}
         categories={categories}
         locale={locale}
+        nextCursor={page.nextCursor}
       />
       <NewsletterForm locale={locale} copy={messages.newsletter} source={`latest-${locale}`} />
     </main>

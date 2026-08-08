@@ -7,7 +7,14 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/en/studio/", "/it/studio/", "/en/auth/", "/it/auth/"],
+        disallow: [
+          "/en/studio",
+          "/it/studio",
+          "/en/login",
+          "/it/login",
+          "/en/auth",
+          "/it/auth",
+        ],
       },
     ],
     sitemap: new URL("/sitemap.xml", getPublicSiteUrl()).toString(),

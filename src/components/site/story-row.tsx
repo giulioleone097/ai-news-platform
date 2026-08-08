@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { Article } from "@/modules/editorial/domain/article";
+import type { ArticleListItem } from "@/modules/editorial/application/public-feed";
 import { getPublicSiteUrl } from "@/config/env";
 import { getMessages, localizedPath, type Locale } from "@/i18n";
 import { BookmarkButton } from "./bookmark-button";
@@ -11,7 +11,7 @@ export function StoryRow({
   locale,
   index = 0,
 }: {
-  article: Article;
+  article: ArticleListItem;
   locale: Locale;
   index?: number;
 }) {

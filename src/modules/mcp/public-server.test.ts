@@ -151,4 +151,21 @@ describe("public MCP server", () => {
     expect(response.status).toBe(413);
     expect(payload.error.code).toBe(-32001);
   });
+
+  it("rejects an actually oversized body without a Content-Length header", async () => {
+    const repository = new MemoryEditorialRepository();
+    const request = new Request("http://localhost:3000/api/mcp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "x".repeat(262_145),
+    });
+
+    expect(request.headers.get("content-length")).toBeNull();
+
+    const response = await handlePublicMcpRequest(request, repository);
+    const payload = await response.json();
+
+    expect(response.status).toBe(413);
+    expect(payload.error.code).toBe(-32001);
+  });
 });

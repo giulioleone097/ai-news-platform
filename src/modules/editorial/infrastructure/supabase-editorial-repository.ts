@@ -68,6 +68,11 @@ const articleSelect = `
   distribution:social_publications(channel)
 `;
 
+const supabaseCursorSchema = z.object({
+  publishedAt: z.iso.datetime(),
+  id: z.uuid(),
+});
+
 function relationOne<T>(value: T | T[]) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -141,7 +146,12 @@ export class SupabaseEditorialRepository
         type: "websearch",
       });
     }
-    if (input.cursor) query = query.lt("published_at", input.cursor.publishedAt);
+    if (input.cursor) {
+      const cursor = supabaseCursorSchema.parse(input.cursor);
+      query = query.or(
+        `published_at.lt.${cursor.publishedAt},and(published_at.eq.${cursor.publishedAt},id.lt.${cursor.id})`,
+      );
+    }
 
     const { data, error } = await query;
     throwIfError(error, "Unable to list published articles");
@@ -292,13 +302,11 @@ export class SupabaseEditorialRepository
   }
 
   async subscribe(email: string, source: string, locale: Locale) {
-    const { error } = await this.client.from("newsletter_subscriptions").insert({
-      email: email.trim().toLowerCase(),
-      source,
-      locale,
+    const { error } = await this.client.rpc("subscribe_newsletter", {
+      p_email: email,
+      p_source: source,
+      p_locale: locale,
     });
-    if (error?.code === "23505") return "existing" as const;
     throwIfError(error, "Unable to subscribe");
-    return "created" as const;
   }
 }

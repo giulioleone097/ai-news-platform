@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import { notFound } from "next/navigation";
-import "@fontsource/barlow-condensed/600.css";
-import "@fontsource/barlow-condensed/700.css";
-import "@fontsource-variable/inter";
-import "@fontsource-variable/source-serif-4";
+import "@fontsource/barlow-condensed/latin-600.css";
+import "@fontsource/barlow-condensed/latin-700.css";
 import "../design.tokens.css";
 import "../globals.css";
 import { getPublicSiteUrl } from "@/config/env";
@@ -14,6 +13,22 @@ import {
   locales,
   localizedPath,
 } from "@/i18n";
+
+const inter = localFont({
+  src: "../../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+  display: "swap",
+  fallback: ["Inter", "sans-serif"],
+  style: "normal",
+  weight: "100 900",
+});
+
+const sourceSerif = localFont({
+  src: "../../../node_modules/@fontsource-variable/source-serif-4/files/source-serif-4-latin-wght-normal.woff2",
+  display: "swap",
+  fallback: ["Georgia", "serif"],
+  style: "normal",
+  weight: "200 900",
+});
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -64,7 +79,14 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound();
 
   return (
-    <html lang={locale} data-scroll-behavior="smooth">
+    <html
+      lang={locale}
+      data-scroll-behavior="smooth"
+      style={{
+        "--font-reading": sourceSerif.style.fontFamily,
+        "--font-ui": inter.style.fontFamily,
+      } as React.CSSProperties}
+    >
       <body>{children}</body>
     </html>
   );

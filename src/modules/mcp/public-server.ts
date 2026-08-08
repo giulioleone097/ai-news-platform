@@ -4,10 +4,13 @@ import * as z from "zod/v4";
 
 import type {
   Article,
-  ArticleCursor,
   Category,
 } from "@/modules/editorial/domain/article";
 import type { ArticleRepository } from "@/modules/editorial/domain/article-repository";
+import {
+  decodeArticleCursor,
+  encodeArticleCursor,
+} from "@/modules/editorial/application/public-feed";
 import { defaultLocale, locales } from "@/i18n";
 
 export type PublicEditorialReader = Pick<
@@ -28,16 +31,11 @@ const categorySlugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
   .describe("Locale-specific category slug.");
 
-const articleCursorSchema = z.object({
-  publishedAt: z.iso.datetime(),
-  id: z.string().min(1).max(200),
-});
-
 const encodedCursorSchema = z
   .string()
   .min(1)
   .max(512)
-  .refine((value) => decodeCursor(value) !== null, "Invalid article cursor.")
+  .refine((value) => decodeArticleCursor(value) !== null, "Invalid article cursor.")
   .describe("Opaque cursor returned by a previous list_articles call.");
 
 const categoryOutputSchema = z.object({
@@ -71,24 +69,6 @@ const readOnlyAnnotations = {
   idempotentHint: true,
   openWorldHint: false,
 } as const;
-
-function encodeCursor(cursor: ArticleCursor | null) {
-  return cursor
-    ? Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url")
-    : null;
-}
-
-function decodeCursor(value: string): ArticleCursor | null {
-  try {
-    const decoded: unknown = JSON.parse(
-      Buffer.from(value, "base64url").toString("utf8"),
-    );
-    const result = articleCursorSchema.safeParse(decoded);
-    return result.success ? result.data : null;
-  } catch {
-    return null;
-  }
-}
 
 function toArticleSummary(article: Article) {
   return {
@@ -175,7 +155,7 @@ export function createPublicMcpServer(reader: PublicEditorialReader) {
     },
     async ({ locale, category, limit, cursor }) =>
       safely(async () => {
-        const decodedCursor = cursor ? decodeCursor(cursor) : undefined;
+        const decodedCursor = cursor ? decodeArticleCursor(cursor) : undefined;
         const page = await reader.listPublished({
           locale,
           category,
@@ -185,7 +165,7 @@ export function createPublicMcpServer(reader: PublicEditorialReader) {
 
         return {
           items: page.items.map(toArticleSummary),
-          nextCursor: encodeCursor(page.nextCursor),
+          nextCursor: encodeArticleCursor(page.nextCursor),
         };
       }),
   );

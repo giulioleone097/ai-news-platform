@@ -200,8 +200,8 @@ svg {
 
 .locale-switcher a {
   display: grid;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   border-radius: 999px;
   font-size: 0.625rem;
@@ -267,6 +267,10 @@ svg {
 
 .mobile-menu[open] .menu-close {
   display: block;
+}
+
+.mobile-menu:not([open]) nav {
+  display: none;
 }
 
 .mobile-menu nav {
@@ -1119,6 +1123,50 @@ svg {
   min-height: 8.25rem;
 }
 
+.infinite-scroll {
+  position: relative;
+  display: grid;
+  min-height: 8rem;
+  place-items: center;
+  border-bottom: 1px solid var(--rule-strong);
+  color: var(--ink-muted);
+  font-family: var(--font-interface);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.infinite-scroll:empty {
+  min-height: 1px;
+  border-bottom: 0;
+}
+
+.infinite-scroll[data-state="loading"]::before {
+  position: absolute;
+  width: 1.5rem;
+  height: 1.5rem;
+  content: "";
+  border: 2px solid color-mix(in srgb, var(--coral) 24%, transparent);
+  border-top-color: var(--coral);
+  border-radius: 50%;
+  animation: infinite-scroll-spin 700ms linear infinite;
+}
+
+.infinite-scroll[data-state="loading"] .button {
+  opacity: 0;
+}
+
+@keyframes infinite-scroll-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .infinite-scroll[data-state="loading"]::before {
+    animation-duration: 1.4s;
+  }
+}
+
 .empty-state {
   display: grid;
   min-height: 22rem;
@@ -1832,8 +1880,8 @@ svg {
 .studio-locale-link,
 .studio-icon-button {
   display: grid;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   border: 1px solid var(--rule);
   border-radius: 50%;

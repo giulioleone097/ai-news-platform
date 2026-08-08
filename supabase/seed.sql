@@ -368,7 +368,3 @@ cross join lateral unnest(distribution.channels) as distribution_channel(channel
 on conflict (article_id, channel) do update set
   status = excluded.status,
   updated_at = now();
-
--- After creating the first user in Supabase Auth, grant editorial access once:
--- insert into public.profiles (id, author_id, role)
--- values ('AUTH_USER_UUID', '7e05ad26-5ee6-4747-ae9b-b14547462239', 'admin');

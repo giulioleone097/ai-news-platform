@@ -180,8 +180,6 @@ export class MemoryEditorialRepository
 
   async subscribe(email: string, _source: string, locale: Locale) {
     const normalized = email.trim().toLowerCase();
-    if (this.subscribers.has(normalized)) return "existing" as const;
-    this.subscribers.set(normalized, locale);
-    return "created" as const;
+    if (!this.subscribers.has(normalized)) this.subscribers.set(normalized, locale);
   }
 }
