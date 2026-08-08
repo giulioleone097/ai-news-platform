@@ -1,0 +1,31 @@
+/* Generated from DESIGN.md with @google/design.md 0.4.0. */
+:root {
+  --neura-color-primary: #0a0a0a;
+  --neura-color-paper: #f4f1ec;
+  --neura-color-paper-raised: #faf9f6;
+  --neura-color-ink: #0a0a0a;
+  --neura-color-muted: #65635f;
+  --neura-color-rule: #c9c7c1;
+  --neura-color-rule-strong: #9a9893;
+  --neura-color-coral: #f04e3e;
+  --neura-color-coral-dark: #cc3529;
+  --neura-color-success: #397a32;
+  --neura-color-warning: #b46b00;
+  --neura-color-info: #23759a;
+  --neura-color-white: #ffffff;
+  --neura-spacing-xxs: 4px;
+  --neura-spacing-xs: 8px;
+  --neura-spacing-sm: 12px;
+  --neura-spacing-md: 16px;
+  --neura-spacing-lg: 24px;
+  --neura-spacing-xl: 32px;
+  --neura-spacing-2xl: 48px;
+  --neura-spacing-3xl: 72px;
+  --neura-spacing-gutter-mobile: 20px;
+  --neura-spacing-gutter-desktop: 40px;
+  --neura-rounded-none: 0px;
+  --neura-rounded-sm: 2px;
+  --neura-rounded-md: 8px;
+  --neura-rounded-media: 12px;
+  --neura-rounded-full: 999px;
+}

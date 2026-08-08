@@ -29,3 +29,20 @@ export function getAllowedMcpOrigins() {
     .map((origin) => origin.trim())
     .filter(Boolean);
 }
+
+function optionalWebUrl(value: string | undefined) {
+  if (!value?.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+export function getSocialProfiles() {
+  return {
+    linkedin: optionalWebUrl(process.env.NEXT_PUBLIC_LINKEDIN_URL),
+    x: optionalWebUrl(process.env.NEXT_PUBLIC_X_URL),
+  };
+}

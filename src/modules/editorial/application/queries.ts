@@ -1,28 +1,31 @@
 import "server-only";
 
 import { unstable_cache } from "next/cache";
+import type { Locale } from "@/i18n";
 import { getHomeFeed } from "../domain/editorial-service";
 import { getPublicEditorialRepositories } from "../infrastructure/container";
 
 export const getCachedHomeFeed = unstable_cache(
-  async () => {
+  async (locale: Locale) => {
     const { articles } = getPublicEditorialRepositories();
-    return getHomeFeed(articles);
+    return getHomeFeed(articles, locale);
   },
-  ["neura-home-feed-v1"],
+  ["neura-home-feed-v2"],
   { revalidate: 60, tags: ["articles"] },
 );
 
 export const getCachedArticle = unstable_cache(
-  async (slug: string) => {
+  async (slug: string, locale: Locale) => {
     const { articles } = getPublicEditorialRepositories();
-    return articles.findBySlug(slug);
+    const article = await articles.findBySlug(slug, locale);
+    return article?.status === "published" ? article : null;
   },
-  ["neura-article-v1"],
+  ["neura-article-v2"],
   { revalidate: 300, tags: ["articles"] },
 );
 
 export async function searchPublishedArticles(input: {
+  locale: Locale;
   query?: string;
   category?: string;
   limit?: number;
@@ -31,7 +34,7 @@ export async function searchPublishedArticles(input: {
   return articles.listPublished(input);
 }
 
-export async function getPublicCategories() {
+export async function getPublicCategories(locale: Locale) {
   const { articles } = getPublicEditorialRepositories();
-  return articles.listCategories();
+  return articles.listCategories(locale);
 }

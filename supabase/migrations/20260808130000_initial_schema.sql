@@ -3,7 +3,7 @@ create extension if not exists pgcrypto;
 create table if not exists public.authors (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(name) between 2 and 120),
-  role text not null default 'Autore' check (char_length(role) between 2 and 80),
+  role text not null default 'Editor' check (char_length(role) between 2 and 80),
   initials text not null check (char_length(initials) between 1 and 4),
   avatar_url text,
   created_at timestamptz not null default now()
@@ -11,11 +11,18 @@ create table if not exists public.authors (
 
 create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
-  slug text not null unique check (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
+  translation_key text not null default gen_random_uuid()::text
+    check (char_length(translation_key) between 2 and 120),
+  locale text not null default 'en'
+    check (locale ~ '^[a-z]{2}(-[A-Z]{2})?$'),
+  slug text not null check (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
   name text not null check (char_length(name) between 2 and 80),
   description text not null default '',
   position smallint not null default 0 check (position >= 0),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint categories_translation_locale_key unique (translation_key, locale),
+  constraint categories_locale_slug_key unique (locale, slug),
+  constraint categories_id_locale_key unique (id, locale)
 );
 
 create table if not exists public.profiles (
@@ -28,14 +35,18 @@ create table if not exists public.profiles (
 
 create table if not exists public.articles (
   id uuid primary key default gen_random_uuid(),
-  slug text not null unique check (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
+  translation_key text not null default gen_random_uuid()::text
+    check (char_length(translation_key) between 2 and 120),
+  locale text not null default 'en'
+    check (locale ~ '^[a-z]{2}(-[A-Z]{2})?$'),
+  slug text not null check (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
   title text not null check (char_length(title) between 8 and 180),
   excerpt text not null check (char_length(excerpt) between 20 and 360),
   content text not null check (char_length(content) >= 20),
-  cover_image text not null default '/media/neura-agents-hero.png',
+  cover_image text not null default '/media/neura-agents-hero.webp',
   cover_alt text not null check (char_length(cover_alt) between 3 and 240),
   status text not null default 'draft' check (status in ('draft', 'review', 'scheduled', 'published')),
-  category_id uuid not null references public.categories(id) on delete restrict,
+  category_id uuid not null,
   author_id uuid not null references public.authors(id) on delete restrict,
   featured boolean not null default false,
   reading_minutes smallint not null default 1 check (reading_minutes between 1 and 180),
@@ -44,10 +55,35 @@ create table if not exists public.articles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   search_vector tsvector generated always as (
-    setweight(to_tsvector('italian', coalesce(title, '')), 'A') ||
-    setweight(to_tsvector('italian', coalesce(excerpt, '')), 'B') ||
-    setweight(to_tsvector('italian', coalesce(content, '')), 'C')
+    setweight(to_tsvector(
+      case locale
+        when 'en' then 'pg_catalog.english'::regconfig
+        when 'it' then 'pg_catalog.italian'::regconfig
+        else 'pg_catalog.simple'::regconfig
+      end,
+      coalesce(title, '')
+    ), 'A') ||
+    setweight(to_tsvector(
+      case locale
+        when 'en' then 'pg_catalog.english'::regconfig
+        when 'it' then 'pg_catalog.italian'::regconfig
+        else 'pg_catalog.simple'::regconfig
+      end,
+      coalesce(excerpt, '')
+    ), 'B') ||
+    setweight(to_tsvector(
+      case locale
+        when 'en' then 'pg_catalog.english'::regconfig
+        when 'it' then 'pg_catalog.italian'::regconfig
+        else 'pg_catalog.simple'::regconfig
+      end,
+      coalesce(content, '')
+    ), 'C')
   ) stored,
+  constraint articles_translation_locale_key unique (translation_key, locale),
+  constraint articles_locale_slug_key unique (locale, slug),
+  constraint articles_category_locale_fkey foreign key (category_id, locale)
+    references public.categories(id, locale) on delete restrict,
   constraint articles_publish_state_check check (
     (status = 'published' and published_at is not null)
     or status <> 'published'
@@ -76,6 +112,8 @@ create table if not exists public.newsletter_subscriptions (
   id uuid primary key default gen_random_uuid(),
   email text not null,
   source text not null default 'site' check (char_length(source) between 2 and 80),
+  locale text not null default 'en'
+    check (locale ~ '^[a-z]{2}(-[A-Z]{2})?$'),
   status text not null default 'active' check (status in ('active', 'unsubscribed')),
   consented_at timestamptz not null default now(),
   unsubscribed_at timestamptz,
@@ -85,12 +123,16 @@ create table if not exists public.newsletter_subscriptions (
 );
 
 create index if not exists profiles_author_id_idx on public.profiles (author_id);
+create index if not exists categories_locale_position_idx
+  on public.categories (locale, position, id);
 create index if not exists articles_author_id_idx on public.articles (author_id);
 create index if not exists articles_category_id_idx on public.articles (category_id);
 create index if not exists articles_status_published_idx
-  on public.articles (status, published_at desc, id desc);
+  on public.articles (locale, status, published_at desc, id desc);
 create index if not exists articles_category_status_published_idx
-  on public.articles (category_id, status, published_at desc, id desc);
+  on public.articles (locale, category_id, status, published_at desc, id desc);
+create index if not exists articles_locale_updated_idx
+  on public.articles (locale, updated_at desc, id desc);
 create index if not exists articles_scheduled_idx
   on public.articles (scheduled_for, id)
   where status = 'scheduled';
@@ -145,6 +187,24 @@ $$;
 revoke all on function public.is_editor() from public;
 grant execute on function public.is_editor() to authenticated;
 
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.profiles
+    where id = (select auth.uid())
+      and role = 'admin'
+  );
+$$;
+
+revoke all on function public.is_admin() from public;
+grant execute on function public.is_admin() to authenticated;
+
 alter table public.authors enable row level security;
 alter table public.categories enable row level security;
 alter table public.profiles enable row level security;
@@ -177,8 +237,8 @@ create policy profiles_own_read on public.profiles
 drop policy if exists profiles_admin_write on public.profiles;
 create policy profiles_admin_write on public.profiles
   for all to authenticated
-  using ((select public.is_editor()))
-  with check ((select public.is_editor()));
+  using ((select public.is_admin()))
+  with check ((select public.is_admin()));
 
 drop policy if exists articles_anon_read on public.articles;
 create policy articles_anon_read on public.articles

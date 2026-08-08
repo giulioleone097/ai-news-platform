@@ -1,5 +1,6 @@
 import type { Article, Category } from "./article";
 import type { ArticleRepository } from "./article-repository";
+import type { Locale } from "@/i18n";
 
 export interface HomeFeed {
   feature: Article;
@@ -8,10 +9,13 @@ export interface HomeFeed {
   categories: Category[];
 }
 
-export async function getHomeFeed(repository: ArticleRepository): Promise<HomeFeed> {
+export async function getHomeFeed(
+  repository: ArticleRepository,
+  locale: Locale,
+): Promise<HomeFeed> {
   const [page, categories] = await Promise.all([
-    repository.listPublished({ limit: 9 }),
-    repository.listCategories(),
+    repository.listPublished({ locale, limit: 9 }),
+    repository.listCategories(locale),
   ]);
 
   if (!page.items.length) {

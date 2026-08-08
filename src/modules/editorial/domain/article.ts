@@ -1,3 +1,5 @@
+import type { Locale } from "@/i18n";
+
 export const articleStatuses = [
   "draft",
   "review",
@@ -12,6 +14,8 @@ export type SocialChannel = (typeof socialChannels)[number];
 
 export interface Category {
   id: string;
+  translationKey: string;
+  locale: Locale;
   slug: string;
   name: string;
   description: string;
@@ -27,6 +31,8 @@ export interface Author {
 
 export interface Article {
   id: string;
+  translationKey: string;
+  locale: Locale;
   slug: string;
   title: string;
   excerpt: string;
@@ -47,6 +53,8 @@ export interface Article {
 
 export interface ArticleDraftInput {
   id?: string;
+  translationKey?: string;
+  locale: Locale;
   title: string;
   slug?: string;
   excerpt: string;
@@ -71,6 +79,7 @@ export interface ArticlePage {
 }
 
 export interface ArticleQuery {
+  locale: Locale;
   limit?: number;
   category?: string;
   query?: string;
@@ -114,12 +123,20 @@ export function parseArticleSections(content: string): ArticleSection[] {
   return sections;
 }
 
-export function formatArticleStatus(status: ArticleStatus) {
-  const labels: Record<ArticleStatus, string> = {
-    draft: "Bozza",
-    review: "In revisione",
-    scheduled: "Programmato",
-    published: "Pubblicato",
+export function formatArticleStatus(status: ArticleStatus, locale: Locale) {
+  const labels: Record<Locale, Record<ArticleStatus, string>> = {
+    en: {
+      draft: "Draft",
+      review: "In review",
+      scheduled: "Scheduled",
+      published: "Published",
+    },
+    it: {
+      draft: "Bozza",
+      review: "In revisione",
+      scheduled: "Programmato",
+      published: "Pubblicato",
+    },
   };
-  return labels[status];
+  return labels[locale][status];
 }

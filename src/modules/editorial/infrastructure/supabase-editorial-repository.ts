@@ -16,9 +16,12 @@ import type {
   ArticleRepository,
   NewsletterRepository,
 } from "../domain/article-repository";
+import { locales, type Locale } from "@/i18n";
 
 const categorySchema = z.object({
   id: z.string(),
+  translation_key: z.string(),
+  locale: z.enum(locales),
   slug: z.string(),
   name: z.string(),
   description: z.string().nullable(),
@@ -34,6 +37,8 @@ const authorSchema = z.object({
 
 const rawArticleSchema = z.object({
   id: z.string(),
+  translation_key: z.string(),
+  locale: z.enum(locales),
   slug: z.string(),
   title: z.string(),
   excerpt: z.string(),
@@ -56,9 +61,9 @@ const rawArticleSchema = z.object({
 });
 
 const articleSelect = `
-  id, slug, title, excerpt, content, cover_image, cover_alt, status,
+  id, translation_key, locale, slug, title, excerpt, content, cover_image, cover_alt, status,
   featured, reading_minutes, published_at, scheduled_for, created_at, updated_at,
-  category:categories!inner(id, slug, name, description),
+  category:categories!inner(id, translation_key, locale, slug, name, description),
   author:authors!inner(id, name, role, initials, avatar_url),
   distribution:social_publications(channel)
 `;
@@ -74,6 +79,8 @@ function mapArticle(value: unknown): Article {
 
   return {
     id: row.id,
+    translationKey: row.translation_key,
+    locale: row.locale,
     slug: row.slug,
     title: row.title,
     excerpt: row.excerpt,
@@ -89,6 +96,8 @@ function mapArticle(value: unknown): Article {
     updatedAt: row.updated_at,
     category: {
       id: category.id,
+      translationKey: category.translation_key,
+      locale: category.locale,
       slug: category.slug,
       name: category.name,
       description: category.description ?? "",
@@ -113,11 +122,12 @@ export class SupabaseEditorialRepository
 {
   constructor(private readonly client: SupabaseClient) {}
 
-  async listPublished(input: ArticleQuery = {}) {
+  async listPublished(input: ArticleQuery) {
     const limit = Math.min(Math.max(input.limit ?? 20, 1), 50);
     let query = this.client
       .from("articles")
       .select(articleSelect)
+      .eq("locale", input.locale)
       .eq("status", "published")
       .lte("published_at", new Date().toISOString())
       .order("published_at", { ascending: false })
@@ -127,7 +137,7 @@ export class SupabaseEditorialRepository
     if (input.category) query = query.eq("category.slug", input.category);
     if (input.query?.trim()) {
       query = query.textSearch("search_vector", input.query.trim(), {
-        config: "italian",
+        config: input.locale === "it" ? "italian" : "english",
         type: "websearch",
       });
     }
@@ -148,44 +158,52 @@ export class SupabaseEditorialRepository
     };
   }
 
-  async listForStudio() {
+  async listForStudio(locale: Locale) {
     const { data, error } = await this.client
       .from("articles")
       .select(articleSelect)
+      .eq("locale", locale)
       .order("updated_at", { ascending: false })
       .limit(100);
     throwIfError(error, "Unable to list studio articles");
     return (data ?? []).map(mapArticle);
   }
 
-  async findBySlug(slug: string) {
+  async findBySlug(slug: string, locale: Locale) {
     const { data, error } = await this.client
       .from("articles")
       .select(articleSelect)
+      .eq("locale", locale)
       .eq("slug", slug)
       .maybeSingle();
     throwIfError(error, "Unable to read article");
     return data ? mapArticle(data) : null;
   }
 
-  async findById(id: string) {
+  async findById(id: string, locale: Locale) {
     const { data, error } = await this.client
       .from("articles")
       .select(articleSelect)
+      .eq("locale", locale)
       .eq("id", id)
       .maybeSingle();
     throwIfError(error, "Unable to read article");
     return data ? mapArticle(data) : null;
   }
 
-  async listCategories() {
+  async listCategories(locale: Locale) {
     const { data, error } = await this.client
       .from("categories")
-      .select("id, slug, name, description")
+      .select("id, translation_key, locale, slug, name, description")
+      .eq("locale", locale)
       .order("position");
     throwIfError(error, "Unable to list categories");
     return z.array(categorySchema).parse(data ?? []).map((item) => ({
-      ...item,
+      id: item.id,
+      translationKey: item.translation_key,
+      locale: item.locale,
+      slug: item.slug,
+      name: item.name,
       description: item.description ?? "",
     }));
   }
@@ -193,7 +211,12 @@ export class SupabaseEditorialRepository
   async save(input: ArticleDraftInput) {
     const [{ data: category, error: categoryError }, { data: authData, error: authError }] =
       await Promise.all([
-        this.client.from("categories").select("id").eq("slug", input.categorySlug).single(),
+        this.client
+          .from("categories")
+          .select("id")
+          .eq("locale", input.locale)
+          .eq("slug", input.categorySlug)
+          .single(),
         this.client.auth.getUser(),
       ]);
     throwIfError(categoryError, "Unknown article category");
@@ -207,15 +230,23 @@ export class SupabaseEditorialRepository
       .single();
     throwIfError(profileError, "Editor profile is incomplete");
 
-    const existing = input.id ? await this.findById(input.id) : null;
+    const existing = input.id ? await this.findById(input.id, input.locale) : null;
+    if (input.id && !existing) {
+      throw new Error(`Article ${input.id} does not exist in locale ${input.locale}`);
+    }
     const timestamp = new Date().toISOString();
     const payload = {
+      translation_key: existing?.translationKey ?? input.translationKey ?? crypto.randomUUID(),
+      locale: input.locale,
       slug: slugify(input.slug || input.title),
       title: input.title.trim(),
       excerpt: input.excerpt.trim(),
       content: input.content.trim(),
-      cover_image: input.coverImage || existing?.coverImage || "/media/neura-agents-hero.png",
-      cover_alt: input.coverAlt || existing?.coverAlt || `Immagine per ${input.title}`,
+      cover_image: input.coverImage || existing?.coverImage || "/media/neura-agents-hero.webp",
+      cover_alt:
+        input.coverAlt ||
+        existing?.coverAlt ||
+        (input.locale === "it" ? `Immagine per ${input.title}` : `Image for ${input.title}`),
       status: input.status,
       category_id: category.id,
       author_id: profile.author_id,
@@ -233,7 +264,7 @@ export class SupabaseEditorialRepository
     throwIfError(error, "Unable to save article");
     const article = mapArticle(data);
     await this.setDistributionChannels(article.id, input.distribution ?? []);
-    return (await this.findById(article.id)) ?? article;
+    return (await this.findById(article.id, input.locale)) ?? article;
   }
 
   async delete(id: string) {
@@ -260,10 +291,11 @@ export class SupabaseEditorialRepository
     throwIfError(error, "Unable to save distribution channels");
   }
 
-  async subscribe(email: string, source: string) {
+  async subscribe(email: string, source: string, locale: Locale) {
     const { error } = await this.client.from("newsletter_subscriptions").insert({
       email: email.trim().toLowerCase(),
       source,
+      locale,
     });
     if (error?.code === "23505") return "existing" as const;
     throwIfError(error, "Unable to subscribe");
