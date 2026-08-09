@@ -27,7 +27,7 @@ export function TopicRail({ categories, locale }: { categories: Category[]; loca
         {categories.map((category) => {
           const Icon = icons[category.translationKey as keyof typeof icons] ?? Blocks;
           return (
-            <Link key={category.id} href={localizedPath(`/categories/${category.slug}`, locale)}>
+            <Link key={category.id} href={localizedPath(`/categories/${category.slug}`, locale)} prefetch={false}>
               <Icon aria-hidden="true" />
               <span>{category.name}</span>
               <ArrowRight aria-hidden="true" />

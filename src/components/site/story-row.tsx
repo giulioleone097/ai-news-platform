@@ -21,7 +21,7 @@ export function StoryRow({
 
   return (
     <article className={`story-row story-row--${(index % 3) + 1}`}>
-      <Link className="story-row__image" href={articlePath} tabIndex={-1} aria-hidden="true">
+      <Link className="story-row__image" href={articlePath} tabIndex={-1} aria-hidden="true" prefetch={false}>
         <Image
           src={article.coverImage}
           alt=""
@@ -31,10 +31,10 @@ export function StoryRow({
         />
       </Link>
       <div className="story-row__copy">
-        <Link className="category-label" href={localizedPath(`/categories/${article.category.slug}`, locale)}>
+        <Link className="category-label" href={localizedPath(`/categories/${article.category.slug}`, locale)} prefetch={false}>
           {article.category.name}
         </Link>
-        <h3><Link href={articlePath}>{article.title}</Link></h3>
+        <h3><Link href={articlePath} prefetch={false}>{article.title}</Link></h3>
         <p>{article.excerpt}</p>
       </div>
       <div className="story-row__actions">

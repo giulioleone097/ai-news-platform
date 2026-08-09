@@ -53,7 +53,13 @@ export function ShareActions({
       <a className="share-actions__x" href={links.x} target="_blank" rel="noreferrer" aria-label={labels.xLabel}>
         X
       </a>
-      <a className="share-actions__wa" href={links.whatsapp} target="_blank" rel="noreferrer" aria-label={labels.whatsappLabel}>
+      <a
+        className="share-actions__wa"
+        href={links.whatsapp}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={`WA · ${labels.whatsappLabel}`}
+      >
         WA
       </a>
       <button type="button" onClick={copy} aria-label={copied ? labels.copiedLabel : labels.copyLinkLabel}>

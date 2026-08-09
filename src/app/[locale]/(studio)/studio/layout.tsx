@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import "./studio.css";
 import { StudioShell } from "@/components/studio/studio-shell";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";

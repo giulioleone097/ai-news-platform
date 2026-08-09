@@ -9,16 +9,16 @@ export function SiteFooter({ locale }: { locale: Locale }) {
   return (
     <footer className="site-footer">
       <div className="site-shell site-footer__inner">
-        <Link className="brand brand--footer" href={localizedPath("/", locale)}>
+        <Link className="brand brand--footer" href={localizedPath("/", locale)} prefetch={false}>
           NEURA
         </Link>
         <p>{messages.footer.tagline}</p>
         <nav aria-label={messages.footer.ariaLabel}>
-          <Link href={localizedPath("/latest", locale)}>{messages.footer.latest}</Link>
-          <Link href={localizedPath("/search", locale)}>{messages.footer.search}</Link>
-          <Link href={localizedPath("/studio", locale)}>{messages.footer.studio}</Link>
-          <Link href="/api/mcp/info">{messages.footer.mcp}</Link>
-          <Link href={localizedPath("/feed.xml", locale)}>{messages.footer.rss}</Link>
+          <Link href={localizedPath("/latest", locale)} prefetch={false}>{messages.footer.latest}</Link>
+          <Link href={localizedPath("/search", locale)} prefetch={false}>{messages.footer.search}</Link>
+          <Link href={localizedPath("/studio", locale)} prefetch={false}>{messages.footer.studio}</Link>
+          <Link href="/api/mcp/info" prefetch={false}>{messages.footer.mcp}</Link>
+          <Link href={localizedPath("/feed.xml", locale)} prefetch={false}>{messages.footer.rss}</Link>
           {socialProfiles.linkedin ? (
             <a href={socialProfiles.linkedin} rel="noreferrer" target="_blank">
               {messages.footer.linkedIn}

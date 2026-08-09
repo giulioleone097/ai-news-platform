@@ -39,6 +39,7 @@ export function LocaleSwitcher({
             key={option.code}
             lang={option.code}
             onClick={preserveLocationState}
+            prefetch={false}
           >
             <span className="locale-switcher__short">{option.code.toUpperCase()}</span>
             <span className="sr-only">{option.label}</span>

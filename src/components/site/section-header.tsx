@@ -18,7 +18,7 @@ export function SectionHeader({
     <div className={`section-header${accent ? " section-header--accent" : ""}`}>
       <h2 id={id}>{title}</h2>
       {href && linkLabel ? (
-        <Link href={href}>
+        <Link href={href} prefetch={false}>
           {linkLabel}<ArrowRight aria-hidden="true" />
         </Link>
       ) : null}

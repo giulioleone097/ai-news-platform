@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { BookmarkButton } from "@/components/site/bookmark-button";
+import { EditorialCover } from "@/components/site/editorial-cover";
 import { NewsletterForm } from "@/components/site/newsletter-form";
 import { SectionHeader } from "@/components/site/section-header";
 import { ShareActions } from "@/components/site/share-actions";
@@ -150,6 +150,7 @@ export default async function ArticlePage({
         <Link
           className="article-back"
           href={localizedPath(`/categories/${article.category.slug}`, locale)}
+          prefetch={false}
         >
           <ArrowLeft aria-hidden="true" /> {article.category.name}
         </Link>
@@ -176,14 +177,10 @@ export default async function ArticlePage({
           </div>
 
           <div className="article-hero__image">
-            <Image
+            <EditorialCover
               src={article.coverImage}
               alt={article.coverAlt}
-              width={1536}
-              height={1024}
               sizes="(max-width: 900px) 100vw, 58vw"
-              loading="eager"
-              priority
               quality={88}
             />
           </div>

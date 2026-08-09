@@ -39,6 +39,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   experimental: {
+    inlineCss: true,
     serverActions: {
       bodySizeLimit: "9mb",
     },

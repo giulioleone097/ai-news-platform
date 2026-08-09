@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { notFound } from "next/navigation";
-import "@fontsource/barlow-condensed/latin-700.css";
 import "../design.tokens.css";
 import "../globals.css";
 import { getPublicSiteUrl } from "@/config/env";
@@ -17,14 +16,24 @@ const inter = localFont({
   src: "../../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
   display: "swap",
   fallback: ["Inter", "sans-serif"],
+  preload: false,
   style: "normal",
   weight: "100 900",
+});
+
+const brand = localFont({
+  src: "../fonts/barlow-condensed-neura.woff2",
+  display: "swap",
+  fallback: ["Arial Narrow", "sans-serif"],
+  style: "normal",
+  weight: "700",
 });
 
 const sourceSerif = localFont({
   src: "../../../node_modules/@fontsource-variable/source-serif-4/files/source-serif-4-latin-wght-normal.woff2",
   display: "swap",
   fallback: ["Georgia", "serif"],
+  preload: false,
   style: "normal",
   weight: "200 900",
 });
@@ -82,6 +91,7 @@ export default async function LocaleLayout({
       lang={locale}
       data-scroll-behavior="smooth"
       style={{
+        "--font-brand": brand.style.fontFamily,
         "--font-reading": sourceSerif.style.fontFamily,
         "--font-ui": inter.style.fontFamily,
       } as React.CSSProperties}

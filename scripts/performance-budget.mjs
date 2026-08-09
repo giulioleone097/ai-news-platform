@@ -26,11 +26,16 @@ function routeAssets(htmlPath) {
     .map((match) => match[1]);
   const styles = [...html.matchAll(/<link(?=[^>]*\brel="stylesheet")(?=[^>]*\bhref="([^"]+\.css[^"]*)")[^>]*>/g)]
     .map((match) => match[1]);
+  const inlineStyles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
+    .map((match) => match[1]);
   const sum = (urls) => [...new Set(urls)]
     .map(resolveAsset)
     .filter(existsSync)
     .reduce((total, path) => total + compressedBytes(path), 0);
-  return { javascript: sum(scripts), css: sum(styles) };
+  const inlineCss = inlineStyles.length
+    ? brotliCompressSync(Buffer.from(inlineStyles.join("\n"))).byteLength
+    : 0;
+  return { javascript: sum(scripts), css: sum(styles) + inlineCss };
 }
 
 function findArticleHtml(locale) {
@@ -60,6 +65,7 @@ for (const [route, htmlPath] of candidates) {
 const heroFiles = [
   "neura-agents-hero.webp",
   "neura-agents-hero-480.webp",
+  "neura-agents-hero-672.webp",
   "neura-agents-hero-750.webp",
   "neura-agents-hero-1200.webp",
   "neura-agents-hero-1536.webp",

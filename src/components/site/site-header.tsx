@@ -30,12 +30,12 @@ export function SiteHeader({ locale }: { locale: Locale }) {
       <Link className="skip-link" href="#main-content">{messages.navigation.skipToContent}</Link>
       <header className="site-header">
         <div className="site-header__inner">
-        <Link className="brand" href={localizedPath("/", locale)} aria-label={messages.navigation.homeLabel}>
+        <Link className="brand" href={localizedPath("/", locale)} aria-label={messages.navigation.homeLabel} prefetch={false}>
           NEURA
         </Link>
         <nav className="desktop-nav" aria-label={messages.navigation.primaryLabel}>
           {navigation.map((item) => (
-            <Link key={item.href} href={item.href}>
+            <Link key={item.href} href={item.href} prefetch={false}>
               {item.label}
             </Link>
           ))}
@@ -46,10 +46,10 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             label={messages.navigation.languageLabel}
             options={locales.map((code) => ({ code, label: localeLabels[code] }))}
           />
-          <Link className="icon-link" href={localizedPath("/search", locale)} aria-label={messages.navigation.search}>
+          <Link className="icon-link" href={localizedPath("/search", locale)} aria-label={messages.navigation.search} prefetch={false}>
             <Search aria-hidden="true" />
           </Link>
-          <Link className="login-link" href={localizedPath("/login", locale)}>
+          <Link className="login-link" href={localizedPath("/login", locale)} prefetch={false}>
             {messages.navigation.signIn}
           </Link>
           <details className="mobile-menu">
@@ -59,12 +59,12 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             </summary>
             <nav aria-label={messages.navigation.mobileLabel}>
               {navigation.map((item) => (
-                <Link key={item.href} href={item.href}>
+                <Link key={item.href} href={item.href} prefetch={false}>
                   {item.label}
                 </Link>
               ))}
-              <Link href={localizedPath("/studio", locale)}>{messages.navigation.studio}</Link>
-              <Link href={localizedPath("/login", locale)}>{messages.navigation.signIn}</Link>
+              <Link href={localizedPath("/studio", locale)} prefetch={false}>{messages.navigation.studio}</Link>
+              <Link href={localizedPath("/login", locale)} prefetch={false}>{messages.navigation.signIn}</Link>
             </nav>
           </details>
         </div>
