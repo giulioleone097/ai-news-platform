@@ -34,7 +34,7 @@ export const it = {
     languageLabel: "Lingua",
   },
   home: {
-    heroTitle: "L’intelligenza artificiale, senza rumore.",
+    heroTitle: "AI, senza rumore.",
     heroDescription: "Notizie, analisi e strumenti per capire cosa cambia davvero.",
     latestEyebrow: "Ora",
     latestTitle: "Ultime",
@@ -130,8 +130,8 @@ export const it = {
     forbiddenDescription: "Il tuo account non dispone dei permessi per accedere a quest’area.",
   },
   metadata: {
-    siteTitle: "NEURA — L’intelligenza artificiale, senza rumore",
-    titleTemplate: "%s — NEURA",
+    siteTitle: "NEURA - L’intelligenza artificiale, senza rumore",
+    titleTemplate: "%s - NEURA",
     siteDescription: "Notizie, analisi e strumenti per capire cosa cambia davvero nel mondo dell’intelligenza artificiale.",
     latestTitle: "Ultime notizie AI",
     latestDescription: "Le ultime notizie e analisi NEURA sull’intelligenza artificiale.",

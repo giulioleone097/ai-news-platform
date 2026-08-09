@@ -1,16 +1,16 @@
 /* Generated from DESIGN.md with @google/design.md 0.4.0. */
 :root {
-  --neura-color-primary: #0a0a0a;
-  --neura-color-paper: #f4f1ec;
-  --neura-color-paper-raised: #faf9f6;
-  --neura-color-ink: #0a0a0a;
-  --neura-color-muted: #65635f;
-  --neura-color-rule: #c9c7c1;
-  --neura-color-rule-strong: #9a9893;
-  --neura-color-coral: #f04e3e;
-  --neura-color-coral-dark: #cc3529;
+  --neura-color-primary: #151719;
+  --neura-color-paper: #f3f5f6;
+  --neura-color-paper-raised: #ffffff;
+  --neura-color-ink: #151719;
+  --neura-color-muted: #626970;
+  --neura-color-rule: #d7dce0;
+  --neura-color-rule-strong: #aeb5bb;
+  --neura-color-coral: #c64a3b;
+  --neura-color-coral-dark: #a93629;
   --neura-color-success: #397a32;
-  --neura-color-warning: #b46b00;
+  --neura-color-warning: #c17a10;
   --neura-color-info: #23759a;
   --neura-color-white: #ffffff;
   --neura-spacing-xxs: 4px;
@@ -24,8 +24,8 @@
   --neura-spacing-gutter-mobile: 20px;
   --neura-spacing-gutter-desktop: 40px;
   --neura-rounded-none: 0px;
-  --neura-rounded-sm: 2px;
-  --neura-rounded-md: 8px;
-  --neura-rounded-media: 12px;
+  --neura-rounded-sm: 8px;
+  --neura-rounded-md: 12px;
+  --neura-rounded-media: 16px;
   --neura-rounded-full: 999px;
 }

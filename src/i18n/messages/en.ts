@@ -32,7 +32,7 @@ export const en = {
     languageLabel: "Language",
   },
   home: {
-    heroTitle: "Artificial intelligence, without the noise.",
+    heroTitle: "AI, without the noise.",
     heroDescription: "News, analysis and tools to understand what is actually changing.",
     latestEyebrow: "Now",
     latestTitle: "Latest",
@@ -128,8 +128,8 @@ export const en = {
     forbiddenDescription: "Your account does not have permission to access this area.",
   },
   metadata: {
-    siteTitle: "NEURA — Artificial intelligence, without the noise",
-    titleTemplate: "%s — NEURA",
+    siteTitle: "NEURA - Artificial intelligence, without the noise",
+    titleTemplate: "%s - NEURA",
     siteDescription: "News, analysis and tools to understand what is actually changing in artificial intelligence.",
     latestTitle: "Latest AI news",
     latestDescription: "The latest NEURA news and analysis on artificial intelligence.",
