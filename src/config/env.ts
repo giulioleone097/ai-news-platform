@@ -39,6 +39,20 @@ export function getAllowedMcpOrigins() {
     .filter(Boolean);
 }
 
+export function getMcpAdminApiKey() {
+  const value = process.env.NEURA_MCP_ADMIN_API_KEY?.trim();
+  return value && value.length >= 32 ? value : null;
+}
+
+export function getSupabaseAdminEnvironment() {
+  const environment = getSupabaseEnvironment();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const authorId = process.env.NEURA_MCP_ADMIN_AUTHOR_ID?.trim();
+
+  if (!environment || !serviceRoleKey || !authorId) return null;
+  return { ...environment, serviceRoleKey, authorId };
+}
+
 function optionalWebUrl(value: string | undefined) {
   if (!value?.trim()) return null;
   try {

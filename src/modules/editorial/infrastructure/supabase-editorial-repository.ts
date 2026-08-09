@@ -125,7 +125,26 @@ function throwIfError(error: { message: string } | null, context: string): asser
 export class SupabaseEditorialRepository
   implements ArticleRepository, NewsletterRepository
 {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(
+    private readonly client: SupabaseClient,
+    private readonly actorAuthorId?: string,
+  ) {}
+
+  private async getActorAuthorId() {
+    if (this.actorAuthorId) return this.actorAuthorId;
+
+    const { data: authData, error: authError } = await this.client.auth.getUser();
+    throwIfError(authError, "Unable to identify editor");
+    if (!authData.user) throw new Error("An authenticated editor is required");
+
+    const { data: profile, error: profileError } = await this.client
+      .from("profiles")
+      .select("author_id")
+      .eq("id", authData.user.id)
+      .single();
+    throwIfError(profileError, "Editor profile is incomplete");
+    return profile.author_id;
+  }
 
   async listPublished(input: ArticleQuery) {
     const limit = Math.min(Math.max(input.limit ?? 20, 1), 50);
@@ -219,26 +238,16 @@ export class SupabaseEditorialRepository
   }
 
   async save(input: ArticleDraftInput) {
-    const [{ data: category, error: categoryError }, { data: authData, error: authError }] =
-      await Promise.all([
+    const [{ data: category, error: categoryError }, authorId] = await Promise.all([
         this.client
           .from("categories")
           .select("id")
           .eq("locale", input.locale)
           .eq("slug", input.categorySlug)
           .single(),
-        this.client.auth.getUser(),
+        this.getActorAuthorId(),
       ]);
     throwIfError(categoryError, "Unknown article category");
-    throwIfError(authError, "Unable to identify editor");
-    if (!authData.user) throw new Error("An authenticated editor is required");
-
-    const { data: profile, error: profileError } = await this.client
-      .from("profiles")
-      .select("author_id")
-      .eq("id", authData.user.id)
-      .single();
-    throwIfError(profileError, "Editor profile is incomplete");
 
     const existing = input.id ? await this.findById(input.id, input.locale) : null;
     if (input.id && !existing) {
@@ -259,7 +268,7 @@ export class SupabaseEditorialRepository
         (input.locale === "it" ? `Immagine per ${input.title}` : `Image for ${input.title}`),
       status: input.status,
       category_id: category.id,
-      author_id: profile.author_id,
+      author_id: authorId,
       featured: Boolean(input.featured),
       reading_minutes: estimateReadingMinutes(input.content),
       published_at:

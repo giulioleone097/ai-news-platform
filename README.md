@@ -8,6 +8,8 @@ An English-first, internationalized AI news platform built with Next.js, Supabas
 - Editorial home, infinite latest/category/search feeds, article pages, localized RSS, newsletter capture, and social share intents.
 - Supabase Postgres schema with full-text search, row-level security, editorial roles, publication state, translations, newsletter subscriptions, and social distribution state.
 - Public, stateless, read-only MCP server over Streamable HTTP at `/api/mcp`.
+- Separate authenticated newsroom MCP at `/api/mcp/admin` with article CRUD and publish tools.
+- Portable agent plugin manifests for Codex/OpenAI, Claude Code, and GitHub Copilot CLI.
 - Hexagonal boundaries: domain and application code do not depend on Next.js or Supabase.
 - Server Components, route-level caching, optimized images, self-hosted fonts, and a token-driven design system.
 - Vercel configuration and GitHub Actions quality gate.
@@ -68,7 +70,7 @@ curl --request POST http://localhost:3000/api/mcp \
   --data '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_articles","arguments":{"locale":"en","limit":3},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
 ```
 
-See [MCP.md](docs/MCP.md) for modern discovery, tools, pagination, legacy compatibility, CORS, and production client configuration.
+See [MCP.md](docs/MCP.md) for public and admin tools, modern discovery, pagination, authentication, legacy compatibility, CORS, and production client configuration.
 
 ## Production setup
 
@@ -87,17 +89,18 @@ Full instructions: [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 - [Deployment and environment setup](docs/DEPLOYMENT.md)
 - [Internationalization and content model](docs/INTERNATIONALIZATION.md)
 - [MCP server and client usage](docs/MCP.md)
+- [Cross-client agent plugin](docs/AGENT_PLUGIN.md)
 - [Operations, performance budgets, troubleshooting, and rollback](docs/OPERATIONS.md)
 - [Independent optimization report](docs/OPTIMIZATION_REPORT.md)
 - [Design system source](DESIGN.md)
 
 ## Security model
 
-- The application uses only the public Supabase URL and anon/publishable key. Never add a service-role key to this project or to a `NEXT_PUBLIC_*` variable.
+- Public pages and Studio use the public Supabase URL and anon/publishable key. The optional admin MCP uses a service-role key only inside its authenticated server route; it must never use a `NEXT_PUBLIC_*` variable.
 - Supabase RLS is the authorization boundary. Proxy and UI checks are convenience layers, not authorization.
 - Anonymous users can read only published content and call the constrained, idempotent newsletter subscription RPC; direct table inserts are denied.
 - Only authenticated users mapped to an `editor` or `admin` profile can mutate editorial data.
-- The MCP surface is intentionally read-only and exposes only published content.
+- The public MCP surface is intentionally read-only and exposes only published content. The separate admin endpoint requires a high-entropy Bearer key before resolving its server-only persistence adapter.
 
 ## Repository map
 
@@ -108,7 +111,8 @@ src/i18n/                             locale contract and message catalogs
 src/modules/editorial/domain/         entities, invariants, and ports
 src/modules/editorial/application/    use cases and cached queries
 src/modules/editorial/infrastructure/ memory and Supabase adapters
-src/modules/mcp/                       public MCP delivery adapter
+src/modules/mcp/                       public and authenticated MCP adapters
+plugins/neura-ai-news/                 portable agent plugin bundle
 supabase/migrations/                  versioned database schema and RLS
 supabase/seed.sql                     deterministic development content
 ```

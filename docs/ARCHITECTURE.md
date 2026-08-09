@@ -55,6 +55,13 @@ The domain must not import Next.js, React, Supabase, browser APIs, or transport 
 3. Tools depend on the same read-only editorial port as the site.
 4. Only published records are serialized into explicit output schemas.
 
+### MCP editorial write
+
+1. `/api/mcp/admin` verifies a high-entropy Bearer key before parsing or composing persistence.
+2. Zod schemas validate explicit create, patch, publish, and delete tool inputs.
+3. The server-only Supabase client uses a service-role key and a configured editor author ID; neither reaches the browser.
+4. Public MCP remains a different read-only adapter and cannot acquire mutation tools accidentally.
+
 ## Domain invariants
 
 - `locale` is explicit on every category and article.
@@ -76,7 +83,7 @@ Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` must be non-
 - **DRY:** site and MCP share editorial queries, cursor encoding, and serialization-ready domain objects.
 - **SOLID:** delivery depends on ports; adapters are substitutable; interfaces stay use-case sized.
 - **Fail visibly:** malformed input and unavailable data become bounded errors; no silent cross-locale content fallback.
-- **Least privilege:** the browser receives only the anon/publishable key; RLS and SQL grants enforce access.
+- **Least privilege:** the browser receives only the anon/publishable key; the service-role key is isolated to the authenticated admin MCP route, while Studio continues to rely on RLS and SQL grants.
 
 ## Change checklist
 

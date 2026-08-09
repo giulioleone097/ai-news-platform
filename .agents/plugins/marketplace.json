@@ -1,0 +1,13 @@
+{
+  "name": "neura-plugins",
+  "owner": {
+    "name": "NEURA"
+  },
+  "plugins": [
+    {
+      "name": "neura-ai-news",
+      "source": "../../plugins/neura-ai-news",
+      "description": "NEURA public news and authenticated newsroom MCP tools."
+    }
+  ]
+}

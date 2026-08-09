@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "neura-public": {
+      "type": "http",
+      "url": "http://localhost:3000/api/mcp"
+    },
+    "neura-admin": {
+      "type": "http",
+      "url": "http://localhost:3000/api/mcp/admin",
+      "bearer_token_env_var": "NEURA_MCP_ADMIN_API_KEY",
+      "headers": {
+        "Authorization": "Bearer ${NEURA_MCP_ADMIN_API_KEY}"
+      }
+    }
+  }
+}

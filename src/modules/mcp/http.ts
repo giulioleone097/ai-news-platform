@@ -53,7 +53,7 @@ function jsonRpcError(status: number, code: number, message: string, request?: R
   );
 }
 
-async function readBoundedRequest(request: Request): Promise<Request | null> {
+export async function readBoundedMcpRequest(request: Request): Promise<Request | null> {
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (Number.isFinite(contentLength) && contentLength > maximumRequestBodyBytes) {
     return null;
@@ -119,7 +119,7 @@ export async function handlePublicMcpRequest(
 ) {
   let boundedRequest: Request | null;
   try {
-    boundedRequest = await readBoundedRequest(request);
+    boundedRequest = await readBoundedMcpRequest(request);
   } catch {
     return jsonRpcError(400, -32700, "Invalid request body.", request);
   }

@@ -20,12 +20,15 @@ Never point a Preview deployment at the production database.
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | `http://localhost:3000` | Exact protected preview origin or canonical production origin | Canonical HTTPS origin | Public, build-time |
 | `NEXT_PUBLIC_SUPABASE_URL` | Empty | CLI API URL | Preview project URL | Production project URL | Public |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Empty | CLI anon key | Preview anon/publishable key | Production anon/publishable key | Public |
+| `SUPABASE_SERVICE_ROLE_KEY` | Empty | Local service-role key when testing admin MCP | Preview project service-role key | Production project service-role key | Server-only, admin MCP only |
+| `NEURA_MCP_ADMIN_AUTHOR_ID` | Empty | Existing `public.authors` UUID | Existing preview author UUID | Existing production author UUID | Server-only, admin MCP only |
+| `NEURA_MCP_ADMIN_API_KEY` | Empty | High-entropy local key | Unique preview key | Unique production key | Server-only |
 | `NEURA_ENABLE_DEMO_STUDIO` | Empty | Empty | Empty unless the preview is intentionally ephemeral | Empty | Server-only |
 | `NEXT_PUBLIC_LINKEDIN_URL` | Empty | Empty or official profile | Preview-safe official profile | Official LinkedIn profile URL | Public, build-time |
 | `NEXT_PUBLIC_X_URL` | Empty | Empty or official profile | Preview-safe official profile | Official X profile URL | Public, build-time |
 | `MCP_ALLOWED_ORIGINS` | `http://localhost:3000` or empty | Local caller origins | Approved preview callers | Comma-separated production callers; empty for public wildcard | Server-only |
 
-Both Supabase variables are required to activate Supabase mode. Do not configure a service-role key in Vercel; the application does not need one.
+The public URL and anon key activate Supabase mode. The service-role key is optional and used only by the authenticated admin MCP route; never expose it through `NEXT_PUBLIC_*`. Configure all three admin values together or the admin route fails closed.
 
 Without Supabase, public routes keep serving the read-only memory fallback. Studio is available automatically in local development, but fails closed in a production build. Set `NEURA_ENABLE_DEMO_STUDIO=true` only for an intentional disposable review deployment; never use it as a Production substitute for Supabase Auth and RLS.
 
@@ -57,6 +60,10 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<local-anon-key>
 MCP_ALLOWED_ORIGINS=http://localhost:3000
+# Optional authenticated admin MCP configuration:
+SUPABASE_SERVICE_ROLE_KEY=<local-service-role-key>
+NEURA_MCP_ADMIN_AUTHOR_ID=<existing-local-user-uuid>
+NEURA_MCP_ADMIN_API_KEY=<openssl-rand-hex-32-output>
 ```
 
 Stop the local stack without deleting data:
@@ -156,7 +163,7 @@ Import the GitHub repository and use these project settings:
 
 Add environment variables separately for Preview and Production. Keep Preview deployments protected, especially when they expose unpublished studio content. Attach the canonical domain, update `NEXT_PUBLIC_SITE_URL` to its HTTPS origin, and redeploy so metadata and share URLs use it.
 
-The MCP function has a 10-second maximum duration. Its normal read-only calls should remain far below that budget.
+The MCP functions have a 10-second maximum duration. Their normal calls should remain far below that budget.
 
 ## Release order
 
@@ -191,5 +198,6 @@ Then verify in a browser:
 - social links encode the canonical article URL;
 - localized RSS contains only published rows for its requested language;
 - MCP `server/discover` and `list_articles` return published content only; a legacy initialize probe remains compatible.
+- admin MCP rejects missing and incorrect Bearer keys; with the correct key, list tools and exercise create/update/publish/delete on a disposable draft.
 
 See [OPERATIONS.md](OPERATIONS.md) for rollback and incident procedures.

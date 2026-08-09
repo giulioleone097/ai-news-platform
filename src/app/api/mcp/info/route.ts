@@ -1,5 +1,6 @@
 import { defaultLocale, locales } from "@/i18n";
 import {
+  adminMcpTools,
   publicMcpProtocolVersion,
   publicMcpTools,
 } from "@/modules/mcp/metadata";
@@ -41,8 +42,13 @@ export function GET() {
         resources: false,
         prompts: false,
       },
+      administration: {
+        endpoint: "/api/mcp/admin",
+        authentication: "bearer-api-key",
+        tools: adminMcpTools,
+      },
       discovery: {
-        server: "initialize",
+        server: "server/discover",
         tools: "tools/list",
       },
     },

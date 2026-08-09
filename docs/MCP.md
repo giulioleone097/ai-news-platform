@@ -1,6 +1,6 @@
 # Model Context Protocol
 
-NEURA exposes published editorial content as a stateless, read-only MCP server over Streamable HTTP.
+NEURA exposes two stateless Streamable HTTP servers: a public read-only surface for published content and a separate API-key-protected newsroom surface for editorial operations.
 
 ## Endpoints
 
@@ -9,6 +9,7 @@ NEURA exposes published editorial content as a stateless, read-only MCP server o
 | `/api/mcp/info` | `GET` | Human- and machine-readable server metadata |
 | `/api/mcp` | `POST` | MCP JSON-RPC over Streamable HTTP |
 | `/api/mcp` | `OPTIONS` | CORS preflight |
+| `/api/mcp/admin` | `POST` | Authenticated newsroom MCP JSON-RPC |
 
 `GET /api/mcp` intentionally returns 405. Use the info route for discovery and POST for protocol requests.
 
@@ -153,13 +154,33 @@ The exact configuration envelope is client-specific; the endpoint and transport 
 - Non-browser agents normally omit `Origin` and remain supported.
 - Responses use `Cache-Control: no-store`; clients decide their own bounded caching.
 
-Do not add mutation tools to this public server. A future editorial MCP surface must use a separate authenticated endpoint, explicit authorization per tool, audit logging, and non-destructive defaults.
+Do not add mutation tools to this public server. Editorial mutations live only on the separate authenticated endpoint below.
+
+## Authenticated newsroom server
+
+`POST /api/mcp/admin` requires `Authorization: Bearer <NEURA_MCP_ADMIN_API_KEY>`. It has no browser CORS surface and authenticates before parsing the body or resolving the service-role repository. Missing or incorrect credentials return `401`; missing server configuration returns `503`.
+
+The server exposes:
+
+| Tool | Purpose |
+| --- | --- |
+| `admin_list_articles` | List drafts, review, scheduled, and published articles by locale |
+| `admin_get_article` | Read one complete newsroom article by ID and locale |
+| `admin_list_categories` | Read valid categories for a locale |
+| `admin_create_article` | Create an article, defaulting safely to draft |
+| `admin_update_article` | Patch selected fields of an existing article |
+| `admin_publish_article` | Publish an existing article immediately |
+| `admin_delete_article` | Permanently delete after `confirm: true` |
+
+Production persistence additionally requires `SUPABASE_SERVICE_ROLE_KEY` and `NEURA_MCP_ADMIN_AUTHOR_ID`. All three values are server-only. Generate the API key with `openssl rand -hex 32`, store it in Vercel secrets and the authorized client environment, and rotate both ends together.
+
+The repository-local plugin under `plugins/neura-ai-news` configures both servers for Codex/OpenAI, Claude Code, and GitHub Copilot CLI. See [AGENT_PLUGIN.md](AGENT_PLUGIN.md).
 
 ## Error behavior
 
 - Invalid JSON-RPC or arguments: protocol error with a non-2xx or tool error result.
 - Missing localized article: tool error, no cross-language fallback.
 - Upstream repository unavailable: bounded generic error; database details are not exposed.
-- Unsupported HTTP method: 405 with `Allow: POST, OPTIONS`.
+- Unsupported public HTTP method: 405 with `Allow: POST, OPTIONS`; the admin endpoint allows only `POST`.
 
 Production checks should assert both the HTTP status and the JSON-RPC `error`/`isError` fields.
