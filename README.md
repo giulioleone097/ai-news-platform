@@ -62,11 +62,13 @@ Read the latest English articles:
 curl --request POST http://localhost:3000/api/mcp \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
-  --header 'MCP-Protocol-Version: 2025-11-25' \
-  --data '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_articles","arguments":{"locale":"en","limit":3}}}'
+  --header 'MCP-Protocol-Version: 2026-07-28' \
+  --header 'MCP-Method: tools/call' \
+  --header 'MCP-Name: list_articles' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_articles","arguments":{"locale":"en","limit":3},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
 ```
 
-See [MCP.md](docs/MCP.md) for initialization, tools, pagination, CORS, and production client configuration.
+See [MCP.md](docs/MCP.md) for modern discovery, tools, pagination, legacy compatibility, CORS, and production client configuration.
 
 ## Production setup
 

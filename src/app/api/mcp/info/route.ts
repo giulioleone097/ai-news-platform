@@ -19,11 +19,13 @@ export function GET() {
         transport: "streamable-http",
         endpoint: "/api/mcp",
         stateless: true,
-        responseMode: "json",
+        responseMode: "auto-modern/sse-legacy",
         requestHeaders: {
           Accept: "application/json, text/event-stream",
           "Content-Type": "application/json",
           "MCP-Protocol-Version": publicMcpProtocolVersion,
+          "MCP-Method": "<json-rpc method>",
+          "MCP-Name": "<tool name for tools/call>",
         },
       },
       access: {

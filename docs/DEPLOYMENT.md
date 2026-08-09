@@ -190,6 +190,6 @@ Then verify in a browser:
 - newsletter submission creates one normalized subscription and duplicate submission is idempotent;
 - social links encode the canonical article URL;
 - localized RSS contains only published rows for its requested language;
-- MCP initialization and `list_articles` return published content only.
+- MCP `server/discover` and `list_articles` return published content only; a legacy initialize probe remains compatible.
 
 See [OPERATIONS.md](OPERATIONS.md) for rollback and incident procedures.

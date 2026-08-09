@@ -1,5 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 
 import type {
@@ -132,7 +131,7 @@ async function safely(
 export function createPublicMcpServer(reader: PublicEditorialReader) {
   const server = new McpServer({
     name: "neura-ai-news",
-    version: "1.0.0",
+    version: "2.0.0",
   });
 
   server.registerTool(

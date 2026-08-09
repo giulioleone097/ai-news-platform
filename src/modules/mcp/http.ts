@@ -1,4 +1,4 @@
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { createMcpHandler } from "@modelcontextprotocol/server";
 import { getAllowedMcpOrigins } from "@/config/env";
 
 import {
@@ -9,7 +9,7 @@ import {
 const baseHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers":
-    "Content-Type, Accept, MCP-Protocol-Version, MCP-Session-Id, Last-Event-ID",
+    "Content-Type, Accept, MCP-Protocol-Version, MCP-Method, MCP-Name, MCP-Session-Id, Last-Event-ID",
   "Access-Control-Expose-Headers": "MCP-Protocol-Version, MCP-Session-Id",
   "Cache-Control": "no-store",
 } as const;
@@ -128,19 +128,17 @@ export async function handlePublicMcpRequest(
     return jsonRpcError(413, -32001, "Request body too large.", request);
   }
 
-  const server = createPublicMcpServer(reader);
-  const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
-    enableJsonResponse: true,
+  const handler = createMcpHandler(() => createPublicMcpServer(reader), {
+    legacy: "stateless",
+    responseMode: "auto",
   });
 
   try {
-    await server.connect(transport);
-    const response = await transport.handleRequest(boundedRequest);
-    await server.close().catch(() => undefined);
+    const response = await handler.fetch(boundedRequest);
+    await handler.close().catch(() => undefined);
     return withPublicHeaders(response, request);
   } catch {
-    await server.close().catch(() => undefined);
+    await handler.close().catch(() => undefined);
     return jsonRpcError(500, -32603, "Internal server error.", request);
   }
 }

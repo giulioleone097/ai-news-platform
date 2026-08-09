@@ -12,36 +12,45 @@ NEURA exposes published editorial content as a stateless, read-only MCP server o
 
 `GET /api/mcp` intentionally returns 405. Use the info route for discovery and POST for protocol requests.
 
-Protocol version: `2025-11-25`. Responses are JSON; clients should still advertise both JSON and event-stream support.
+Current protocol version: `2026-07-28`, served by the stable MCP TypeScript server SDK v2. Ordinary modern responses are JSON and protocol streams can upgrade to SSE. Stateless 2025-era clients remain supported and may receive SSE.
 
 ## Required headers
 
 ```text
 Content-Type: application/json
 Accept: application/json, text/event-stream
-MCP-Protocol-Version: 2025-11-25
+MCP-Protocol-Version: 2026-07-28
+MCP-Method: <JSON-RPC method>
+MCP-Name: <tool name, required for tools/call>
 ```
+
+Use `MCP-Protocol-Version: 2026-07-28`. Every modern request also carries the protocol version, client information, and client capabilities in `params._meta`.
 
 The server is stateless and does not issue an MCP session ID. Every call is independently retryable when the tool annotation marks it idempotent.
 
-## Initialize
+## Discover
 
 ```bash
 curl --request POST "$SITE/api/mcp" \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
-  --header 'MCP-Protocol-Version: 2025-11-25' \
+  --header 'MCP-Protocol-Version: 2026-07-28' \
+  --header 'MCP-Method: server/discover' \
   --data '{
     "jsonrpc":"2.0",
     "id":1,
-    "method":"initialize",
+    "method":"server/discover",
     "params":{
-      "protocolVersion":"2025-11-25",
-      "capabilities":{},
-      "clientInfo":{"name":"curl","version":"1.0.0"}
+      "_meta":{
+        "io.modelcontextprotocol/protocolVersion":"2026-07-28",
+        "io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},
+        "io.modelcontextprotocol/clientCapabilities":{}
+      }
     }
   }'
 ```
+
+The result advertises `supportedVersions`, capabilities, and server identity. Modern MCP does not use the legacy initialize handshake.
 
 ## List tools
 
@@ -49,9 +58,12 @@ curl --request POST "$SITE/api/mcp" \
 curl --request POST "$SITE/api/mcp" \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
-  --header 'MCP-Protocol-Version: 2025-11-25' \
-  --data '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+  --header 'MCP-Protocol-Version: 2026-07-28' \
+  --header 'MCP-Method: tools/list' \
+  --data '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
 ```
+
+Legacy clients using `initialize` with `2025-11-25` are routed through the SDK's stateless compatibility path. New clients should always use `server/discover` and the per-request metadata envelope above.
 
 ## Tools
 
@@ -70,14 +82,21 @@ Supported locales are `en` and `it`; English is the default. All tools are read-
 curl --request POST "$SITE/api/mcp" \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
-  --header 'MCP-Protocol-Version: 2025-11-25' \
+  --header 'MCP-Protocol-Version: 2026-07-28' \
+  --header 'MCP-Method: tools/call' \
+  --header 'MCP-Name: list_articles' \
   --data '{
     "jsonrpc":"2.0",
     "id":3,
     "method":"tools/call",
     "params":{
       "name":"list_articles",
-      "arguments":{"locale":"en","category":"research","limit":5}
+      "arguments":{"locale":"en","category":"research","limit":5},
+      "_meta":{
+        "io.modelcontextprotocol/protocolVersion":"2026-07-28",
+        "io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},
+        "io.modelcontextprotocol/clientCapabilities":{}
+      }
     }
   }'
 ```
@@ -90,8 +109,10 @@ Pass the returned `nextCursor` unchanged as `cursor` for the next page. Do not d
 curl --request POST "$SITE/api/mcp" \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
-  --header 'MCP-Protocol-Version: 2025-11-25' \
-  --data '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"search_articles","arguments":{"locale":"en","query":"agents","limit":5}}}'
+  --header 'MCP-Protocol-Version: 2026-07-28' \
+  --header 'MCP-Method: tools/call' \
+  --header 'MCP-Name: search_articles' \
+  --data '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"search_articles","arguments":{"locale":"en","query":"agents","limit":5},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
 ```
 
 ### Get one article
@@ -100,8 +121,10 @@ curl --request POST "$SITE/api/mcp" \
 curl --request POST "$SITE/api/mcp" \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
-  --header 'MCP-Protocol-Version: 2025-11-25' \
-  --data '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_article","arguments":{"locale":"en","slug":"ai-agents-enter-everyday-work"}}}'
+  --header 'MCP-Protocol-Version: 2026-07-28' \
+  --header 'MCP-Method: tools/call' \
+  --header 'MCP-Name: get_article' \
+  --data '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_article","arguments":{"locale":"en","slug":"ai-agents-enter-everyday-work"},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
 ```
 
 ## Client configuration

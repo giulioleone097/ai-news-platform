@@ -5,4 +5,4 @@ export const publicMcpTools = [
   "list_categories",
 ] as const;
 
-export const publicMcpProtocolVersion = "2025-11-25";
+export const publicMcpProtocolVersion = "2026-07-28";
