@@ -126,6 +126,7 @@ export const en = {
     unauthorizedDescription: "Sign in with an editor account to continue.",
     forbiddenTitle: "Access denied",
     forbiddenDescription: "Your account does not have permission to access this area.",
+    imageUnavailable: "Image unavailable",
   },
   metadata: {
     siteTitle: "NEURA - Artificial intelligence, without the noise",

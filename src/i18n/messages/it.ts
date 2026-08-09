@@ -128,6 +128,7 @@ export const it = {
     unauthorizedDescription: "Accedi con un account editor per continuare.",
     forbiddenTitle: "Accesso negato",
     forbiddenDescription: "Il tuo account non dispone dei permessi per accedere a quest’area.",
+    imageUnavailable: "Immagine non disponibile",
   },
   metadata: {
     siteTitle: "NEURA - L’intelligenza artificiale, senza rumore",

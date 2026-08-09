@@ -145,7 +145,7 @@ Organizations seeing concrete results begin with narrow, measurable problems, sh
 
 The strongest cases combine internal research, document preparation, and the orchestration of repetitive work. Value appears when an agent can show its sources, preserve an audit trail, and request approval before high-impact steps.
 
-Technology alone does not determine the outcome. The quality of the surrounding process does.
+> Technology alone does not determine the outcome. The quality of the surrounding process does.
 
 ## Where they still fail
 
@@ -172,7 +172,7 @@ Le organizzazioni che ottengono risultati concreti iniziano da problemi ben defi
 
 I casi più solidi combinano ricerca interna, preparazione di documenti e orchestrazione di attività ripetitive. Il valore emerge quando l’agente può mostrare fonti, lasciare una traccia e chiedere conferma nei passaggi ad alto impatto.
 
-Non è la tecnologia a determinare l’impatto, ma la qualità del processo in cui viene inserita.
+> Non è la tecnologia a determinare l’impatto, ma la qualità del processo in cui viene inserita.
 
 ## Dove ancora falliscono
 

@@ -86,11 +86,6 @@ export interface ArticleQuery {
   cursor?: ArticleCursor;
 }
 
-export interface ArticleSection {
-  heading: string | null;
-  paragraphs: string[];
-}
-
 export function slugify(value: string) {
   return value
     .normalize("NFD")
@@ -104,23 +99,6 @@ export function slugify(value: string) {
 export function estimateReadingMinutes(content: string) {
   const words = content.trim().split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.ceil(words / 210));
-}
-
-export function parseArticleSections(content: string): ArticleSection[] {
-  const sections: ArticleSection[] = [];
-  let current: ArticleSection = { heading: null, paragraphs: [] };
-
-  for (const block of content.split(/\n\s*\n/).map((value) => value.trim()).filter(Boolean)) {
-    if (block.startsWith("## ")) {
-      if (current.heading || current.paragraphs.length) sections.push(current);
-      current = { heading: block.slice(3).trim(), paragraphs: [] };
-    } else {
-      current.paragraphs.push(block);
-    }
-  }
-
-  if (current.heading || current.paragraphs.length) sections.push(current);
-  return sections;
 }
 
 export function formatArticleStatus(status: ArticleStatus, locale: Locale) {

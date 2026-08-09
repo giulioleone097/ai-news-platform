@@ -668,6 +668,196 @@
   font-size: 0.68rem;
 }
 
+.studio-markdown {
+  min-width: 0;
+}
+
+.studio-markdown__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.studio-markdown__heading > span {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.studio-markdown__modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(100%, 19rem);
+  padding: 0.2rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.45rem;
+  background: var(--paper);
+}
+
+.studio-markdown__mode {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding-inline: 0.55rem;
+  border-radius: 0.3rem;
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 750;
+  transition: color var(--transition), background var(--transition);
+}
+
+.studio-markdown__mode[aria-pressed="true"] {
+  color: var(--paper-raised);
+  background: var(--ink);
+}
+
+.studio-markdown__mode:focus-visible,
+.studio-markdown__tool:focus-visible {
+  outline: 0.1875rem solid var(--coral);
+  outline-offset: 0.125rem;
+}
+
+.studio-markdown__shell {
+  min-width: 0;
+  overflow: clip;
+  border: 1px solid var(--rule);
+  border-radius: 0.55rem;
+  background: var(--paper);
+}
+
+.studio-markdown__toolbar {
+  position: sticky;
+  z-index: 3;
+  top: 4.25rem;
+  display: flex;
+  overflow-x: auto;
+  gap: 0.2rem;
+  padding: 0.35rem;
+  border-bottom: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--paper-raised) 95%, transparent);
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.studio-markdown__toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.studio-markdown__tool {
+  display: grid;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 0.35rem;
+  color: var(--muted);
+  transition: color var(--transition), background var(--transition), transform var(--transition);
+  touch-action: manipulation;
+}
+
+.studio-markdown__tool:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.studio-markdown__tool:active {
+  transform: scale(0.94);
+}
+
+.studio-markdown__workspace,
+.studio-markdown__write-pane,
+.studio-markdown__preview {
+  min-width: 0;
+}
+
+.studio-field .studio-markdown__write-pane textarea {
+  display: block;
+  min-height: clamp(26rem, 60svh, 42rem);
+  padding: clamp(1rem, 3vw, 1.4rem);
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: max(1rem, 16px);
+  line-height: 1.65;
+  outline: none;
+  resize: vertical;
+  overscroll-behavior: contain;
+  tab-size: 2;
+}
+
+.studio-field .studio-markdown__write-pane textarea:focus {
+  background: var(--paper-raised);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.studio-markdown__preview {
+  min-height: clamp(26rem, 60svh, 42rem);
+  padding: clamp(1.1rem, 4vw, 2rem);
+  background: var(--paper-raised);
+}
+
+.studio-markdown__workspace--split .studio-markdown__preview {
+  border-top: 1px solid var(--rule);
+}
+
+.studio-markdown__rendered {
+  max-width: 44rem;
+  margin-inline: auto;
+}
+
+.studio-markdown__empty {
+  display: grid;
+  min-height: 20rem;
+  place-items: center;
+  color: var(--muted);
+  font-family: var(--font-reading);
+  text-align: center;
+}
+
+.studio-markdown__preview-skeleton {
+  min-height: 24rem;
+  border-radius: 0.35rem;
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--rule) 40%, transparent) 20%,
+    color-mix(in srgb, var(--paper-raised) 80%, transparent) 38%,
+    color-mix(in srgb, var(--rule) 40%, transparent) 55%
+  );
+  background-size: 200% 100%;
+  animation: studio-markdown-loading 1.2s linear infinite;
+}
+
+.studio-markdown__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+  padding: 0.7rem 0.85rem;
+  border-top: 1px solid var(--rule);
+  color: var(--muted);
+  background: var(--paper-raised);
+}
+
+.studio-markdown__footer output {
+  flex: none;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes studio-markdown-loading {
+  to {
+    background-position-x: -200%;
+  }
+}
+
 .studio-field:has(.studio-field__error) input,
 .studio-field:has(.studio-field__error) textarea,
 .studio-field:has(.studio-field__error) select {
@@ -1136,6 +1326,24 @@
 
   .studio-capability-card .studio-button {
     grid-column: auto;
+  }
+}
+
+@media (min-width: 70rem) {
+  .studio-markdown__workspace--split {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .studio-markdown__workspace--split .studio-markdown__preview {
+    border-top: 0;
+    border-left: 1px solid var(--rule);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-markdown__preview-skeleton {
+    animation: none;
   }
 }
 

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   estimateReadingMinutes,
   formatArticleStatus,
-  parseArticleSections,
   slugify,
 } from "./article";
 import { defaultLocale, isLocale, locales } from "@/i18n";
@@ -15,15 +14,6 @@ describe("article domain", () => {
   it("never reports less than one reading minute", () => {
     expect(estimateReadingMinutes("Testo breve")).toBe(1);
     expect(estimateReadingMinutes(Array.from({ length: 421 }, () => "parola").join(" "))).toBe(3);
-  });
-
-  it("parses lightweight editorial sections", () => {
-    const sections = parseArticleSections("Intro.\n\n## Sezione\n\nPrimo.\n\nSecondo.");
-
-    expect(sections).toEqual([
-      { heading: null, paragraphs: ["Intro."] },
-      { heading: "Sezione", paragraphs: ["Primo.", "Secondo."] },
-    ]);
   });
 
   it("keeps the supported locales English-first", () => {

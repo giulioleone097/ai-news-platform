@@ -13,7 +13,8 @@ import {
 } from "@/modules/editorial/domain/article";
 import { saveArticleAction } from "@/app/[locale]/(studio)/studio/actions";
 import { idleStudioActionState } from "./action-state";
-import { DeleteArticleForm } from "./delete-article-form";
+import { DeleteArticleButton } from "./delete-article-button";
+import { MarkdownEditor } from "./markdown-editor";
 import { studioSupplementalCopy } from "./studio-copy";
 import { StudioSubmitButton } from "./studio-submit-button";
 
@@ -129,19 +130,15 @@ export function ArticleForm({
               {fieldError("excerpt")}
             </label>
 
-            <label className="studio-field">
-              <span>{messages.studio.bodyLabel}</span>
-              <textarea
-                {...fieldAccessibility("content")}
-                defaultValue={article?.content}
-                minLength={20}
-                name="content"
-                required
-                rows={22}
-              />
-              <small>{copy.contentHelp}</small>
-              {fieldError("content")}
-            </label>
+            <MarkdownEditor
+              copy={copy.markdown}
+              defaultValue={article?.content}
+              error={fieldError("content")}
+              errorId={fieldErrorId("content")}
+              help={copy.contentHelp}
+              invalid={fieldHasError("content")}
+              label={messages.studio.bodyLabel}
+            />
           </section>
 
           <section className="studio-panel" aria-labelledby="story-media-title">
@@ -323,7 +320,7 @@ export function ArticleForm({
             <section className="studio-panel studio-danger-zone">
               <h2>{messages.studio.deleteArticle}</h2>
               <p>{messages.studio.deleteConfirmation}</p>
-              <DeleteArticleForm articleId={article.id} locale={locale} messages={messages} />
+              <DeleteArticleButton locale={locale} messages={messages} />
             </section>
           ) : null}
         </aside>

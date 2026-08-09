@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
+import { MarkdownRenderer } from "@/components/markdown/markdown-renderer";
 import { BookmarkButton } from "@/components/site/bookmark-button";
 import { EditorialCover } from "@/components/site/editorial-cover";
 import { NewsletterForm } from "@/components/site/newsletter-form";
@@ -17,11 +18,12 @@ import {
   type Locale,
 } from "@/i18n";
 import { formatArticleDate } from "@/lib/format";
+import { extractMarkdownHeadings } from "@/lib/markdown";
 import {
   getCachedArticle,
   searchPublishedArticles,
 } from "@/lib/editorial-queries";
-import { parseArticleSections, type Article } from "@/modules/editorial/domain/article";
+import type { Article } from "@/modules/editorial/domain/article";
 
 export const revalidate = 300;
 
@@ -116,7 +118,7 @@ export default async function ArticlePage({
     notFound();
   }
 
-  const sections = parseArticleSections(article.content);
+  const headings = extractMarkdownHeadings(article.content);
   const articlePath = localizedPath(`/articles/${article.slug}`, locale);
   const url = new URL(articlePath, getPublicSiteUrl()).toString();
   const related = (
@@ -185,16 +187,18 @@ export default async function ArticlePage({
             />
           </div>
 
-          <aside className="article-toc" aria-labelledby="toc-title">
-            <h2 id="toc-title">{messages.article.tableOfContents}</h2>
-            <ol>
-              {sections.filter((section) => section.heading).map((section, index) => (
-                <li key={section.heading}>
-                  <a href={`#section-${index + 1}`}>{section.heading}</a>
-                </li>
-              ))}
-            </ol>
-          </aside>
+          {headings.length ? (
+            <aside className="article-toc" aria-labelledby="toc-title">
+              <h2 id="toc-title">{messages.article.tableOfContents}</h2>
+              <ol>
+                {headings.map((heading) => (
+                  <li className={heading.depth === 3 ? "article-toc__subheading" : undefined} key={heading.id}>
+                    <a href={`#${heading.id}`}>{heading.text}</a>
+                  </li>
+                ))}
+              </ol>
+            </aside>
+          ) : null}
         </header>
 
         <div className="article-reading-layout">
@@ -202,22 +206,11 @@ export default async function ArticlePage({
             <span>{messages.share.action}</span>
             <ShareActions url={url} title={article.title} labels={messages.share} />
           </aside>
-          <div className="article-body">
-            {sections.map((section, index) => (
-              <section id={`section-${index + 1}`} key={`${section.heading}-${index}`}>
-                {section.heading ? <h2>{section.heading}</h2> : null}
-                {section.paragraphs.map((paragraph, paragraphIndex) => {
-                  const isPullQuote = paragraph.startsWith("Technology alone")
-                    || paragraph.startsWith("Non è la tecnologia");
-                  return isPullQuote ? (
-                    <blockquote key={paragraphIndex}>{paragraph}</blockquote>
-                  ) : (
-                    <p key={paragraphIndex}>{paragraph}</p>
-                  );
-                })}
-              </section>
-            ))}
-          </div>
+          <MarkdownRenderer
+            className="article-body markdown-content"
+            content={article.content}
+            imageUnavailableLabel={messages.errors.imageUnavailable}
+          />
         </div>
       </article>
 
