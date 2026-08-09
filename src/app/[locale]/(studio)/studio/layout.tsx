@@ -3,6 +3,8 @@ import { StudioShell } from "@/components/studio/studio-shell";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 
+export const dynamic = "force-dynamic";
+
 export default async function StudioLayout({
   children,
   params,

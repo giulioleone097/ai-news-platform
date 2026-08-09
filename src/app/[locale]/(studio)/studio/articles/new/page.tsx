@@ -17,15 +17,17 @@ export default async function NewArticlePage({
 
   await requireEditor(locale);
   const repositories = await getStudioEditorialRepositories();
-  const [englishCategories, italianCategories] = await Promise.all([
+  const [englishCategories, italianCategories, media] = await Promise.all([
     repositories.articles.listCategories("en"),
     repositories.articles.listCategories("it"),
+    repositories.media.listAssets(),
   ]);
 
   return (
     <ArticleForm
       categories={{ en: englishCategories, it: italianCategories }}
       locale={locale}
+      media={media}
       messages={getMessages(locale)}
     />
   );

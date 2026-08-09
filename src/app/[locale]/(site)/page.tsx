@@ -11,9 +11,52 @@ import { TopicRail } from "@/components/site/topic-rail";
 import { getPublicSiteUrl } from "@/config/env";
 import { getMessages, isLocale, localizedPath } from "@/i18n";
 import { formatArticleTime } from "@/lib/format";
-import { getCachedHomeFeed } from "@/modules/editorial/application/queries";
+import { getCachedHomeFeed } from "@/lib/editorial-queries";
 
 export const revalidate = 60;
+
+const bundledHero = "/media/neura-agents-hero.webp";
+
+function FeatureCover({ src, alt }: { src: string; alt: string }) {
+  if (src !== bundledHero) {
+    return (
+      <Image
+        src={src}
+        alt={alt}
+        width={1536}
+        height={1024}
+        sizes="(max-width: 900px) 100vw, 48vw"
+        fetchPriority="high"
+        loading="eager"
+        quality={75}
+      />
+    );
+  }
+
+  return (
+    <picture>
+      <source
+        type="image/webp"
+        srcSet={[
+          "/media/neura-agents-hero-480.webp 480w",
+          "/media/neura-agents-hero-750.webp 750w",
+          "/media/neura-agents-hero-1200.webp 1200w",
+          "/media/neura-agents-hero-1536.webp 1536w",
+        ].join(", ")}
+        sizes="(max-width: 900px) 100vw, 48vw"
+      />
+      <img
+        src="/media/neura-agents-hero-750.webp"
+        alt={alt}
+        width={1536}
+        height={1024}
+        fetchPriority="high"
+        loading="eager"
+        decoding="async"
+      />
+    </picture>
+  );
+}
 
 export default async function Home({
   params,
@@ -38,16 +81,7 @@ export default async function Home({
 
         <article className="feature-story">
           <Link className="feature-story__image" href={featurePath}>
-            <Image
-              src={feed.feature.coverImage}
-              alt={feed.feature.coverAlt}
-              width={1536}
-              height={1024}
-              sizes="(max-width: 900px) 100vw, 48vw"
-              loading="eager"
-              priority
-              quality={88}
-            />
+            <FeatureCover src={feed.feature.coverImage} alt={feed.feature.coverAlt} />
           </Link>
           <Link
             className="category-label"

@@ -96,10 +96,49 @@ describe("MemoryEditorialRepository", () => {
     expect(seedCategories.filter((category) => category.locale === "it")).toHaveLength(5);
   });
 
-  it("returns the same newsletter result for new and existing addresses", async () => {
+  it("preserves an unsubscribe until an editor explicitly reactivates it", async () => {
     const repository = new MemoryEditorialRepository();
 
     await expect(repository.subscribe("reader@example.com", "test", "en")).resolves.toBeUndefined();
+    const { items: [created] } = await repository.listSubscriptions({ locale: "en" });
+    await repository.updateSubscriptionStatus(created.id, "unsubscribed");
+    expect((await repository.listSubscriptions({ locale: "en" })).items[0].status).toBe("unsubscribed");
+
     await expect(repository.subscribe("reader@example.com", "test", "it")).resolves.toBeUndefined();
+    expect((await repository.listSubscriptions({ locale: "it" })).total).toBe(0);
+    await repository.updateSubscriptionStatus(created.id, "active");
+    expect((await repository.listSubscriptions({ locale: "en" })).items[0].status).toBe("active");
+  });
+
+  it("paginates newsletter subscriptions without truncating exports", async () => {
+    const repository = new MemoryEditorialRepository();
+    await repository.subscribe("first@example.com", "test", "en");
+    await repository.subscribe("second@example.com", "test", "en");
+
+    const firstPage = await repository.listSubscriptions({ locale: "en", limit: 1 });
+    const secondPage = await repository.listSubscriptions({ locale: "en", limit: 1, offset: 1 });
+
+    expect(firstPage).toMatchObject({ total: 2, hasMore: true });
+    expect(firstPage.items).toHaveLength(1);
+    expect(secondPage.items).toHaveLength(1);
+    expect(secondPage.items[0].id).not.toBe(firstPage.items[0].id);
+  });
+
+  it("preserves a complete distribution workflow instead of reducing it to channels", async () => {
+    const repository = new MemoryEditorialRepository();
+    const [publication] = await repository.listPublications("en");
+    const updated = await repository.updatePublication({
+      id: publication.id,
+      status: "published",
+      message: "Channel-specific copy",
+      externalUrl: "https://example.com/publication",
+    });
+
+    expect(updated).toMatchObject({
+      status: "published",
+      message: "Channel-specific copy",
+      externalUrl: "https://example.com/publication",
+    });
+    expect(updated.publishedAt).not.toBeNull();
   });
 });

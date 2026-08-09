@@ -171,8 +171,17 @@ The server exposes:
 | `admin_update_article` | Patch selected fields of an existing article |
 | `admin_publish_article` | Publish an existing article immediately |
 | `admin_delete_article` | Permanently delete after `confirm: true` |
+| `admin_list_distribution` | List saved social/newsletter workflow items by locale |
+| `admin_update_distribution` | Update copy, scheduling, URL and verified workflow status; never posts externally |
+| `admin_list_newsletter_subscriptions` | Search/filter the consent registry by locale and status |
+| `admin_update_newsletter_subscription` | Unsubscribe or reactivate while preserving the consent record |
+| `admin_list_media` | List immutable editorial Storage assets and write capability |
+| `admin_upload_media` | Upload a base64 image up to 160 KiB; use Studio for larger assets |
+| `admin_delete_media` | Delete an unused Storage asset after `confirm: true` |
 
 Production persistence additionally requires `SUPABASE_SERVICE_ROLE_KEY` and `NEURA_MCP_ADMIN_AUTHOR_ID`. All three values are server-only. Generate the API key with `openssl rand -hex 32`, store it in Vercel secrets and the authorized client environment, and rotate both ends together.
+
+The admin response can contain unpublished copy and newsletter email addresses. It is always `no-store`; clients must apply the same confidentiality boundary. Media deletion checks every localized article before removing an object. The public MCP remains four-tool, anonymous and strictly read-only.
 
 The repository-local plugin under `plugins/neura-ai-news` configures both servers for Codex/OpenAI, Claude Code, and GitHub Copilot CLI. See [AGENT_PLUGIN.md](AGENT_PLUGIN.md).
 

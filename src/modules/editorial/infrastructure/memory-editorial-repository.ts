@@ -8,16 +8,51 @@ import {
 } from "../domain/article";
 import type {
   ArticleRepository,
+  DistributionRepository,
+  MediaRepository,
   NewsletterRepository,
 } from "../domain/article-repository";
+import type {
+  DistributionPublication,
+  DistributionUpdate,
+  MediaUpload,
+  NewsletterQuery,
+  NewsletterStatus,
+  NewsletterSubscription,
+} from "../domain/editorial-operations";
 import type { Locale } from "@/i18n";
+import { getEditorialMediaReferenceKey } from "@/lib/editorial-image";
 import { seedArticles, seedAuthor, seedCategories } from "./seed";
 
 export class MemoryEditorialRepository
-  implements ArticleRepository, NewsletterRepository
+  implements ArticleRepository, NewsletterRepository, DistributionRepository, MediaRepository
 {
   private articles = structuredClone(seedArticles);
-  private subscribers = new Map<string, Locale>();
+  private subscribers = new Map<string, NewsletterSubscription>();
+  private publications = new Map<string, DistributionPublication>();
+  readonly writable = false;
+
+  constructor() {
+    for (const article of this.articles) {
+      for (const channel of article.distribution) {
+        const id = `${article.id}:${channel}`;
+        this.publications.set(id, {
+          id,
+          articleId: article.id,
+          articleLocale: article.locale,
+          articleSlug: article.slug,
+          articleTitle: article.title,
+          channel,
+          status: "ready",
+          message: article.excerpt,
+          externalUrl: null,
+          scheduledFor: article.scheduledFor,
+          publishedAt: null,
+          updatedAt: article.updatedAt,
+        });
+      }
+    }
+  }
 
   async listPublished(query: ArticleQuery) {
     const limit = Math.min(Math.max(query.limit ?? 20, 1), 50);
@@ -165,21 +200,151 @@ export class MemoryEditorialRepository
 
     if (existingIndex >= 0) this.articles[existingIndex] = article;
     else this.articles.unshift(article);
+    await this.setDistributionChannels(article.id, article.distribution);
 
     return structuredClone(article);
   }
 
   async delete(id: string) {
     this.articles = this.articles.filter((article) => article.id !== id);
+    for (const [publicationId, publication] of this.publications) {
+      if (publication.articleId === id) this.publications.delete(publicationId);
+    }
   }
 
   async setDistributionChannels(id: string, channels: SocialChannel[]) {
     const article = this.articles.find((item) => item.id === id);
-    if (article) article.distribution = [...channels];
+    if (!article) return;
+
+    const desired = new Set(channels);
+    article.distribution = [...desired];
+    for (const [publicationId, publication] of this.publications) {
+      if (
+        publication.articleId === id &&
+        publication.status !== "published" &&
+        !desired.has(publication.channel)
+      ) {
+        this.publications.delete(publicationId);
+      }
+    }
+    for (const channel of desired) {
+      const publicationId = `${article.id}:${channel}`;
+      if (this.publications.has(publicationId)) continue;
+      this.publications.set(publicationId, {
+        id: publicationId,
+        articleId: article.id,
+        articleLocale: article.locale,
+        articleSlug: article.slug,
+        articleTitle: article.title,
+        channel,
+        status: "ready",
+        message: article.excerpt,
+        externalUrl: null,
+        scheduledFor: article.scheduledFor,
+        publishedAt: null,
+        updatedAt: article.updatedAt,
+      });
+    }
   }
 
-  async subscribe(email: string, _source: string, locale: Locale) {
+  async subscribe(email: string, source: string, locale: Locale) {
     const normalized = email.trim().toLowerCase();
-    if (!this.subscribers.has(normalized)) this.subscribers.set(normalized, locale);
+    const existing = this.subscribers.get(normalized);
+    if (existing) {
+      if (existing.status === "unsubscribed") return;
+      existing.locale = locale;
+      existing.source = source;
+      return;
+    }
+    const now = new Date().toISOString();
+    this.subscribers.set(normalized, {
+      id: crypto.randomUUID(),
+      email: normalized,
+      source,
+      locale,
+      status: "active",
+      consentedAt: now,
+      unsubscribedAt: null,
+      createdAt: now,
+    });
+  }
+
+  async listSubscriptions(query: NewsletterQuery) {
+    const normalizedQuery = query.query?.trim().toLowerCase();
+    const offset = Math.max(query.offset ?? 0, 0);
+    const limit = Math.min(Math.max(query.limit ?? 100, 1), 1_000);
+    const subscriptions = [...this.subscribers.values()]
+      .filter((subscription) => subscription.locale === query.locale)
+      .filter((subscription) => !query.status || subscription.status === query.status)
+      .filter((subscription) => !normalizedQuery || subscription.email.includes(normalizedQuery))
+      .sort((left, right) => {
+        const byDate = right.createdAt.localeCompare(left.createdAt);
+        return byDate || right.id.localeCompare(left.id);
+      });
+    const items = subscriptions.slice(offset, offset + limit);
+
+    return {
+      items: structuredClone(items),
+      total: subscriptions.length,
+      offset,
+      limit,
+      hasMore: offset + items.length < subscriptions.length,
+    };
+  }
+
+  async updateSubscriptionStatus(id: string, status: NewsletterStatus) {
+    const subscription = [...this.subscribers.values()].find((item) => item.id === id);
+    if (!subscription) throw new Error("Newsletter subscription not found");
+    subscription.status = status;
+    subscription.unsubscribedAt = status === "unsubscribed" ? new Date().toISOString() : null;
+  }
+
+  async listPublications(locale: Locale) {
+    return structuredClone(
+      [...this.publications.values()]
+        .filter((publication) => publication.articleLocale === locale)
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+    );
+  }
+
+  async updatePublication(input: DistributionUpdate) {
+    const publication = this.publications.get(input.id);
+    if (!publication) throw new Error("Distribution publication not found");
+    publication.status = input.status;
+    publication.message = input.message?.trim() ?? publication.message;
+    publication.externalUrl = input.externalUrl ?? null;
+    publication.scheduledFor = input.scheduledFor ?? null;
+    publication.publishedAt = input.status === "published"
+      ? publication.publishedAt ?? new Date().toISOString()
+      : null;
+    publication.updatedAt = new Date().toISOString();
+    return structuredClone(publication);
+  }
+
+  async listAssets() {
+    return [{
+      path: "media/neura-agents-hero.webp",
+      url: "/media/neura-agents-hero.webp",
+      name: "neura-agents-hero.webp",
+      mimeType: "image/webp",
+      size: 129_262,
+      createdAt: seedArticles.at(-1)?.createdAt ?? new Date(0).toISOString(),
+    }];
+  }
+
+  async isAssetReferenced(path: string) {
+    return this.articles.some(
+      (article) => getEditorialMediaReferenceKey(article.coverImage) === path,
+    );
+  }
+
+  async uploadAsset(input: MediaUpload): Promise<never> {
+    void input;
+    throw new Error("Media uploads require Supabase Storage");
+  }
+
+  async deleteAsset(path: string): Promise<never> {
+    void path;
+    throw new Error("Bundled demo assets cannot be deleted");
   }
 }

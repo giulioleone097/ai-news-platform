@@ -1,6 +1,7 @@
 import { createMcpHandler } from "@modelcontextprotocol/server";
 
-import type { ArticleRepository } from "@/modules/editorial/domain/article-repository";
+import type { AdminEditorialRepository } from "@/modules/editorial/domain/article-repository";
+import type { EditorialCacheInvalidator } from "@/modules/editorial/application/cache-port";
 
 import { authorizeAdminMcpRequest } from "./admin-auth";
 import { createAdminMcpServer } from "./admin-server";
@@ -23,7 +24,8 @@ export function adminMcpMethodNotAllowedResponse() {
 
 export async function handleAdminMcpRequest(
   request: Request,
-  getRepository: () => ArticleRepository,
+  getRepository: () => AdminEditorialRepository,
+  invalidateCache: EditorialCacheInvalidator,
 ) {
   const auth = authorizeAdminMcpRequest(request);
   if (!auth.ok) return errorResponse(auth.status, -32001, auth.message);
@@ -36,14 +38,14 @@ export async function handleAdminMcpRequest(
   }
   if (!bounded) return errorResponse(413, -32002, "Request body too large.");
 
-  let repository: ArticleRepository;
+  let repository: AdminEditorialRepository;
   try {
     repository = getRepository();
   } catch {
     return errorResponse(503, -32003, "Admin MCP persistence is not configured.");
   }
 
-  const handler = createMcpHandler(() => createAdminMcpServer(repository), {
+  const handler = createMcpHandler(() => createAdminMcpServer(repository, invalidateCache), {
     legacy: "stateless",
     responseMode: "auto",
   });

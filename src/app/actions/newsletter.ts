@@ -33,7 +33,10 @@ export async function subscribeToNewsletter(
   }
 
   try {
-    const { newsletter } = getPublicEditorialRepositories();
+    const { newsletter, mode } = getPublicEditorialRepositories();
+    if (mode === "demo" && process.env.NODE_ENV === "production") {
+      return { status: "error", message: copy.unavailable };
+    }
     await newsletter.subscribe(result.data.email, result.data.source, locale);
     return { status: "success", message: copy.success };
   } catch {

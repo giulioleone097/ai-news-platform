@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import * as z from "zod/v4";
 import { locales } from "@/i18n";
-import { searchPublishedArticles } from "@/modules/editorial/application/queries";
+import { searchPublishedArticles } from "@/lib/editorial-queries";
 import {
   decodeArticleCursor,
   encodeArticleCursor,

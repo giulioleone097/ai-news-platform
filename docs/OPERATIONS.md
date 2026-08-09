@@ -9,11 +9,22 @@ npm ci
 npm run check
 ```
 
+Start the production server in explicit disposable demo-review mode, then verify the complete HTTP and MCP lifecycle from a second terminal:
+
+```bash
+NEURA_CONTENT_MODE=demo \
+NEURA_ENABLE_DEMO_STUDIO=true \
+NEURA_MCP_ADMIN_API_KEY=<disposable-local-key> \
+npm start
+
+NEURA_MCP_ADMIN_API_KEY=<disposable-local-key> npm run smoke:runtime
+```
+
 Additionally verify the local Supabase migration chain when schema or persistence behavior changes:
 
 ```bash
-npx supabase start
-npx supabase db reset --local
+npm run supabase:start
+npm run supabase:reset
 ```
 
 The CI build intentionally runs without Supabase credentials, proving the zero-config public demo remains viable while production Studio fails closed. A green CI build does not replace Preview smoke checks against Supabase.
@@ -27,7 +38,7 @@ Measure mobile at the 75th percentile and server endpoints at p95. These are rel
 | LCP | ≤ 2.5 s |
 | INP | ≤ 200 ms |
 | CLS | ≤ 0.10 |
-| Initial public-route client JavaScript | ≤ 100 KB compressed |
+| Initial public-route client JavaScript | ≤ 145 KiB Brotli, including Next/React runtime |
 | Initial studio client JavaScript | ≤ 180 KB compressed |
 | Route CSS | ≤ 35 KB compressed |
 | Optimized above-the-fold hero transfer | ≤ 250 KB at a representative mobile viewport |
@@ -42,13 +53,15 @@ Measure a cold navigation and a warm navigation for `/en`, `/it`, one category, 
 
 - Public UI is Server Component first; client components are limited to interaction.
 - Home feeds revalidate after 60 seconds; article records after 300 seconds.
-- Publication actions revalidate affected localized paths instead of waiting for TTL.
-- Images use `next/image`, responsive `sizes`, AVIF/WebP, dimensions, and long optimized-image cache TTL.
+- Studio publication actions use `updateTag` for read-your-own-writes; admin MCP uses immediate tagged expiration and both invalidate localized pages, API, RSS and sitemap.
+- The bundled LCP hero ships as pre-sized responsive WebP assets; dynamic editorial covers use `next/image`, responsive `sizes`, dimensions, and a long optimized-image cache TTL.
 - Fonts are bundled locally; production rendering does not wait on a third-party font origin.
 - Supabase and Vercel functions should share the nearest practical region.
 - MCP is stateless and has a 10-second hard function ceiling.
 - Search and feed queries use locale/status/category indexes and cursor pagination.
 - Latest, category, and search archives render six rows in the initial HTML, then prefetch compact list rows through `/api/articles` as the sentinel approaches the viewport. A visible load-more control remains as an accessible fallback.
+- `npm run perf:budget` parses prerendered route HTML and rejects public JavaScript, CSS, or hero-source regressions after every production build.
+- React/Next view transitions are bounded to 180 ms, pass pointer events through, and disable animation under reduced-motion preferences.
 
 Never mark a regression acceptable because the second navigation is fast; cold-path behavior is part of the release gate.
 
@@ -138,7 +151,7 @@ The lockfile and `package.json` differ. Regenerate the lockfile intentionally wi
 
 ### Supabase migration history differs
 
-Run `npx supabase migration list` and inspect local/remote versions. Do not run `migration repair`, `db reset --linked`, or destructive SQL until the exact history mismatch and target project are proven.
+Run `npx --no-install supabase migration list` and inspect local/remote versions. Do not run `migration repair`, `db reset --linked`, or destructive SQL until the exact history mismatch and target project are proven.
 
 ## Rollback
 

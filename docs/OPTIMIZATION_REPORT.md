@@ -1,6 +1,6 @@
 # Independent optimization report
 
-This report records the post-development optimization pass completed on 2026-08-08. Each lane had one bounded objective, an independent acceptance condition, and a targeted proof. The final release gate covers their integrated behavior.
+This report records the post-development optimization pass completed on 2026-08-09. Each lane had one bounded objective, an independent acceptance condition, and a targeted proof. The final release gate covers their integrated behavior.
 
 | Cycle | Lane | Objective | Result and decisive proof |
 | --- | --- | --- | --- |
@@ -15,13 +15,19 @@ This report records the post-development optimization pass completed on 2026-08-
 | 9 | Reliability | Provide bounded recovery instead of blank failures | Localized public and Studio error boundaries now preserve language, navigation, retry behavior, and useful copy. TypeScript, lint, and tests passed. |
 | 10 | Red-team release review | Detect leaked secrets, vulnerable runtime packages, and unsafe dynamic code | Gitleaks scanned repository history with the documented UUID-placeholder allowlist and found no leaks. `npm audit --omit=dev` reported zero vulnerabilities. No `eval`, `new Function`, or unresolved placeholder markers were found in application code. |
 | 11 | Feed UX and perceived speed | Make infinite scrolling the default without sacrificing first paint | Latest, category, and search render six rows server-side, prefetch at an 800 px root margin, fetch compact row projections, deduplicate IDs, expose retry/end states, and retain a load-more fallback. Browser proof loaded 6 → 7 unique rows automatically in EN and IT with zero overflow. |
+| 12 | Cache/auth hot path | Make editorial writes immediately consistent and remove duplicate Auth network work | Studio uses `updateTag`; admin MCP expires the shared tag and every public delivery path after create/update/publish/delete. Proxy session refresh uses verified `getClaims()` instead of a second `getUser()` call. Dedicated cache/proxy/MCP tests passed. |
+| 13 | Studio operations | Replace capability reports with complete self-contained workflows | Media now uploads/previews/reuses/deletes through an RLS-protected Supabase Storage bucket; distribution edits status/copy/URL/UTC scheduling; newsletter uses exact counts, paginated search, explicit reactivation and complete streamed CSV exports. Public resubmission cannot override an unsubscribe, spreadsheet formulas are neutralized, and referenced media cannot be deleted through Studio, MCP, or direct Storage RLS. PostgreSQL 17 proved article + channel save is atomic and an invalid channel rolls back the article row. |
+| 14 | Native perceived performance | Bound navigation motion and make loading/progressive interaction explicit | Server-first pages gained React view transitions with pointer-event passthrough, reduced-motion handling, route skeletons, long-list `content-visibility`, and immutable font/image delivery. The executable budget measured `/en` at 133,630 B Brotli JS and `/en/latest` at 138,870 B, CSS 10,174 B, and responsive hero variants from 13,862 B to 100,544 B. Fresh local Lighthouse 13.4.1 cold profiles scored 95/100 mobile (FCP 0.81 s, LCP 2.93 s, TBT 33 ms, CLS 0.001) and 100/100 desktop (FCP 0.31 s, LCP 0.65 s, TBT 0 ms, CLS 0). |
+| 15 | MCP capability parity | Expose every safe editorial operation behind the authenticated server | Public MCP remains four read-only tools. Admin MCP now exposes 14 tools for article CRUD, distribution workflow, consent registry and immutable media; binary upload is explicitly bounded to 160 KiB and media delete rejects referenced assets. Protocol and lifecycle tests passed. |
+| 16 | Production readiness | Make misconfiguration observable and local database tooling reproducible | Explicit `NEURA_CONTENT_MODE`, fail-closed partial Supabase configuration, `/api/health`, configured Storage-only remote images, 10-second limits on both MCP functions, and pinned Supabase CLI 2.113.0 remove silent deploy drift. |
 
 ## Integrated release evidence
 
-- `npm run check`: design.md 0.4 validation, generated-token drift check, ESLint, TypeScript, 39 Vitest tests, and Next.js 16.3 production build.
+- `npm run check`: design.md 0.4 validation, generated-token drift check, plugin validation, ESLint, TypeScript, 71 Vitest tests, Next.js 16.3 production build, and executable Brotli/CSS/hero budgets.
 - Fresh PostgreSQL 17: migration and seed applied; 8 EN + 8 IT articles, 5 EN + 5 IT categories, localized full-text search, RLS helper attributes, newsletter RPC, and policies read back successfully.
-- Production HTTP: `/` redirects to `/en`; localized home/article/search/RSS, sitemap, MCP discovery, and MCP initialize respond successfully; Studio fails closed without production credentials.
+- Production HTTP smoke: 15 public/Studio routes and CSV export passed; public MCP exposed four read-only tools, API-key-authenticated admin MCP exposed 14 tools, and create → publish → public delivery → delete → public 404 completed through MCP. Demo health remains explicitly `503 not-ready`; Supabase production mode fails closed without valid HTTPS credentials.
 - Infinite feed API: six first items, opaque next cursor, one final item, no duplicate IDs, invalid cursor `400`, public cache headers present.
 - Browser: real automatic scroll, seven unique rows, localized terminal state, and no horizontal overflow at 1280 px or 390 px.
+- Lighthouse numbers above are repeatable local lab measurements; the ≤2.5 s LCP release budget remains a deployed p75 field requirement, not a claim inferred from localhost.
 
 Performance budgets and the repeatable release procedure remain canonical in [OPERATIONS.md](OPERATIONS.md).

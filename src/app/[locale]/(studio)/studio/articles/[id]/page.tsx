@@ -19,9 +19,10 @@ export default async function EditArticlePage({
 
   await requireEditor(locale);
   const repositories = await getStudioEditorialRepositories();
-  const [article, currentCategories] = await Promise.all([
+  const [article, currentCategories, media] = await Promise.all([
     repositories.articles.findById(id, locale),
     repositories.articles.listCategories(locale),
+    repositories.media.listAssets(),
   ]);
   if (!article) notFound();
 
@@ -39,6 +40,7 @@ export default async function EditArticlePage({
           it: locale === "it" ? currentCategories : [],
         }}
         locale={locale}
+        media={media}
         messages={getMessages(locale)}
       />
     </>

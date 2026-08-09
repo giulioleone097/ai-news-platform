@@ -4,7 +4,7 @@ import { locales, localizedPath } from "@/i18n";
 import {
   getPublicCategories,
   searchPublishedArticles,
-} from "@/modules/editorial/application/queries";
+} from "@/lib/editorial-queries";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getPublicSiteUrl();

@@ -1,10 +1,25 @@
+import {
+  isLocalHostname,
+  isSecureProductionOrigin,
+  parseHttpUrl,
+} from "./url-policy";
+
 const requiredSupabaseKeys = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
 ] as const;
 
+export type ContentMode = "demo" | "supabase";
+
 export function hasSupabaseEnvironment() {
-  return requiredSupabaseKeys.every((key) => Boolean(process.env[key]?.trim()));
+  return Boolean(parseHttpUrl(process.env.NEXT_PUBLIC_SUPABASE_URL))
+    && requiredSupabaseKeys.every((key) => Boolean(process.env[key]?.trim()));
+}
+
+export function getContentMode(): ContentMode {
+  const configured = process.env.NEURA_CONTENT_MODE?.trim().toLowerCase();
+  if (configured === "demo" || configured === "supabase") return configured;
+  return hasSupabaseEnvironment() ? "supabase" : "demo";
 }
 
 export function isDemoStudioEnabled() {
@@ -13,12 +28,16 @@ export function isDemoStudioEnabled() {
 }
 
 export function isStudioAvailable() {
-  return hasSupabaseEnvironment() || isDemoStudioEnabled();
+  return getContentMode() === "supabase"
+    ? hasSupabaseEnvironment()
+    : isDemoStudioEnabled();
 }
 
 export function getPublicSiteUrl() {
   const value = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  return new URL(value || "http://localhost:3000");
+  const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  return parseHttpUrl(value || (vercelHost ? `https://${vercelHost}` : undefined))
+    ?? new URL("http://localhost:3000");
 }
 
 export function getSupabaseEnvironment() {
@@ -27,7 +46,7 @@ export function getSupabaseEnvironment() {
   }
 
   return {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    url: parseHttpUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)!.toString(),
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
   };
 }
@@ -68,4 +87,23 @@ export function getSocialProfiles() {
     linkedin: optionalWebUrl(process.env.NEXT_PUBLIC_LINKEDIN_URL),
     x: optionalWebUrl(process.env.NEXT_PUBLIC_X_URL),
   };
+}
+
+export function getProductionReadiness() {
+  const mode = getContentMode();
+  const siteUrl = getPublicSiteUrl();
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const supabaseUrl = parseHttpUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const issues: string[] = [];
+  if (mode === "supabase" && !hasSupabaseEnvironment()) issues.push("supabase-environment");
+  if (process.env.NODE_ENV === "production") {
+    if (mode !== "supabase") issues.push("persistent-content-mode");
+    if (configuredSiteUrl && !parseHttpUrl(configuredSiteUrl)) issues.push("canonical-valid-origin");
+    if (siteUrl.protocol !== "https:") issues.push("canonical-https-origin");
+    if (isLocalHostname(siteUrl.hostname)) issues.push("canonical-production-origin");
+    if (mode === "supabase" && supabaseUrl && !isSecureProductionOrigin(supabaseUrl)) {
+      issues.push("supabase-production-origin");
+    }
+  }
+  return { ready: issues.length === 0, mode, siteUrl, issues };
 }

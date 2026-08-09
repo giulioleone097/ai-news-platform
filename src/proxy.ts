@@ -58,7 +58,7 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  await client.auth.getUser();
+  await client.auth.getClaims();
   return response;
 }
 

@@ -20,7 +20,7 @@ import { formatArticleDate } from "@/lib/format";
 import {
   getCachedArticle,
   searchPublishedArticles,
-} from "@/modules/editorial/application/queries";
+} from "@/lib/editorial-queries";
 import { parseArticleSections, type Article } from "@/modules/editorial/domain/article";
 
 export const revalidate = 300;

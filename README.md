@@ -6,12 +6,12 @@ An English-first, internationalized AI news platform built with Next.js, Supabas
 
 - English-first routes with Italian content parity: `/en` and `/it`.
 - Editorial home, infinite latest/category/search feeds, article pages, localized RSS, newsletter capture, and social share intents.
-- Supabase Postgres schema with full-text search, row-level security, editorial roles, publication state, translations, newsletter subscriptions, and social distribution state.
+- Supabase Postgres and Storage with full-text search, row-level security, editorial roles, publication state, translations, consent registry, distribution workflow, and an immutable media library.
 - Public, stateless, read-only MCP server over Streamable HTTP at `/api/mcp`.
-- Separate authenticated newsroom MCP at `/api/mcp/admin` with article CRUD and publish tools.
+- Separate authenticated newsroom MCP at `/api/mcp/admin` with article CRUD, distribution, newsletter-consent, and media tools.
 - Portable agent plugin manifests for Codex/OpenAI, Claude Code, and GitHub Copilot CLI.
 - Hexagonal boundaries: domain and application code do not depend on Next.js or Supabase.
-- Server Components, route-level caching, optimized images, self-hosted fonts, and a token-driven design system.
+- Server Components, immediate write invalidation, optimized images, self-hosted fonts, native view transitions/loading states, and an enforced token-driven design system.
 - Vercel configuration and GitHub Actions quality gate.
 
 ## Stack
@@ -40,7 +40,7 @@ To make local settings explicit:
 cp .env.example .env.local
 ```
 
-Leave both Supabase variables empty for the public memory fallback. Local development also enables the ephemeral demo Studio. Production Studio fails closed without Supabase unless `NEURA_ENABLE_DEMO_STUDIO=true` is set explicitly for an intentional, disposable review deployment.
+Use `NEURA_CONTENT_MODE=demo` locally and `NEURA_CONTENT_MODE=supabase` in every Preview/Production environment. Local development also enables the ephemeral demo Studio. Production Studio fails closed without Supabase unless `NEURA_ENABLE_DEMO_STUDIO=true` is set explicitly for an intentional, disposable review deployment. Demo production never confirms a non-persistent newsletter write.
 
 ## Quality gate
 
@@ -48,7 +48,7 @@ Leave both Supabase variables empty for the public memory fallback. Local develo
 npm run check
 ```
 
-The gate runs design-system validation, lint, TypeScript, tests, and the production build. GitHub Actions runs the same checks from a clean `npm ci` install.
+The gate runs design-system validation, plugin validation, lint, TypeScript, tests, the production build, and Brotli bundle/image budgets. GitHub Actions runs the same checks from a clean `npm ci` install.
 
 ## MCP quick check
 

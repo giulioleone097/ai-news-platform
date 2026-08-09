@@ -24,10 +24,11 @@ The domain must not import Next.js, React, Supabase, browser APIs, or transport 
 | Layer | Location | Responsibility |
 | --- | --- | --- |
 | Domain | `src/modules/editorial/domain` | Article/category types, publication states, slug and reading-time rules, repository ports |
-| Application | `src/modules/editorial/application` | Feed/query orchestration and cache policy |
+| Application | `src/modules/editorial/application` | Pure command/query orchestration and delivery-neutral cache invalidation port |
 | Inbound adapters | `src/app`, `src/modules/mcp` | HTML, Server Actions, JSON-RPC, localization, HTTP policy |
 | Outbound adapters | `src/modules/editorial/infrastructure` | In-memory demo and Supabase persistence |
 | Composition | `src/modules/editorial/infrastructure/container.ts` | Selects demo or Supabase without leaking adapter details |
+| Delivery composition | `src/lib/editorial-queries.ts`, `src/lib/editorial-cache.ts` | Connects Next.js cache primitives to application/domain ports |
 | Database | `supabase/migrations` | Constraints, indexes, RLS, grants, triggers, full-text vectors |
 
 ## Main flows
@@ -35,18 +36,18 @@ The domain must not import Next.js, React, Supabase, browser APIs, or transport 
 ### Public read
 
 1. A locale-prefixed Next.js route validates `en` or `it`.
-2. The application query asks the `ArticleRepository` port for published content.
-3. The composition root selects the memory or Supabase adapter.
-4. Public pages return Server Component HTML; cached feed/article queries use explicit revalidation windows.
+2. A thin Next.js composition adapter asks the `ArticleRepository` port for published content.
+3. The composition root selects the explicit demo or Supabase adapter.
+4. Public pages return Server Component HTML; delivery-side cached feed/article queries use explicit revalidation windows.
 5. Archive pages render their first slice in HTML, then the web delivery adapter requests compact list items with the same opaque composite cursor used by MCP.
 
 ### Editorial write
 
 1. The authenticated studio submits a Server Action.
-2. Input is parsed at the delivery boundary.
+2. Input is parsed at the delivery boundary and passed to the shared `ArticleCommandService` invariants.
 3. The action rechecks the Auth user and editor profile; page/proxy checks are not trusted as authorization.
 4. The repository writes through Supabase and RLS evaluates the mutation again.
-5. Affected localized public and studio paths are revalidated.
+5. The `articles` data tag plus localized pages, archives, API, RSS and sitemap are invalidated immediately.
 
 ### MCP read
 
@@ -58,9 +59,10 @@ The domain must not import Next.js, React, Supabase, browser APIs, or transport 
 ### MCP editorial write
 
 1. `/api/mcp/admin` verifies a high-entropy Bearer key before parsing or composing persistence.
-2. Zod schemas validate explicit create, patch, publish, and delete tool inputs.
+2. Zod schemas validate article, distribution, consent-registry and media inputs.
 3. The server-only Supabase client uses a service-role key and a configured editor author ID; neither reaches the browser.
 4. Public MCP remains a different read-only adapter and cannot acquire mutation tools accidentally.
+5. External social/email delivery is never inferred: MCP updates auditable workflow state only.
 
 ## Domain invariants
 
@@ -75,11 +77,11 @@ The domain must not import Next.js, React, Supabase, browser APIs, or transport 
 
 ## Adapter selection
 
-Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` must be non-empty. If either is absent, public delivery uses the deterministic memory adapter. Studio uses that writable adapter only outside production or when `NEURA_ENABLE_DEMO_STUDIO=true` is explicitly set; otherwise its identity and composition boundaries fail closed. Production smoke checks must confirm the Supabase-backed content expected for that environment.
+`NEURA_CONTENT_MODE=demo|supabase` is the explicit composition switch. Supabase mode requires both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`; partial configuration throws instead of falling back. Demo remains deterministic for development and CI. Studio uses demo only outside production or with the emergency `NEURA_ENABLE_DEMO_STUDIO=true` opt-in; production demo does not acknowledge ephemeral newsletter writes. `/api/health` returns `503` until production uses persistent content and a canonical HTTPS origin.
 
 ## Design principles
 
-- **KISS:** two persistence adapters, one port, one composition root.
+- **KISS:** two persistence adapters, use-case-sized ports, one composition root.
 - **DRY:** site and MCP share editorial queries, cursor encoding, and serialization-ready domain objects.
 - **SOLID:** delivery depends on ports; adapters are substitutable; interfaces stay use-case sized.
 - **Fail visibly:** malformed input and unavailable data become bounded errors; no silent cross-locale content fallback.

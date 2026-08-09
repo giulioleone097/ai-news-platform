@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Check, ChevronLeft } from "lucide-react";
 import type { Locale, Messages } from "@/i18n";
+import { toUtcDateTimeInput } from "@/lib/editorial-datetime";
 import type { Article, Category } from "@/modules/editorial/domain/article";
+import type { MediaAsset } from "@/modules/editorial/domain/editorial-operations";
 import {
   articleStatuses,
   socialChannels,
@@ -15,22 +17,17 @@ import { DeleteArticleForm } from "./delete-article-form";
 import { studioSupplementalCopy } from "./studio-copy";
 import { StudioSubmitButton } from "./studio-submit-button";
 
-function toLocalDateTime(value: string | null) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 16);
-}
-
 export function ArticleForm({
   article,
   categories,
   locale,
+  media,
   messages,
 }: {
   article?: Article;
   categories: Record<Locale, Category[]>;
   locale: Locale;
+  media: MediaAsset[];
   messages: Messages;
 }) {
   const [state, formAction] = useActionState(saveArticleAction, idleStudioActionState);
@@ -39,6 +36,7 @@ export function ArticleForm({
     article?.category.slug ?? categories[articleLocale][0]?.slug ?? "",
   );
   const [status, setStatus] = useState(article?.status ?? "draft");
+  const [coverImage, setCoverImage] = useState(article?.coverImage ?? "/media/neura-agents-hero.webp");
   const copy = studioSupplementalCopy[locale];
 
   const fieldHasError = (name: string) => Boolean(state.fieldErrors?.[name]?.length);
@@ -155,13 +153,29 @@ export function ArticleForm({
               <span>{messages.studio.coverImageLabel}</span>
               <input
                 {...fieldAccessibility("coverImage")}
-                defaultValue={article?.coverImage ?? "/media/neura-agents-hero.webp"}
                 name="coverImage"
+                onChange={(event) => setCoverImage(event.target.value)}
                 placeholder="/media/cover.png"
                 type="text"
+                value={coverImage}
               />
               {fieldError("coverImage")}
             </label>
+            {media.length ? (
+              <label className="studio-field">
+                <span>{copy.mediaTitle}</span>
+                <select
+                  aria-label={copy.mediaTitle}
+                  onChange={(event) => {
+                    if (event.target.value) setCoverImage(event.target.value);
+                  }}
+                  value={media.some((asset) => asset.url === coverImage) ? coverImage : ""}
+                >
+                  <option value="">{copy.assetUrl}</option>
+                  {media.map((asset) => <option key={asset.path} value={asset.url}>{asset.name}</option>)}
+                </select>
+              </label>
+            ) : null}
             <label className="studio-field">
               <span>{copy.coverAltLabel}</span>
               <input
@@ -261,10 +275,10 @@ export function ArticleForm({
 
             {status === "scheduled" ? (
               <label className="studio-field">
-                <span>{messages.studio.publishAtLabel}</span>
+                <span>{messages.studio.publishAtLabel} (UTC)</span>
                 <input
                   {...fieldAccessibility("scheduledFor")}
-                  defaultValue={toLocalDateTime(article?.scheduledFor ?? null)}
+                  defaultValue={toUtcDateTimeInput(article?.scheduledFor ?? null)}
                   name="scheduledFor"
                   required
                   type="datetime-local"

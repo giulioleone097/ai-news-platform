@@ -45,3 +45,7 @@ next-env.d.ts
 /artifacts/
 /playwright-report/
 /test-results/
+
+# Supabase CLI runtime state
+/supabase/.branches/
+/supabase/.temp/

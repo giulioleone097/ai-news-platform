@@ -47,3 +47,6 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+
+      - name: Enforce performance budgets
+        run: npm run perf:budget

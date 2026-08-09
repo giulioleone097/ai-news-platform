@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ViewTransition } from "react";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
 import { isLocale } from "@/i18n";
@@ -16,7 +17,9 @@ export default async function SiteLayout({
   return (
     <>
       <SiteHeader locale={locale} />
-      {children}
+      <ViewTransition enter="neura-page-enter" exit="neura-page-exit">
+        {children}
+      </ViewTransition>
       <SiteFooter locale={locale} />
     </>
   );

@@ -6,7 +6,7 @@ import { getAlternates, getMessages, isLocale } from "@/i18n";
 import {
   getPublicCategories,
   searchPublishedArticles,
-} from "@/modules/editorial/application/queries";
+} from "@/lib/editorial-queries";
 import { publicArchivePageSize } from "@/modules/editorial/application/public-feed";
 
 export const revalidate = 60;

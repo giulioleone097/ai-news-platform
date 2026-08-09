@@ -7,6 +7,9 @@
   "functions": {
     "src/app/api/mcp/route.ts": {
       "maxDuration": 10
+    },
+    "src/app/api/mcp/admin/route.ts": {
+      "maxDuration": 10
     }
   }
 }

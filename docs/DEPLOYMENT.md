@@ -17,6 +17,7 @@ Never point a Preview deployment at the production database.
 
 | Variable | Demo/CI | Local Supabase | Preview | Production | Exposure |
 | --- | --- | --- | --- | --- | --- |
+| `NEURA_CONTENT_MODE` | `demo` | `supabase` | `supabase` | `supabase` | Server/build composition |
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | `http://localhost:3000` | Exact protected preview origin or canonical production origin | Canonical HTTPS origin | Public, build-time |
 | `NEXT_PUBLIC_SUPABASE_URL` | Empty | CLI API URL | Preview project URL | Production project URL | Public |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Empty | CLI anon key | Preview anon/publishable key | Production anon/publishable key | Public |
@@ -28,9 +29,11 @@ Never point a Preview deployment at the production database.
 | `NEXT_PUBLIC_X_URL` | Empty | Empty or official profile | Preview-safe official profile | Official X profile URL | Public, build-time |
 | `MCP_ALLOWED_ORIGINS` | `http://localhost:3000` or empty | Local caller origins | Approved preview callers | Comma-separated production callers; empty for public wildcard | Server-only |
 
-The public URL and anon key activate Supabase mode. The service-role key is optional and used only by the authenticated admin MCP route; never expose it through `NEXT_PUBLIC_*`. Configure all three admin values together or the admin route fails closed.
+`NEURA_CONTENT_MODE` selects the adapter explicitly. Supabase mode requires both the public URL and anon key and fails visibly if either is missing. The service-role key is optional and used only by the authenticated admin MCP route; never expose it through `NEXT_PUBLIC_*`. Configure all three admin values together or the admin route fails closed.
 
-Without Supabase, public routes keep serving the read-only memory fallback. Studio is available automatically in local development, but fails closed in a production build. Set `NEURA_ENABLE_DEMO_STUDIO=true` only for an intentional disposable review deployment; never use it as a Production substitute for Supabase Auth and RLS.
+The committed Next.js configuration rejects a Vercel build unless content mode is `supabase`, both public Supabase values exist, and `NEXT_PUBLIC_SITE_URL` is a non-local HTTPS origin. This prevents a green deployment that silently serves demo data or localhost metadata.
+
+In explicit demo mode, public routes serve the read-only memory dataset. Studio is available automatically in local development, but fails closed in a production build. Set `NEURA_ENABLE_DEMO_STUDIO=true` only for an intentional disposable review deployment; never use it as a Production substitute for Supabase Auth, Storage and RLS.
 
 `NEXT_PUBLIC_*` values are frozen into client bundles during `next build`. Changing one requires a new deployment.
 
@@ -48,15 +51,16 @@ No database, Docker daemon, or provider account is required. State resets when t
 Prerequisites: Docker-compatible runtime and the Supabase CLI (the commands below use `npx`). The committed `supabase/config.toml` defines the local stack.
 
 ```bash
-npx supabase start
-npx supabase db reset --local
-npx supabase status
+npm run supabase:start
+npm run supabase:reset
+npm run supabase:status
 ```
 
 `db reset --local` destroys only the local database, replays every committed migration, and then applies `supabase/seed.sql`. Copy the API URL and anon key printed by `supabase status` into `.env.local`, then restart Next.js.
 
 ```dotenv
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEURA_CONTENT_MODE=supabase
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<local-anon-key>
 MCP_ALLOWED_ORIGINS=http://localhost:3000
@@ -69,7 +73,7 @@ NEURA_MCP_ADMIN_API_KEY=<openssl-rand-hex-32-output>
 Stop the local stack without deleting data:
 
 ```bash
-npx supabase stop
+npx --no-install supabase stop
 ```
 
 ## Prepare remote Supabase
@@ -79,10 +83,10 @@ Create Preview and Production projects manually in the Supabase Dashboard. For t
 Authenticate and link one environment at a time:
 
 ```bash
-npx supabase login
-npx supabase link --project-ref <project-ref>
-npx supabase migration list
-npx supabase db push --dry-run
+npx --no-install supabase login
+npx --no-install supabase link --project-ref <project-ref>
+npx --no-install supabase migration list
+npx --no-install supabase db push --dry-run
 ```
 
 Before production migration:
@@ -96,7 +100,7 @@ Before production migration:
 Apply only after those checks:
 
 ```bash
-npx supabase db push
+npx --no-install supabase db push
 ```
 
 Do not use `db reset --linked` on Production. Do not use `--include-seed` automatically on Production. The committed seed is deterministic demo/editorial content; if launch content is desired, review it as production data and apply it once through an explicit, audited operation. The studio needs at least one category for each authored locale, so an empty Production project must either receive reviewed localized categories or the approved category portion of the seed before the first article is created.
@@ -165,6 +169,8 @@ Add environment variables separately for Preview and Production. Keep Preview de
 
 The MCP functions have a 10-second maximum duration. Their normal calls should remain far below that budget.
 
+`GET /api/health` is the deployment-readiness boundary. In production it returns `200` only when content mode is Supabase and the canonical origin is non-local HTTPS; it reports bounded check names and never credentials.
+
 ## Release order
 
 1. `npm ci && npm run check` at the release commit.
@@ -181,6 +187,7 @@ Replace `$SITE` with the canonical origin.
 ```bash
 curl --fail --silent --show-error --location "$SITE/en" >/dev/null
 curl --fail --silent --show-error --location "$SITE/it" >/dev/null
+curl --fail --silent --show-error "$SITE/api/health" | grep '"status":"ready"'
 curl --fail --silent --show-error "$SITE/en/feed.xml" | grep '<language>en</language>'
 curl --fail --silent --show-error "$SITE/it/feed.xml" | grep '<language>it</language>'
 curl --fail --silent --show-error "$SITE/api/mcp/info" | grep 'neura-ai-news'

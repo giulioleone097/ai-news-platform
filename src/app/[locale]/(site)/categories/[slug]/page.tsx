@@ -12,7 +12,7 @@ import {
 import {
   getPublicCategories,
   searchPublishedArticles,
-} from "@/modules/editorial/application/queries";
+} from "@/lib/editorial-queries";
 import { publicArchivePageSize } from "@/modules/editorial/application/public-feed";
 import type { Category } from "@/modules/editorial/domain/article";
 

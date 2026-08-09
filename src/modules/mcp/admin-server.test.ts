@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CLIENT_CAPABILITIES_META_KEY,
   CLIENT_INFO_META_KEY,
@@ -6,15 +6,18 @@ import {
 } from "@modelcontextprotocol/server";
 
 import { MemoryEditorialRepository } from "@/modules/editorial/infrastructure/memory-editorial-repository";
+import type { EditorialCacheInvalidator } from "@/modules/editorial/application/cache-port";
 import { adminMcpTools, publicMcpProtocolVersion } from "./metadata";
 import { handleAdminMcpRequest } from "./admin-http";
 
 const apiKey = "test-only-admin-key-with-at-least-32-characters";
 const originalKey = process.env.NEURA_MCP_ADMIN_API_KEY;
 const repository = new MemoryEditorialRepository();
+const onMutation = vi.fn<EditorialCacheInvalidator>(async () => undefined);
 
 beforeEach(() => {
   process.env.NEURA_MCP_ADMIN_API_KEY = apiKey;
+  onMutation.mockClear();
 });
 
 afterEach(() => {
@@ -61,6 +64,7 @@ async function send(body: unknown, authorization?: string) {
   const response = await handleAdminMcpRequest(
     request(body, authorization),
     () => repository,
+    onMutation,
   );
   return { response, payload: await response.json() };
 }
@@ -109,14 +113,17 @@ describe("admin MCP server", () => {
     });
     expect(created.payload.result.isError).not.toBe(true);
     const articleId = created.payload.result.structuredContent.article.id as string;
+    const createdSlug = created.payload.result.structuredContent.article.slug as string;
 
     const updated = await call("admin_update_article", {
       id: articleId,
       locale: "en",
+      slug: "updated-mcp-administration-test",
       featured: true,
       distribution: ["newsletter", "linkedin"],
     });
     expect(updated.payload.result.structuredContent.article.featured).toBe(true);
+    const updatedSlug = updated.payload.result.structuredContent.article.slug as string;
 
     const published = await call("admin_publish_article", { id: articleId, locale: "en" });
     expect(published.payload.result.structuredContent.article.status).toBe("published");
@@ -127,5 +134,43 @@ describe("admin MCP server", () => {
     const deleted = await call("admin_delete_article", { id: articleId, locale: "en", confirm: true });
     expect(deleted.payload.result.structuredContent.deletedId).toBe(articleId);
     expect(await repository.findById(articleId, "en")).toBeNull();
+    expect(onMutation.mock.calls.map(([event]) => event)).toEqual([
+      { locale: "en", slugs: [createdSlug] },
+      { locale: "en", slugs: [createdSlug, updatedSlug] },
+      { locale: "en", slugs: [updatedSlug] },
+      { locale: "en", slugs: [updatedSlug] },
+    ]);
+  });
+
+  it("manages distribution, newsletter consent, and media capabilities", async () => {
+    const distribution = await call("admin_list_distribution", { locale: "en" });
+    const publication = distribution.payload.result.structuredContent.items[0] as { id: string };
+    expect(publication.id).toBeTruthy();
+
+    const updatedDistribution = await call("admin_update_distribution", {
+      id: publication.id,
+      status: "published",
+      externalUrl: "https://www.linkedin.com/posts/neura-test",
+    });
+    expect(updatedDistribution.payload.result.structuredContent.publication.status).toBe("published");
+
+    await repository.subscribe("reader@example.com", "mcp-test", "en");
+    const subscriptions = await call("admin_list_newsletter_subscriptions", {
+      locale: "en",
+      limit: 20,
+    });
+    const subscription = subscriptions.payload.result.structuredContent.items.find(
+      (item: { email: string }) => item.email === "reader@example.com",
+    ) as { id: string };
+    const unsubscribed = await call("admin_update_newsletter_subscription", {
+      id: subscription.id,
+      status: "unsubscribed",
+    });
+    expect(unsubscribed.payload.result.structuredContent.status).toBe("unsubscribed");
+
+    const media = await call("admin_list_media", {});
+    expect(media.payload.result.structuredContent.writable).toBe(false);
+    expect(media.payload.result.structuredContent.items).toHaveLength(1);
+    expect(onMutation).not.toHaveBeenCalled();
   });
 });

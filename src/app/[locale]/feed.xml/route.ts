@@ -1,6 +1,6 @@
 import { getPublicSiteUrl } from "@/config/env";
 import { getMessages, isLocale, localizedPath } from "@/i18n";
-import { searchPublishedArticles } from "@/modules/editorial/application/queries";
+import { searchPublishedArticles } from "@/lib/editorial-queries";
 
 function escapeXml(value: string) {
   return value
