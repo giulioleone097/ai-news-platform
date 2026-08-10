@@ -456,14 +456,15 @@ export class SupabaseEditorialRepository
   }
 
   async updateSubscriptionStatus(id: string, status: NewsletterStatus) {
-    const { error } = await this.client
-      .from("newsletter_subscriptions")
-      .update({
-        status,
-        unsubscribed_at: status === "unsubscribed" ? new Date().toISOString() : null,
-      })
-      .eq("id", id);
+    if (status !== "unsubscribed") {
+      throw new Error("Newsletter reactivation requires double opt-in");
+    }
+    const { data, error } = await this.client.rpc(
+      "admin_unsubscribe_newsletter_subscription",
+      { p_subscription_id: id },
+    );
     throwIfError(error, "Unable to update newsletter subscription");
+    if (data !== true) throw new Error("Unable to update newsletter subscription");
   }
 
   async listPublications(locale: Locale) {

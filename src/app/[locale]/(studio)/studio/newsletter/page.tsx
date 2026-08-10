@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Download, Mail, Search, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Download, Mail, Search, Send, Users } from "lucide-react";
 import { studioSupplementalCopy } from "@/components/studio/studio-copy";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
@@ -11,6 +11,7 @@ import {
 } from "@/modules/editorial/domain/editorial-operations";
 import { getStudioEditorialRepositories } from "@/modules/editorial/infrastructure/container";
 import { updateNewsletterSubscriptionAction } from "../actions";
+import { requestNewsletterReconfirmationAction } from "./subscription-actions";
 
 export const metadata: Metadata = { robots: { index: false } };
 
@@ -71,14 +72,26 @@ export default async function StudioNewsletterPage({
           <h1>{copy.newsletterTitle}</h1>
           <p>{copy.newsletterDescription}</p>
         </div>
-        <Link className="studio-button studio-button--secondary" href={`/${locale}/studio/newsletter/export`}>
-          <Download aria-hidden="true" size={16} />
-          {copy.exportAudience}
-        </Link>
+        <div className="studio-editor__actions">
+          <Link className="studio-button studio-button--primary" href={`/${locale}/studio/newsletter/campaigns`}>
+            <Send aria-hidden="true" size={16} />
+            {copy.campaigns}
+          </Link>
+          <Link className="studio-button studio-button--secondary" href={`/${locale}/studio/newsletter/export`}>
+            <Download aria-hidden="true" size={16} />
+            {copy.exportAudience}
+          </Link>
+        </div>
       </header>
 
       {search.updated ? (
         <p className="studio-alert studio-alert--success" role="status">{copy.subscriberUpdated}</p>
+      ) : null}
+      {search.confirmation ? (
+        <p className="studio-alert studio-alert--success" role="status">{copy.confirmationRequested}</p>
+      ) : null}
+      {search.error === "confirmation" ? (
+        <p className="studio-alert studio-alert--error" role="alert">{copy.confirmationFailed}</p>
       ) : null}
 
       <section className="studio-newsletter-metrics" aria-label={copy.newsletterTitle}>
@@ -111,7 +124,6 @@ export default async function StudioNewsletterPage({
       {subscriptions.items.length ? (
         <section className="studio-audience-list" aria-label={copy.newsletterTitle}>
           {subscriptions.items.map((subscription) => {
-            const nextStatus = subscription.status === "active" ? "unsubscribed" : "active";
             return (
               <article key={subscription.id}>
                 <div className="studio-audience-list__identity">
@@ -125,14 +137,20 @@ export default async function StudioNewsletterPage({
                     <dd><time dateTime={subscription.consentedAt}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(subscription.consentedAt))}</time></dd>
                   </div>
                 </dl>
-                <form action={updateNewsletterSubscriptionAction}>
-                  <input name="id" type="hidden" value={subscription.id} />
-                  <input name="locale" type="hidden" value={locale} />
-                  <input name="status" type="hidden" value={nextStatus} />
-                  <button className="studio-button studio-button--secondary" type="submit">
-                    {nextStatus === "active" ? copy.reactivate : copy.unsubscribe}
-                  </button>
-                </form>
+                {subscription.status === "active" ? (
+                  <form action={updateNewsletterSubscriptionAction}>
+                    <input name="id" type="hidden" value={subscription.id} />
+                    <input name="locale" type="hidden" value={locale} />
+                    <input name="status" type="hidden" value="unsubscribed" />
+                    <button className="studio-button studio-button--secondary" type="submit">{copy.unsubscribe}</button>
+                  </form>
+                ) : (
+                  <form action={requestNewsletterReconfirmationAction}>
+                    <input name="email" type="hidden" value={subscription.email} />
+                    <input name="locale" type="hidden" value={locale} />
+                    <button className="studio-button studio-button--secondary" type="submit">{copy.reactivate}</button>
+                  </form>
+                )}
               </article>
             );
           })}

@@ -1,6 +1,27 @@
 {
   "name": "neura-ai-news",
-  "version": "1.0.0",
-  "description": "Read NEURA AI news and manage the editorial newsroom through authenticated MCP tools.",
-  "mcpServers": "./.mcp.json"
+  "version": "2.0.0",
+  "description": "Read NEURA AI news and operate editorial, comments, newsletter, media, and social publishing through MCP.",
+  "author": {
+    "name": "NEURA"
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "NEURA AI News",
+    "shortDescription": "Read AI news and run the NEURA newsroom.",
+    "longDescription": "Use NEURA's public news and approved comments, or authenticate to manage editorial content, moderation, campaigns, media, and queued social publishing.",
+    "developerName": "NEURA",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Show the latest AI news.",
+      "Review comments awaiting moderation.",
+      "Prepare a newsletter campaign draft."
+    ],
+    "brandColor": "#F26722"
+  }
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { MarkdownRenderer } from "@/components/markdown/markdown-renderer";
+import { LazyCommentsWidget } from "@/components/site/comments/lazy-comments-widget";
 import { BookmarkButton } from "@/components/site/bookmark-button";
 import { EditorialCover } from "@/components/site/editorial-cover";
 import { NewsletterForm } from "@/components/site/newsletter-form";
@@ -213,6 +214,8 @@ export default async function ArticlePage({
           />
         </div>
       </article>
+
+      <LazyCommentsWidget articleId={article.id} locale={locale} />
 
       {related.length ? (
         <section className="related" aria-labelledby="related-title">

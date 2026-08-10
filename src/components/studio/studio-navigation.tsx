@@ -7,6 +7,7 @@ import {
   Gauge,
   Images,
   Mail,
+  MessageSquareText,
   Send,
   type LucideIcon,
 } from "lucide-react";
@@ -34,6 +35,7 @@ export function StudioNavigation({
     { href: `${root}/media`, label: copy.media, icon: Images },
     { href: `${root}/distribution`, label: copy.distribution, icon: Send },
     { href: `${root}/newsletter`, label: copy.newsletter, icon: Mail },
+    { href: `${root}/comments`, label: copy.comments, icon: MessageSquareText },
   ];
 
   return (

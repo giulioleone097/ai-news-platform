@@ -63,6 +63,12 @@ await get("/en/studio/articles", 200);
 await get("/en/studio/distribution", 200);
 await get("/en/studio/media", 200);
 await get("/en/studio/newsletter", 200);
+const commentModeration = await get("/en/studio/comments", 200);
+assert(
+  (await commentModeration.text()).includes("Comment moderation is not configured."),
+  "Demo comment moderation did not render its explicit unavailable state.",
+);
+await get("/en/studio/newsletter/campaigns", 200);
 const csv = await get("/en/studio/newsletter/export", 200);
 assert(csv.headers.get("content-type")?.includes("text/csv"), "Newsletter export is not CSV.");
 
@@ -72,17 +78,32 @@ assert(healthBody.contentMode === "demo" && healthBody.status === "not-ready", "
 
 const publicList = await rpc("/api/mcp", "tools/list");
 assert(publicList.response.status === 200, "Public MCP tools/list failed.");
-assert(publicList.payload.result.tools.length === 4, "Public MCP must expose exactly four tools.");
+assert(publicList.payload.result.tools.length === 5, "Public MCP must expose exactly five tools.");
 assert(
   publicList.payload.result.tools.every((tool) => tool.annotations?.readOnlyHint === true),
   "Every public MCP tool must be read-only.",
+);
+assert(
+  publicList.payload.result.tools.some((tool) => tool.name === "list_comments"),
+  "Public MCP is missing approved comment reads.",
 );
 
 const denied = await rpc("/api/mcp/admin", "tools/list");
 assert(denied.response.status === 401, "Admin MCP accepted a request without its API key.");
 const adminList = await rpc("/api/mcp/admin", "tools/list", {}, true);
 assert(adminList.response.status === 200, "Admin MCP tools/list failed.");
-assert(adminList.payload.result.tools.length === 14, "Admin MCP must expose exactly 14 tools.");
+assert(adminList.payload.result.tools.length === 37, "Admin MCP must expose exactly 37 tools.");
+const adminToolNames = new Set(adminList.payload.result.tools.map((tool) => tool.name));
+for (const requiredTool of [
+  "admin_moderate_comment",
+  "admin_newsletter_send_campaign",
+  "admin_newsletter_process_outbox",
+  "admin_social_enqueue",
+  "admin_social_requeue",
+  "admin_social_process_outbox",
+]) {
+  assert(adminToolNames.has(requiredTool), `Admin MCP is missing ${requiredTool}.`);
+}
 
 const created = await callAdmin("admin_create_article", {
   locale: "en",
@@ -118,7 +139,7 @@ const gone = await get(`/en/articles/${slug}`, 404);
 assert(!(await gone.text()).includes("Runtime MCP lifecycle verification"), "Deleted article remains cached.");
 
 console.log(JSON.stringify({
-  routes: 15,
+  routes: 18,
   health: { status: 503, contentMode: healthBody.contentMode },
   publicMcpTools: publicList.payload.result.tools.length,
   adminMcpTools: adminList.payload.result.tools.length,

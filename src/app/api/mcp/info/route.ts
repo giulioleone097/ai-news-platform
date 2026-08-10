@@ -11,9 +11,9 @@ export function GET() {
   return Response.json(
     {
       name: "neura-ai-news",
-      version: "1.0.0",
+      version: "2.0.0",
       description:
-        "Read-only access to NEURA's published AI news in English and Italian.",
+        "Read-only access to NEURA's published AI news and approved comments in English and Italian.",
       protocol: {
         name: "Model Context Protocol",
         version: publicMcpProtocolVersion,

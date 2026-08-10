@@ -88,7 +88,7 @@ export const it = {
     submitting: "Iscrizione…",
     privacy: "Nessuno spam. Disiscriviti quando vuoi.",
     invalidEmail: "Inserisci un indirizzo email valido.",
-    success: "Iscrizione confermata. Benvenuto nel briefing.",
+    success: "Controlla la tua email per confermare l’iscrizione.",
     unavailable: "Il servizio è momentaneamente non disponibile. Riprova tra poco.",
   },
   share: {
@@ -171,6 +171,7 @@ export const it = {
     media: "Media",
     distribution: "Distribuzione",
     newsletter: "Newsletter",
+    comments: "Commenti",
     settings: "Impostazioni",
     overviewTitle: "Panoramica editoriale",
     overviewDescription: "Crea, revisiona e distribuisci ogni storia NEURA da un unico spazio di lavoro.",

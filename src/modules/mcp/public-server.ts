@@ -11,11 +11,40 @@ import {
   encodeArticleCursor,
 } from "@/modules/editorial/application/public-feed";
 import { defaultLocale, locales } from "@/i18n";
+import { decodeCommentCursor } from "@/modules/comments/infrastructure/cursor";
+import type {
+  PublicCommentPage,
+} from "@/modules/comments/domain/comment";
+import type {
+  PublicCommentQuery,
+} from "@/modules/comments/application/comment-repository";
 
 export type PublicEditorialReader = Pick<
   ArticleRepository,
   "listPublished" | "findBySlug" | "listCategories"
 >;
+
+export interface PublicCommentReader {
+  listApproved(query: PublicCommentQuery): Promise<PublicCommentPage>;
+}
+
+export async function listPublishedArticleComments(
+  reader: PublicEditorialReader,
+  comments: PublicCommentReader,
+  input: Omit<PublicCommentQuery, "articleId"> & { slug: string },
+) {
+  const article = await reader.findBySlug(input.slug, input.locale);
+  if (!article || article.status !== "published") {
+    throw new Error("Published article not found.");
+  }
+  return comments.listApproved({
+    articleId: article.id,
+    locale: input.locale,
+    parentId: input.parentId,
+    cursor: input.cursor,
+    limit: input.limit,
+  });
+}
 
 const localeSchema = z
   .enum(locales)
@@ -60,6 +89,18 @@ const articleOutputSchema = articleSummaryOutputSchema.extend({
   coverAlt: z.string(),
   author: z.object({ name: z.string(), role: z.string() }),
   updatedAt: z.string(),
+});
+
+const publicCommentOutputSchema = z.object({
+  id: z.string().uuid(),
+  articleId: z.string().uuid(),
+  locale: z.enum(locales),
+  parentId: z.string().uuid().nullable(),
+  body: z.string(),
+  displayName: z.string(),
+  createdAt: z.string(),
+  editedAt: z.string().nullable(),
+  replyCount: z.number().int().nonnegative(),
 });
 
 const readOnlyAnnotations = {
@@ -237,6 +278,49 @@ export function createPublicMcpServer(reader: PublicEditorialReader) {
       safely(async () => {
         const categories = await reader.listCategories(locale);
         return { categories: categories.map(toCategory) };
+      }),
+  );
+
+  server.registerTool(
+    "list_comments",
+    {
+      title: "List approved article comments",
+      description:
+        "List approved top-level comments or replies for a published article with keyset pagination.",
+      inputSchema: {
+        slug: z
+          .string()
+          .trim()
+          .min(1)
+          .max(160)
+          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+        locale: localeSchema,
+        parentId: z.string().uuid().nullable().optional(),
+        cursor: z.string().trim().min(1).max(512).optional(),
+        limit: z.number().int().min(1).max(24).default(12),
+      },
+      outputSchema: {
+        items: z.array(publicCommentOutputSchema),
+        nextCursor: z.string().nullable(),
+      },
+      annotations: readOnlyAnnotations,
+    },
+    async ({ slug, locale, parentId, cursor, limit }) =>
+      safely(async () => {
+        const decodedCursor = decodeCommentCursor(cursor);
+        if (cursor && !decodedCursor) throw new Error("Invalid comment cursor.");
+        const { createPublicCommentService } = await import(
+          "@/modules/comments/infrastructure/container"
+        );
+        const service = createPublicCommentService();
+        if (!service) throw new Error("Comments are not configured.");
+        return listPublishedArticleComments(reader, service, {
+          slug,
+          locale,
+          parentId: parentId ?? null,
+          cursor: decodedCursor,
+          limit,
+        });
       }),
   );
 

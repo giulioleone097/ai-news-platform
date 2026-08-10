@@ -21,6 +21,7 @@ import {
   isAllowedEditorialImageSource,
 } from "@/lib/editorial-image";
 import { ArticleCommandService } from "@/modules/editorial/application/article-commands";
+import { registerAdminOperationalTools } from "./admin-operations";
 
 const localeSchema = z.enum(locales);
 const statusSchema = z.enum(articleStatuses);
@@ -146,7 +147,7 @@ export function createAdminMcpServer(
   repository: AdminEditorialRepository,
   invalidateCache: EditorialCacheInvalidator,
 ) {
-  const server = new McpServer({ name: "neura-ai-news-admin", version: "1.0.0" });
+  const server = new McpServer({ name: "neura-ai-news-admin", version: "2.0.0" });
   const commands = new ArticleCommandService(repository);
 
   server.registerTool("admin_list_articles", {
@@ -292,8 +293,8 @@ export function createAdminMcpServer(
 
   server.registerTool("admin_update_newsletter_subscription", {
     title: "Update newsletter subscription",
-    description: "Reactivate or unsubscribe a consent-registry entry without deleting its audit record.",
-    inputSchema: { id: entityIdSchema, status: z.enum(newsletterStatuses) },
+    description: "Unsubscribe a consent-registry entry without deleting its audit record. Reactivation always requires double opt-in.",
+    inputSchema: { id: entityIdSchema, status: z.literal("unsubscribed") },
     annotations: write,
   }, async ({ id, status }) => safe(async () => {
     await repository.updateSubscriptionStatus(id, status);
@@ -343,6 +344,8 @@ export function createAdminMcpServer(
     await repository.deleteAsset(path);
     return success({ deletedPath: path });
   }));
+
+  registerAdminOperationalTools(server);
 
   return server;
 }

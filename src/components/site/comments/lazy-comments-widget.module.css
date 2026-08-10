@@ -1,0 +1,5 @@
+.boundary {
+  min-block-size: 20rem;
+  content-visibility: auto;
+  contain-intrinsic-block-size: 42rem;
+}

@@ -86,7 +86,7 @@ export const en = {
     submitting: "Subscribing…",
     privacy: "No spam. Unsubscribe whenever you want.",
     invalidEmail: "Enter a valid email address.",
-    success: "Subscription confirmed. Welcome to the briefing.",
+    success: "Check your inbox to confirm your subscription.",
     unavailable: "The service is temporarily unavailable. Please try again shortly.",
   },
   share: {
@@ -169,6 +169,7 @@ export const en = {
     media: "Media",
     distribution: "Distribution",
     newsletter: "Newsletter",
+    comments: "Comments",
     settings: "Settings",
     overviewTitle: "Editorial overview",
     overviewDescription: "Create, review and distribute every NEURA story from one focused workspace.",

@@ -60,6 +60,7 @@ Measure a cold navigation and a warm navigation for `/en`, `/it`, one category, 
 - MCP is stateless and has a 10-second hard function ceiling.
 - Search and feed queries use locale/status/category indexes and cursor pagination.
 - Latest, category, and search archives render six rows in the initial HTML, then prefetch compact list rows through `/api/articles` as the sentinel approaches the viewport. A visible load-more control remains as an accessible fallback.
+- Article HTML remains static; the comment client and its first API request are split into a separate chunk and activated only near the viewport.
 - `npm run perf:budget` parses prerendered route HTML and rejects public JavaScript, CSS, or hero-source regressions after every production build.
 - React/Next view transitions are bounded to 180 ms, pass pointer events through, and disable animation under reduced-motion preferences.
 
@@ -67,12 +68,13 @@ Never mark a regression acceptable because the second navigation is fast; cold-p
 
 ## Observability without required third parties
 
-Use Vercel deployment logs and function logs for application failures, Supabase database/Auth logs for persistence and RLS failures, and browser Performance/Core Web Vitals for user experience. External analytics, error tracking, and social automation are optional integrations, not runtime requirements.
+Use Vercel deployment logs and function logs for application failures, Supabase database/Auth logs for persistence and RLS failures, provider dashboards for bounded delivery receipts, and browser Performance/Core Web Vitals for user experience. External analytics and error tracking remain optional; configured Resend/social providers are production capabilities and are reported by `/api/health`.
 
 Do not log:
 
 - Auth tokens, cookies, or request authorization headers;
 - newsletter email addresses;
+- comment notification addresses, signed guest identities, moderation evidence or WhatsApp recipients;
 - upstream response bodies containing private data;
 - Supabase keys beyond confirming whether configuration is present.
 
@@ -92,16 +94,26 @@ Useful operational dimensions are route, locale, deployment ID, repository mode 
 - Article pages create encoded LinkedIn, X, and WhatsApp share intents without private credentials.
 - Optional `NEXT_PUBLIC_LINKEDIN_URL` and `NEXT_PUBLIC_X_URL` values expose validated official profile links; invalid or empty values are omitted.
 - `/en/feed.xml` and `/it/feed.xml` provide cached RSS 2.0 distribution with locale-isolated published content.
-- `social_publications` records channel state for newsletter, LinkedIn, X, and WhatsApp.
-- Recording `ready` is not proof of external publication. Store the external URL and publication timestamp only after an authorized outbound integration confirms success.
-- Never retry non-idempotent outbound posts blindly.
+- Studio/MCP preview validates provider-specific limits without writing. Enqueue requires explicit confirmation and never calls a provider inline.
+- `social_outbox` leases work with `SKIP LOCKED`, bounded retries and idempotency keys; persisted provider message IDs/URLs are the read-back boundary.
+- LinkedIn, X and WhatsApp credentials are server-only. WhatsApp recipients are explicit per job and redacted from UI/MCP responses.
+- Unknown provider outcomes are not retried unless the stored receipt proves duplicate safety.
 
 ### Newsletter
 
-- Subscriptions are normalized to lower-case and unique.
-- Anonymous visitors can invoke only the validated subscription RPC and cannot read the audience or insert directly into the table.
-- Editor access to subscription data is protected by RLS.
-- A production mailing provider is optional; the platform remains functional as a consented subscriber registry without one.
+- Subscriptions are normalized, double-opt-in, unique and suppression-aware. Reactivation always sends a fresh confirmation.
+- Anonymous visitors cannot read the audience or write tables directly; server routes invoke bounded service-role RPCs.
+- Campaign queueing snapshots only active confirmed recipients, then the protected worker sends through Resend with per-recipient idempotency.
+- Signed raw-body webhooks reconcile delivery, bounce and complaint events even when duplicated or out of order.
+- Unsubscribe cancels unsent outbox rows; erasure pseudonymizes PII while retaining suppression and audit invariants.
+
+### Comment community
+
+- Public reads return approved rows only, with keyset pagination and one reply level.
+- Guest mutation capabilities are HMAC signed; create/edit/delete/report limits are enforced atomically in Postgres.
+- New comments are pending until an editor records a reasoned moderation event. Reports and audit rows are never public.
+- Notification verification and unsubscribe links are GET-safe: opening a scanner link does not mutate state; the user confirms with a POST.
+- Comment notification delivery uses its own leased outbox and Resend idempotency key.
 
 ## Incident triage
 

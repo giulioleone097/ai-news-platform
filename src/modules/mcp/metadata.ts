@@ -3,6 +3,7 @@ export const publicMcpTools = [
   "search_articles",
   "get_article",
   "list_categories",
+  "list_comments",
 ] as const;
 
 export const adminMcpTools = [
@@ -20,6 +21,29 @@ export const adminMcpTools = [
   "admin_list_media",
   "admin_upload_media",
   "admin_delete_media",
+  "admin_list_comments",
+  "admin_list_comment_reports",
+  "admin_moderate_comment",
+  "admin_list_comment_audit",
+  "admin_comment_process_notifications",
+  "admin_newsletter_list_campaigns",
+  "admin_newsletter_get_campaign",
+  "admin_newsletter_list_recipients",
+  "admin_newsletter_save_campaign_draft",
+  "admin_newsletter_send_campaign",
+  "admin_newsletter_schedule_campaign",
+  "admin_newsletter_cancel_campaign",
+  "admin_newsletter_request_subscription",
+  "admin_newsletter_erase_subscription",
+  "admin_newsletter_process_outbox",
+  "admin_social_preview",
+  "admin_social_enqueue",
+  "admin_social_requeue",
+  "admin_social_list",
+  "admin_social_get",
+  "admin_social_cancel",
+  "admin_social_retry",
+  "admin_social_process_outbox",
 ] as const;
 
 export const publicMcpProtocolVersion = "2026-07-28";

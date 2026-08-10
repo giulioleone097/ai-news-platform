@@ -18,7 +18,6 @@ import {
 } from "@/modules/editorial/domain/article";
 import {
   distributionStatuses,
-  newsletterStatuses,
 } from "@/modules/editorial/domain/editorial-operations";
 import { getStudioEditorialRepositories } from "@/modules/editorial/infrastructure/container";
 import { articlesCacheTag } from "@/lib/editorial-cache";
@@ -102,7 +101,7 @@ const distributionUpdateSchema = z.object({
 const newsletterUpdateSchema = z.object({
   id: z.string().trim().min(1).max(128),
   locale: z.enum(locales),
-  status: z.enum(newsletterStatuses),
+  status: z.literal("unsubscribed"),
 });
 
 const mediaMutationSchema = z.object({

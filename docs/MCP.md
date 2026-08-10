@@ -1,6 +1,6 @@
 # Model Context Protocol
 
-NEURA exposes two stateless Streamable HTTP servers: a public read-only surface for published content and a separate API-key-protected newsroom surface for editorial operations.
+NEURA exposes two stateless Streamable HTTP servers: a public read-only surface for published content and approved comments, plus a separate API-key-protected operations surface.
 
 ## Endpoints
 
@@ -74,6 +74,7 @@ Legacy clients using `initialize` with `2025-11-25` are routed through the SDK's
 | `search_articles` | `query` (2–160 chars) | `locale=en`, `limit=10` (1–25) | Matching published summaries |
 | `get_article` | `slug` | `locale=en` | Full published article and public author metadata |
 | `list_categories` | None | `locale=en` | Localized categories |
+| `list_comments` | `slug` | `locale=en`, `parentId`, `limit=12` (1–24), `cursor` | Approved top-level comments or replies and opaque `nextCursor` |
 
 Supported locales are `en` and `it`; English is the default. All tools are read-only, non-destructive, idempotent, and closed-world.
 
@@ -148,7 +149,7 @@ The exact configuration envelope is client-specific; the endpoint and transport 
 ## Access and CORS
 
 - Authentication: none.
-- Data scope: published articles and public categories only.
+- Data scope: published articles, categories and approved comments only.
 - `MCP_ALLOWED_ORIGINS`: optional comma-separated browser-origin allow-list.
 - Empty allow-list: wildcard CORS for a deliberately public read surface.
 - Non-browser agents normally omit `Origin` and remain supported.
@@ -160,28 +161,20 @@ Do not add mutation tools to this public server. Editorial mutations live only o
 
 `POST /api/mcp/admin` requires `Authorization: Bearer <NEURA_MCP_ADMIN_API_KEY>`. It has no browser CORS surface and authenticates before parsing the body or resolving the service-role repository. Missing or incorrect credentials return `401`; missing server configuration returns `503`.
 
-The server exposes:
+The server exposes these authenticated groups:
 
-| Tool | Purpose |
-| --- | --- |
-| `admin_list_articles` | List drafts, review, scheduled, and published articles by locale |
-| `admin_get_article` | Read one complete newsroom article by ID and locale |
-| `admin_list_categories` | Read valid categories for a locale |
-| `admin_create_article` | Create an article, defaulting safely to draft |
-| `admin_update_article` | Patch selected fields of an existing article |
-| `admin_publish_article` | Publish an existing article immediately |
-| `admin_delete_article` | Permanently delete after `confirm: true` |
-| `admin_list_distribution` | List saved social/newsletter workflow items by locale |
-| `admin_update_distribution` | Update copy, scheduling, URL and verified workflow status; never posts externally |
-| `admin_list_newsletter_subscriptions` | Search/filter the consent registry by locale and status |
-| `admin_update_newsletter_subscription` | Unsubscribe or reactivate while preserving the consent record |
-| `admin_list_media` | List immutable editorial Storage assets and write capability |
-| `admin_upload_media` | Upload a base64 image up to 160 KiB; use Studio for larger assets |
-| `admin_delete_media` | Delete an unused Storage asset after `confirm: true` |
+| Group | Tools | Purpose |
+| --- | --- | --- |
+| Editorial | `admin_list_articles`, `admin_get_article`, `admin_list_categories`, `admin_create_article`, `admin_update_article`, `admin_publish_article`, `admin_delete_article` | Full article lifecycle; permanent delete requires `confirm: true` |
+| Workflow/media | `admin_list_distribution`, `admin_update_distribution`, `admin_list_media`, `admin_upload_media`, `admin_delete_media` | Editorial workflow state and immutable Storage assets |
+| Comment moderation | `admin_list_comments`, `admin_list_comment_reports`, `admin_moderate_comment`, `admin_list_comment_audit`, `admin_comment_process_notifications` | Moderation queue, private reports, audit and real notification worker |
+| Consent registry | `admin_list_newsletter_subscriptions`, `admin_update_newsletter_subscription` | Search consent state and unsubscribe; reactivation always uses double opt-in |
+| Campaigns | `admin_newsletter_list_campaigns`, `admin_newsletter_get_campaign`, `admin_newsletter_list_recipients`, `admin_newsletter_save_campaign_draft`, `admin_newsletter_send_campaign`, `admin_newsletter_schedule_campaign`, `admin_newsletter_cancel_campaign`, `admin_newsletter_request_subscription`, `admin_newsletter_erase_subscription`, `admin_newsletter_process_outbox` | Draft CRUD, consent-safe audience snapshot, queue, Resend delivery and erasure |
+| Social publishing | `admin_social_preview`, `admin_social_enqueue`, `admin_social_requeue`, `admin_social_list`, `admin_social_get`, `admin_social_cancel`, `admin_social_retry`, `admin_social_process_outbox` | Real LinkedIn/X/WhatsApp outbox lifecycle with corrected safe requeue, redacted recipients and provider receipts |
 
 Production persistence additionally requires `SUPABASE_SERVICE_ROLE_KEY` and `NEURA_MCP_ADMIN_AUTHOR_ID`. All three values are server-only. Generate the API key with `openssl rand -hex 32`, store it in Vercel secrets and the authorized client environment, and rotate both ends together.
 
-The admin response can contain unpublished copy and newsletter email addresses. It is always `no-store`; clients must apply the same confidentiality boundary. Media deletion checks every localized article before removing an object. The public MCP remains four-tool, anonymous and strictly read-only.
+The admin response can contain unpublished copy, moderation evidence and email addresses. It is always `no-store`; clients must apply the same confidentiality boundary. Queueing never sends inline. Tools that can delete, email or publish externally require `confirm: true`, and workers use leases/idempotency before calling providers. The public MCP remains anonymous and strictly read-only.
 
 The repository-local plugin under `plugins/neura-ai-news` configures both servers for Codex/OpenAI, Claude Code, and GitHub Copilot CLI. See [AGENT_PLUGIN.md](AGENT_PLUGIN.md).
 

@@ -1,7 +1,7 @@
 {
   "name": "neura-ai-news",
-  "version": "1.0.0",
-  "description": "Read NEURA AI news and manage the editorial newsroom through authenticated MCP tools.",
+  "version": "2.0.0",
+  "description": "Read NEURA AI news and operate editorial, comments, newsletter, media, and social publishing through MCP.",
   "author": {
     "name": "NEURA"
   }

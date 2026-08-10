@@ -10,6 +10,35 @@
     },
     "src/app/api/mcp/admin/route.ts": {
       "maxDuration": 10
+    },
+    "src/app/api/internal/social-outbox/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/internal/newsletter-outbox/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/internal/comment-notifications/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/webhooks/social/whatsapp/route.ts": {
+      "maxDuration": 20
+    },
+    "src/app/api/webhooks/newsletter/route.ts": {
+      "maxDuration": 20
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/internal/social-outbox",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/internal/newsletter-outbox",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/internal/comment-notifications",
+      "schedule": "* * * * *"
+    }
+  ]
 }

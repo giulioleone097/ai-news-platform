@@ -9,6 +9,7 @@ export function GET() {
       status: readiness.ready ? "ready" : "not-ready",
       contentMode: readiness.mode,
       canonicalOrigin: readiness.siteUrl.origin,
+      capabilities: readiness.capabilities,
       checks: readiness.issues,
     },
     {

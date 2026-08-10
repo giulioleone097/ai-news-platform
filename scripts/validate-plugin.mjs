@@ -20,11 +20,25 @@ const [codex, claude, copilot, mcp, codexMarket, claudeMarket, copilotMarket, sk
 ]);
 
 for (const manifest of [codex, claude, copilot]) {
-  if (manifest.name !== "neura-ai-news" || manifest.version !== "1.0.0") {
+  if (manifest.name !== "neura-ai-news" || manifest.version !== "2.0.0") {
     throw new Error("Plugin manifests must share the canonical name and version.");
   }
 }
 if (codex.mcpServers !== "./.mcp.json") throw new Error("Codex MCP bundle path is invalid.");
+if (codex.skills !== "./skills/" || !codex.author?.name) {
+  throw new Error("Codex plugin must declare its skills and publisher.");
+}
+for (const field of ["displayName", "shortDescription", "longDescription", "developerName", "category"]) {
+  if (typeof codex.interface?.[field] !== "string" || !codex.interface[field].trim()) {
+    throw new Error(`Codex plugin interface.${field} is required.`);
+  }
+}
+if (!Array.isArray(codex.interface?.capabilities) || codex.interface.capabilities.length === 0) {
+  throw new Error("Codex plugin capabilities are required.");
+}
+if (!Array.isArray(codex.interface?.defaultPrompt) || codex.interface.defaultPrompt.length === 0) {
+  throw new Error("Codex plugin starter prompts are required.");
+}
 if (!mcp.mcpServers?.["neura-public"] || !mcp.mcpServers?.["neura-admin"]) {
   throw new Error("Both public and admin MCP servers are required.");
 }
@@ -34,10 +48,26 @@ if (mcp.mcpServers["neura-admin"].bearer_token_env_var !== "NEURA_MCP_ADMIN_API_
 if (!skill.startsWith("---\nname: neura-editorial\n")) {
   throw new Error("Plugin skill frontmatter is invalid.");
 }
+for (const capability of ["comments", "campaign", "social"]) {
+  if (!skill.toLowerCase().includes(capability)) {
+    throw new Error(`Plugin skill must document the ${capability} capability.`);
+  }
+}
 for (const marketplace of [codexMarket, claudeMarket, copilotMarket]) {
   if (marketplace.plugins?.length !== 1 || marketplace.plugins[0].name !== "neura-ai-news") {
     throw new Error("Marketplace must expose exactly the canonical NEURA plugin.");
   }
+}
+const codexEntry = codexMarket.plugins[0];
+if (
+  !codexMarket.interface?.displayName
+  || codexEntry.source?.source !== "local"
+  || codexEntry.source?.path !== "./plugins/neura-ai-news"
+  || codexEntry.policy?.installation !== "AVAILABLE"
+  || codexEntry.policy?.authentication !== "ON_INSTALL"
+  || !codexEntry.category
+) {
+  throw new Error("Codex marketplace entry does not match the current plugin contract.");
 }
 
 const serialized = JSON.stringify({ codex, claude, copilot, mcp });

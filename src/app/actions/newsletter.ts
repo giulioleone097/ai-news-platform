@@ -1,8 +1,10 @@
 "use server";
 
+import { headers } from "next/headers";
 import { z } from "zod";
 import { getMessages, normalizeLocale } from "@/i18n";
-import { getPublicEditorialRepositories } from "@/modules/editorial/infrastructure/container";
+import { getRequestNetworkAddress } from "@/lib/request-network";
+import { getNewsletterDeliveryService } from "@/modules/newsletter-delivery/container";
 
 const subscriptionSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(254),
@@ -33,11 +35,12 @@ export async function subscribeToNewsletter(
   }
 
   try {
-    const { newsletter, mode } = getPublicEditorialRepositories();
-    if (mode === "demo" && process.env.NODE_ENV === "production") {
-      return { status: "error", message: copy.unavailable };
-    }
-    await newsletter.subscribe(result.data.email, result.data.source, locale);
+    const requester = getRequestNetworkAddress(new Headers(await headers()));
+    await getNewsletterDeliveryService().requestSubscription({
+      email: result.data.email,
+      source: result.data.source,
+      locale,
+    }, { requester });
     return { status: "success", message: copy.success };
   } catch {
     return {

@@ -36,6 +36,9 @@ jobs:
       - name: Validate design system
         run: npm run design:lint && npm run design:tokens:check
 
+      - name: Validate agent plugin
+        run: npm run plugin:check
+
       - name: Lint
         run: npm run lint
 

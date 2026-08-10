@@ -21,15 +21,26 @@ Never point a Preview deployment at the production database.
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | `http://localhost:3000` | Exact protected preview origin or canonical production origin | Canonical HTTPS origin | Public, build-time |
 | `NEXT_PUBLIC_SUPABASE_URL` | Empty | CLI API URL | Preview project URL | Production project URL | Public |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Empty | CLI anon key | Preview anon/publishable key | Production anon/publishable key | Public |
-| `SUPABASE_SERVICE_ROLE_KEY` | Empty | Local service-role key when testing admin MCP | Preview project service-role key | Production project service-role key | Server-only, admin MCP only |
+| `SUPABASE_SERVICE_ROLE_KEY` | Empty | Local service-role key for operational testing | Preview project service-role key | Production project service-role key | Server-only, comments, workers and admin MCP |
 | `NEURA_MCP_ADMIN_AUTHOR_ID` | Empty | Existing `public.authors` UUID | Existing preview author UUID | Existing production author UUID | Server-only, admin MCP only |
 | `NEURA_MCP_ADMIN_API_KEY` | Empty | High-entropy local key | Unique preview key | Unique production key | Server-only |
+| `CRON_SECRET` | Empty | Disposable local key | Unique preview key | Unique production key | Server-only, Vercel injects it into cron requests |
+| `NEURA_COMMENT_GUEST_SECRET` | Empty | Independent random value | Independent preview value | Independent production value | Server-only, signed guest/comment capabilities |
+| `RESEND_API_KEY` | Empty | Resend test key | Preview provider key | Production provider key | Server-only |
+| `RESEND_WEBHOOK_SECRET` | Empty | Signed test webhook secret | Preview endpoint secret | Production endpoint secret | Server-only |
+| `NEWSLETTER_FROM_EMAIL` | Empty | Verified test sender | Verified preview sender | Verified production sender | Server-only |
+| `NEWSLETTER_REPLY_TO` | Empty | Optional valid email | Optional valid email | Optional valid email | Server-only |
+| `NEWSLETTER_UNSUBSCRIBE_SECRET` | Empty | Independent random value | Independent preview value | Independent production value | Server-only |
+| `LINKEDIN_ACCESS_TOKEN` / `LINKEDIN_AUTHOR_URN` / `LINKEDIN_API_VERSION` | Empty | Optional real sandbox/account values | Preview account values | Production account values | Server-only |
+| `X_USER_ACCESS_TOKEN` | Empty | Optional write-scoped token | Preview write-scoped token | Production write-scoped token | Server-only |
+| `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_API_VERSION` | Empty | Optional test-number values | Preview values | Production values | Server-only |
+| `WHATSAPP_WEBHOOK_SECRET` / `WHATSAPP_VERIFY_TOKEN` | Empty | Independent test values | Preview values | Production values | Server-only |
 | `NEURA_ENABLE_DEMO_STUDIO` | Empty | Empty | Empty unless the preview is intentionally ephemeral | Empty | Server-only |
 | `NEXT_PUBLIC_LINKEDIN_URL` | Empty | Empty or official profile | Preview-safe official profile | Official LinkedIn profile URL | Public, build-time |
 | `NEXT_PUBLIC_X_URL` | Empty | Empty or official profile | Preview-safe official profile | Official X profile URL | Public, build-time |
 | `MCP_ALLOWED_ORIGINS` | `http://localhost:3000` or empty | Local caller origins | Approved preview callers | Comma-separated production callers; empty for public wildcard | Server-only |
 
-`NEURA_CONTENT_MODE` selects the adapter explicitly. Supabase mode requires both the public URL and anon key and fails visibly if either is missing. The service-role key is optional and used only by the authenticated admin MCP route; never expose it through `NEXT_PUBLIC_*`. Configure all three admin values together or the admin route fails closed.
+`NEURA_CONTENT_MODE` selects the adapter explicitly. Supabase mode requires both the public URL and anon key and fails visibly if either is missing. The service-role key is mandatory for production workers, comment mutations and admin MCP; never expose it through `NEXT_PUBLIC_*`. Production readiness reports every incomplete operational capability instead of silently simulating it.
 
 The committed Next.js configuration rejects a Vercel build unless content mode is `supabase`, both public Supabase values exist, and `NEXT_PUBLIC_SITE_URL` is a non-local HTTPS origin. This prevents a green deployment that silently serves demo data or localhost metadata.
 
@@ -169,6 +180,15 @@ Add environment variables separately for Preview and Production. Keep Preview de
 
 The MCP functions have a 10-second maximum duration. Their normal calls should remain far below that budget.
 
+The committed Vercel configuration invokes the social, newsletter and comment-notification workers every minute. These functions have a 60-second ceiling, authenticate `Authorization: Bearer $CRON_SECRET`, lease rows with `SKIP LOCKED`, and are safe when Vercel delivers a cron more than once. Confirm that the selected Vercel plan supports per-minute crons. Register these provider callbacks at their exact production origins:
+
+```text
+POST https://<canonical-host>/api/webhooks/newsletter
+GET|POST https://<canonical-host>/api/webhooks/social/whatsapp
+```
+
+Resend must sign the raw payload with the configured webhook secret. WhatsApp must pass both the verification challenge and signed POST validation. Do not put cron or webhook secrets in query strings.
+
 `GET /api/health` is the deployment-readiness boundary. In production it returns `200` only when content mode is Supabase and the canonical origin is non-local HTTPS; it reports bounded check names and never credentials.
 
 ## Release order
@@ -201,10 +221,11 @@ Then verify in a browser:
 - editor sign-in rejects an unprofiled Auth user and accepts the bootstrapped editor;
 - a draft is not visible anonymously;
 - a newly published article becomes visible after cache revalidation;
-- newsletter submission creates one normalized subscription and duplicate submission is idempotent;
-- social links encode the canonical article URL;
+- newsletter submission sends a double-opt-in message, confirmation activates exactly once, and unsubscribe cancels queued recipients;
+- a comment is persisted as pending, moderation publishes it, report/audit are visible only to editors, and notification links mutate only after POST confirmation;
+- social share links encode the canonical article URL; Studio social enqueue never sends inline and its outbox later records the provider receipt;
 - localized RSS contains only published rows for its requested language;
-- MCP `server/discover` and `list_articles` return published content only; a legacy initialize probe remains compatible.
-- admin MCP rejects missing and incorrect Bearer keys; with the correct key, list tools and exercise create/update/publish/delete on a disposable draft.
+- MCP `server/discover`, `list_articles` and `list_comments` return only public data; a legacy initialize probe remains compatible.
+- admin MCP rejects missing and incorrect Bearer keys; with the correct key, list editorial, moderation, campaign and social tools. Use previews/disposable drafts and do not process external outboxes during a smoke test.
 
 See [OPERATIONS.md](OPERATIONS.md) for rollback and incident procedures.

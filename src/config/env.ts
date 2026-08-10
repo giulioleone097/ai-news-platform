@@ -9,6 +9,16 @@ const requiredSupabaseKeys = [
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
 ] as const;
 
+function serverValue(name: string, minimumLength = 1) {
+  const value = process.env[name]?.trim();
+  return value && value.length >= minimumLength ? value : null;
+}
+
+function emailValue(name: string) {
+  const value = serverValue(name);
+  return value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? value : null;
+}
+
 export type ContentMode = "demo" | "supabase";
 
 export function hasSupabaseEnvironment() {
@@ -64,12 +74,101 @@ export function getMcpAdminApiKey() {
 }
 
 export function getSupabaseAdminEnvironment() {
-  const environment = getSupabaseEnvironment();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const environment = getSupabaseServiceEnvironment();
   const authorId = process.env.NEURA_MCP_ADMIN_AUTHOR_ID?.trim();
 
-  if (!environment || !serviceRoleKey || !authorId) return null;
-  return { ...environment, serviceRoleKey, authorId };
+  if (!environment || !authorId) return null;
+  return { ...environment, authorId };
+}
+
+export function getSupabaseServiceEnvironment() {
+  const environment = getSupabaseEnvironment();
+  const serviceRoleKey = serverValue("SUPABASE_SERVICE_ROLE_KEY", 32);
+  if (!environment || !serviceRoleKey) return null;
+  return { ...environment, serviceRoleKey };
+}
+
+export function getCronSecret() {
+  return serverValue("CRON_SECRET", 16);
+}
+
+export function getCommentEnvironment() {
+  const guestSecret = serverValue("NEURA_COMMENT_GUEST_SECRET", 32);
+  const service = getSupabaseServiceEnvironment();
+  return guestSecret && service ? { ...service, guestSecret } : null;
+}
+
+export function getNewsletterDeliveryEnvironment() {
+  const service = getSupabaseServiceEnvironment();
+  const apiKey = serverValue("RESEND_API_KEY", 8);
+  const webhookSecret = serverValue("RESEND_WEBHOOK_SECRET", 16);
+  const unsubscribeSecret = serverValue("NEWSLETTER_UNSUBSCRIBE_SECRET", 32);
+  const from = emailValue("NEWSLETTER_FROM_EMAIL");
+  const replyTo = process.env.NEWSLETTER_REPLY_TO?.trim()
+    ? emailValue("NEWSLETTER_REPLY_TO")
+    : null;
+
+  if (!service || !apiKey?.startsWith("re_") || !webhookSecret?.startsWith("whsec_")
+    || !unsubscribeSecret || !from || (process.env.NEWSLETTER_REPLY_TO?.trim() && !replyTo)) {
+    return null;
+  }
+  return { ...service, apiKey, webhookSecret, unsubscribeSecret, from, replyTo };
+}
+
+export function getCommentNotificationEnvironment() {
+  const comments = getCommentEnvironment();
+  const delivery = getNewsletterDeliveryEnvironment();
+  return comments && delivery
+    ? { ...comments, apiKey: delivery.apiKey, from: delivery.from, replyTo: delivery.replyTo }
+    : null;
+}
+
+export function getSocialPublishingEnvironment() {
+  const service = getSupabaseServiceEnvironment();
+  const linkedInToken = serverValue("LINKEDIN_ACCESS_TOKEN", 16);
+  const linkedInAuthor = serverValue("LINKEDIN_AUTHOR_URN");
+  const linkedInVersion = serverValue("LINKEDIN_API_VERSION", 6);
+  const xToken = serverValue("X_USER_ACCESS_TOKEN", 16);
+  const whatsappToken = serverValue("WHATSAPP_ACCESS_TOKEN", 16);
+  const whatsappPhoneNumberId = serverValue("WHATSAPP_PHONE_NUMBER_ID");
+  const whatsappVersion = serverValue("WHATSAPP_API_VERSION");
+  const whatsappWebhookSecret = serverValue("WHATSAPP_WEBHOOK_SECRET", 16);
+  const whatsappVerifyToken = serverValue("WHATSAPP_VERIFY_TOKEN", 16);
+
+  const linkedin = linkedInToken
+    && linkedInAuthor && /^urn:li:(?:organization|person):\d+$/.test(linkedInAuthor)
+    && linkedInVersion && /^\d{6}$/.test(linkedInVersion)
+    ? { accessToken: linkedInToken, authorUrn: linkedInAuthor, apiVersion: linkedInVersion }
+    : null;
+  const x = xToken ? { accessToken: xToken } : null;
+  const whatsapp = whatsappToken
+    && whatsappPhoneNumberId && /^\d+$/.test(whatsappPhoneNumberId)
+    && whatsappVersion && /^v\d{1,2}\.\d+$/.test(whatsappVersion)
+    && whatsappWebhookSecret && whatsappVerifyToken
+    ? {
+        accessToken: whatsappToken,
+        phoneNumberId: whatsappPhoneNumberId,
+        apiVersion: whatsappVersion,
+        webhookSecret: whatsappWebhookSecret,
+        verifyToken: whatsappVerifyToken,
+      }
+    : null;
+
+  return { service, linkedin, x, whatsapp };
+}
+
+export function getOperationalCapabilities() {
+  const social = getSocialPublishingEnvironment();
+  return {
+    comments: Boolean(getCommentEnvironment()),
+    commentNotifications: Boolean(getCommentNotificationEnvironment()),
+    newsletterDelivery: Boolean(getNewsletterDeliveryEnvironment()),
+    linkedinPublishing: Boolean(social.service && social.linkedin),
+    xPublishing: Boolean(social.service && social.x),
+    whatsappPublishing: Boolean(social.service && social.whatsapp),
+    scheduler: Boolean(getCronSecret()),
+    adminMcp: Boolean(getMcpAdminApiKey() && getSupabaseAdminEnvironment()),
+  };
 }
 
 function optionalWebUrl(value: string | undefined) {
@@ -95,6 +194,7 @@ export function getProductionReadiness() {
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   const supabaseUrl = parseHttpUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const issues: string[] = [];
+  const capabilities = getOperationalCapabilities();
   if (mode === "supabase" && !hasSupabaseEnvironment()) issues.push("supabase-environment");
   if (process.env.NODE_ENV === "production") {
     if (mode !== "supabase") issues.push("persistent-content-mode");
@@ -104,6 +204,9 @@ export function getProductionReadiness() {
     if (mode === "supabase" && supabaseUrl && !isSecureProductionOrigin(supabaseUrl)) {
       issues.push("supabase-production-origin");
     }
+    for (const [capability, configured] of Object.entries(capabilities)) {
+      if (!configured) issues.push(`capability-${capability}`);
+    }
   }
-  return { ready: issues.length === 0, mode, siteUrl, issues };
+  return { ready: issues.length === 0, mode, siteUrl, capabilities, issues };
 }

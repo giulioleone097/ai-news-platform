@@ -1,0 +1,98 @@
+.filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  margin-block: 1.5rem;
+}
+
+.filters select,
+.moderation input {
+  min-block-size: 2.75rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--neura-rounded-sm);
+  background: var(--paper-raised);
+  color: var(--ink);
+  padding-inline: 0.85rem;
+  font: inherit;
+}
+
+.queue {
+  display: grid;
+  gap: 1rem;
+}
+
+.card {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  padding: clamp(1rem, 2vw, 1.5rem);
+}
+
+.meta,
+.reports,
+.auditMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.body {
+  max-inline-size: 72ch;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+
+.reports {
+  display: grid;
+  gap: 0.5rem;
+  border-inline-start: 2px solid var(--rule-strong);
+  padding-inline-start: 0.9rem;
+}
+
+.reports p {
+  color: var(--ink);
+}
+
+.moderation {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  gap: 0.75rem;
+}
+
+.moderation input {
+  inline-size: 100%;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.audit {
+  display: grid;
+  gap: 0.75rem;
+  margin-block-start: 2rem;
+}
+
+.audit article {
+  border-block-start: 1px solid var(--rule);
+  padding-block-start: 0.85rem;
+}
+
+@media (max-width: 680px) {
+  .filters,
+  .moderation {
+    grid-template-columns: 1fr;
+  }
+
+  .filters button,
+  .moderation button {
+    inline-size: 100%;
+  }
+}

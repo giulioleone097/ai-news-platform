@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CLIENT_CAPABILITIES_META_KEY,
   CLIENT_INFO_META_KEY,
@@ -11,6 +11,7 @@ import { GET as getMcpInfo } from "@/app/api/mcp/info/route";
 
 import { handlePublicMcpRequest, publicMcpOptionsResponse } from "./http";
 import { publicMcpProtocolVersion, publicMcpTools } from "./metadata";
+import { listPublishedArticleComments } from "./public-server";
 
 const protocolVersion = publicMcpProtocolVersion;
 const originalAllowedOrigins = process.env.MCP_ALLOWED_ORIGINS;
@@ -106,6 +107,27 @@ describe("public MCP server", () => {
           tool.annotations?.readOnlyHint === true,
       ),
     ).toBe(true);
+    const commentsTool = listed.payload.result.tools.find(
+      (tool: { name: string }) => tool.name === "list_comments",
+    );
+    expect(commentsTool.inputSchema.properties).toHaveProperty("slug");
+    expect(commentsTool.inputSchema.properties).not.toHaveProperty("articleId");
+  });
+
+  it("resolves approved comments from the published locale and slug", async () => {
+    const repository = new MemoryEditorialRepository();
+    const article = (await repository.listPublished({ locale: "en", limit: 1 })).items[0];
+    const listApproved = vi.fn().mockResolvedValue({ items: [], nextCursor: null });
+
+    await listPublishedArticleComments(repository, { listApproved }, {
+      slug: article.slug,
+      locale: "en",
+      parentId: null,
+      cursor: null,
+      limit: 12,
+    });
+
+    expect(listApproved).toHaveBeenCalledWith(expect.objectContaining({ articleId: article.id }));
   });
 
   it("keeps stateless 2025 clients compatible", async () => {
