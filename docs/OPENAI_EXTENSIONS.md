@@ -40,6 +40,8 @@ The app calls only the server's existing public tools (`list_articles`, `search_
 
 ## Open decisions
 
-- **Plugin settings** need per-user persistence. Adding OAuth (`auth.type: "mixed"` keeps anonymous reading) would allow saved language, topics and alert defaults.
+- **Plugin settings** need per-user persistence. Decided in the redesign: OAuth tokens come from Supabase Auth (`auth.type: "mixed"` keeps anonymous reading), built by the redesign rather than here; settings can then hold language, topics and alert defaults.
+- **MCP on its own subdomain** (redesign decision): nothing here assumes the MCP shares the reader site's origin. Links, images, the icon and the CSP `resourceDomains` all derive from `NEXT_PUBLIC_SITE_URL`, so set it to the reader site on the MCP deployment.
+- **Brand** (redesign decision: AtlasNews): the rename should include the stable identifiers added here (`ui://neura/newsroom-v1.html`, `neura://articles/...`, the `neura-ai-news` plugin name) before the plugin is first published, because hosts store them.
 - **Portable manifest**: OpenAI now prefers a root `plugin.json` with `extensions.com.openai` and a root `mcp.json`. The repository keeps the Codex compatibility overlay, which is still supported; migrating is a packaging change for the redesign.
 - **Publishing** to the ChatGPT directory needs the production URL and an OpenAI developer account; the admin API-key server cannot be submitted through the portal.
