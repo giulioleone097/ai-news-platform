@@ -1,0 +1,23 @@
+# Keep local state, secrets, build output and history out of the image build context.
+.git
+**/node_modules
+.next
+**/.next
+docs/plans
+.env
+.env.*
+**/.env
+**/.env.*
+**/*.pem
+**/.vercel
+supabase/.branches
+supabase/.temp
+**/*.tsbuildinfo
+**/*.test.ts
+coverage
+artifacts
+playwright-report
+test-results
+.DS_Store
+Dockerfile
+.dockerignore

@@ -253,7 +253,7 @@ curl --fail --silent --show-error --location "$SITE/it" >/dev/null
 curl --fail --silent --show-error "$SITE/api/health" | grep '"status":"ready"'
 curl --fail --silent --show-error "$SITE/en/feed.xml" | grep '<language>en</language>'
 curl --fail --silent --show-error "$SITE/it/feed.xml" | grep '<language>it</language>'
-curl --fail --silent --show-error "$MCP/info" | grep 'neura-ai-news'
+curl --fail --silent --show-error "$MCP/info" | grep '"name":"atlasnews"'
 ```
 
 Then verify in a browser:
