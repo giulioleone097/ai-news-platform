@@ -19,7 +19,7 @@ To add a capability: define a spec in `packages/contract/src/specs`, implement i
 | `/mcp` | `POST` | MCP JSON-RPC over Streamable HTTP, anonymous or with a Bearer token |
 | `/mcp` | `OPTIONS` | CORS preflight |
 | `/info` | `GET` | Machine-readable server metadata, derived from the catalogue |
-| `/.well-known/oauth-protected-resource` | `GET` | RFC 9728 resource metadata that the Bearer challenge points at |
+| `/.well-known/oauth-protected-resource` | `GET` | RFC 9728 resource metadata that the Bearer challenge points at; names the authorization server |
 
 `GET /mcp` returns 405. `/mcp/admin` no longer exists. Below, `$MCP` is the base URL of `apps/mcp` (`http://localhost:8787` locally).
 
@@ -60,7 +60,12 @@ The caller is resolved once per request from the `Authorization` header:
 | `Bearer <valid token>` | editor with the token's scopes | tools inside those scopes run |
 | anything else | rejected | HTTP 401 with `WWW-Authenticate: Bearer realm="atlasnews", resource_metadata="…", error="invalid_token"` |
 
-Token checking sits behind the `AccessTokenVerifier` port (`apps/mcp/src/auth.ts`). Today the only verifier is the shared API key `NEURA_MCP_ADMIN_API_KEY` (at least 32 characters, constant-time comparison), which maps to one editor with every scope. An OAuth JWT verifier plugs into the same port later and needs no change to tools or adapters.
+Token checking sits behind the `AccessTokenVerifier` port (`apps/mcp/src/auth.ts`). Two verifiers are tried in this order:
+
+1. **Supabase OAuth access tokens** (`apps/mcp/src/auth/`), when sign-in is configured (see [Sign-in](#sign-in-with-supabase-auth)). The signature is checked against the project's JWKS (cached ten minutes; an unknown `kid` reloads it, at most every 30 seconds, so a rotated key is picked up), then issuer, audience, expiry and not-before. Only ES256 and RS256 are accepted; `alg: none` and HS256 are refused. The token must carry a `client_id` claim, which only the OAuth server sets, so an ordinary Studio session token cannot be replayed here. The subject must have a `public.profiles` row with role `editor` or `admin` (read with the service-role key, answers cached 30 seconds); it then gets every newsroom scope, and its `author_id` is carried on the principal. A valid token for anyone else is accepted as a caller with no newsroom scope, so scoped tools answer with the sign-in error.
+2. **The shared API key** `NEURA_MCP_ADMIN_API_KEY` (at least 32 characters, constant-time comparison), for the CI smoke and the self-hosted CLI. It maps to one editor with every scope.
+
+If the key set or the profile table cannot be reached the request fails with HTTP 500, not 401, so a host does not discard a good token during an outage.
 
 Scopes:
 
@@ -70,9 +75,76 @@ Scopes:
 | `newsroom.write` | Create and update articles, workflow, media and drafts; moderate comments; queue, requeue, cancel and retry social jobs; cancel campaigns |
 | `newsroom.publish` | Publish and delete articles and media; send or schedule campaigns; erase subscribers; process any outbox (anything that emails or posts externally) |
 
-A tool declares `[{ "type": "noauth" }]` or `[{ "type": "oauth2", "scopes": [...] }]` in `_meta.securitySchemes`. Calling a scoped tool without the scope returns a tool error (not data) with `_meta["mcp/www_authenticate"]` holding a Bearer challenge with `error="insufficient_scope"` and the `scope` it needs. That is OpenAI's documented trigger for account linking. The challenge's `resource_metadata` points at `/.well-known/oauth-protected-resource`, which lists the scopes; `authorization_servers` is added once an OAuth verifier is configured.
+A tool declares `[{ "type": "noauth" }]` or `[{ "type": "oauth2", "scopes": [...] }]` in `_meta.securitySchemes`. Calling a scoped tool without the scope returns a tool error (not data) with `_meta["mcp/www_authenticate"]` holding a Bearer challenge with `error="insufficient_scope"` and the `scope` it needs. That is OpenAI's documented trigger for account linking. The challenge's `resource_metadata` points at `/.well-known/oauth-protected-resource`, which lists `authorization_servers` (Supabase Auth, first) once sign-in is configured.
+
+Supabase Auth cannot grant custom scopes; it rejects an authorization request for a scope it does not define. The `newsroom.*` scopes are therefore a server-side decision taken from the profile role (`scopesForRole` in `apps/mcp/src/auth/editors.ts`, the only place), and with sign-in configured the metadata, the challenges and `_meta.securitySchemes` offer hosts only the scopes Supabase grants (`email`). Without sign-in configured they show the `newsroom.*` scopes as before.
 
 Responses to a signed-in editor are `Cache-Control: no-store` and carry no CORS headers. Anonymous responses keep today's CORS behaviour: `*` unless `MCP_ALLOWED_ORIGINS` is set. `Authorization` is not in the allowed preflight headers, so browsers cannot call the editor tools cross-origin.
+
+## Sign-in with Supabase Auth
+
+Supabase Auth is the OAuth 2.1 authorization server; `apps/mcp` is only the resource server. Editors are the `auth.users` that have an editor or admin `public.profiles` row ([DEPLOYMENT.md](DEPLOYMENT.md), "Bootstrap the first editor").
+
+```text
+host -> POST /mcp without token         -> 200, tool error with _meta["mcp/www_authenticate"] (or 401 for a bad token)
+host -> GET  /.well-known/oauth-protected-resource   -> authorization_servers[0] = https://<ref>.supabase.co/auth/v1
+host -> GET  <issuer>/.well-known/openid-configuration (or oauth-authorization-server)
+host -> POST <issuer>/oauth/clients/register          (dynamic registration, once per host)
+host -> browser: <issuer>/oauth/authorize?...&code_challenge_method=S256&resource=<mcp url>
+Supabase -> browser: <site>/oauth/consent?authorization_id=...     (apps/web/src/app/oauth/consent)
+editor signs in, sees which application asks, allows or cancels
+Supabase -> host redirect with ?code=...  ->  POST <issuer>/oauth/token  ->  access token (ES256 JWT) + refresh token
+host -> POST /mcp with Authorization: Bearer <access token>
+```
+
+What Supabase gives and does not give (checked against `supabase.com/docs/guides/auth/oauth-server` and the `supabase/auth` source, v2.197):
+
+| Topic | Supabase Auth |
+| --- | --- |
+| Enable | Dashboard, Authentication, OAuth Server; locally `[auth.oauth_server]` in `supabase/config.toml` (`enabled`, `authorization_url_path`, `allow_dynamic_registration`) |
+| Endpoints | `/auth/v1/oauth/authorize`, `/oauth/token`, `/oauth/userinfo`, `/.well-known/jwks.json`; discovery at `/auth/v1/.well-known/openid-configuration`, `/auth/v1/.well-known/oauth-authorization-server`, and on the hosted platform `/.well-known/oauth-authorization-server/auth/v1` |
+| Registration | Pre-registered clients (dashboard, OAuth Apps) and dynamic registration (`registration_endpoint`, public, rate limited). No Client ID Metadata Documents |
+| PKCE | Mandatory; `S256` and `plain` accepted (`plain` is advertised too) |
+| `resource` (RFC 8707) | Validated (absolute URI, no fragment or query) and bound to the authorization code, but **not copied into `aud`**: the access token `aud` stays `authenticated` |
+| `iss` response parameter (RFC 9207) | **Not returned**, and `authorization_response_iss_parameter_supported` is not advertised |
+| Scopes | Only `openid`, `profile`, `email`, `phone`, `offline_access`; custom scopes are not supported. Default `email` |
+| Token | ES256 or RS256 JWT with `sub`, `role`, `aud`, `iss`, `client_id`, `scope`, `session_id`; lifetime `jwt_expiry` (default 3600 s); refresh tokens rotate (`offline_access` accepted) |
+| Keys | JWKS lists asymmetric public keys only. A project still on the legacy HS256 secret has an empty JWKS: migrate to asymmetric signing keys first (a local stack from CLI 2.117 already has an ES256 key) |
+| Consent | The app must host the consent page (`authorization_url_path`), see below |
+| Revocation | No RFC 7009 endpoint. A user revokes a client's grant (`auth.oauth.revokeGrant`), which deletes its refresh tokens; an issued access token stays valid until it expires |
+
+The consent page is `apps/web/src/app/oauth/consent`, in English and Italian (chosen from `Accept-Language`). A visitor who is not signed in sees a sign-in form (email and password, the same Supabase call as the Studio login) and returns to the same request. A signed-in editor sees the application's name, the address it returns to, the permissions, and chooses Allow or Cancel; an account without an editor profile can only cancel. It calls `getAuthorizationDetails`, then `approveAuthorization` or `denyAuthorization`, and redirects to the URL Supabase returns. Set Authorization Path to `/oauth/consent` and the Site URL to the web origin in the dashboard.
+
+### Hosts
+
+| Host | Registers as | Redirect URI |
+| --- | --- | --- |
+| Claude (claude.ai, Desktop, mobile) | Dynamic registration | `https://claude.ai/api/mcp/auth_callback` |
+| Claude Code | Dynamic registration | `http://localhost/callback`, `http://127.0.0.1/callback` (port ignored) |
+| ChatGPT | Dynamic registration, or a client pre-registered in the dashboard | `https://chatgpt.com/connector/oauth/{callback_id}` (copy it from the connector page). The stable `connector_platform_oauth_redirect` needs RFC 9207 `iss`, which Supabase does not send |
+
+Anyone can register a client when dynamic registration is on, and the editor's consent is the only gate. For production, pre-register the hosts you use in the dashboard (OAuth Apps), turn dynamic registration off, and review the client list regularly.
+
+### Environment
+
+| Variable | Used by | Meaning |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | `apps/mcp`, `apps/web` | Sign-in is on when all three are set (the service role key, at least 32 characters, reads the editor profile). The issuer is `<url>/auth/v1` and the key set `<issuer>/.well-known/jwks.json`. Unset means no OAuth: only the API key |
+| `NEXT_PUBLIC_MCP_URL` | `apps/mcp` | Public origin of the MCP server (`https://mcp.news.example.com`). Set it behind a proxy: the `resource` in the metadata and the challenge must be the exact URL hosts were given, and the request URL seen by Node is not |
+| `NEURA_MCP_OAUTH_ISSUER` | `apps/mcp` | Optional. Issuer when it differs from `<url>/auth/v1`, such as a Supabase custom domain |
+| `NEURA_MCP_OAUTH_AUDIENCE` | `apps/mcp` | Optional. Required `aud`. Unset accepts `authenticated`. Set it to the MCP URL once a custom access token hook sets that audience (below) |
+| `NEURA_MCP_ADMIN_API_KEY`, `NEURA_MCP_ADMIN_AUTHOR_ID` | `apps/mcp` | The API key path, unchanged |
+
+Because `aud` is `authenticated` and the `resource` is not bound to it, a token that Supabase issued to another client of the same project is accepted here if its subject is an editor. The `client_id` requirement keeps ordinary session tokens out, but only a custom access token hook closes the gap: for tokens that carry `client_id`, return `aud` set to the MCP URL, then set `NEURA_MCP_OAUTH_AUDIENCE` to the same value.
+
+### Verify a deployment
+
+1. `curl https://<ref>.supabase.co/auth/v1/.well-known/openid-configuration`: `registration_endpoint` is present when dynamic registration is on, and `jwks_uri` returns at least one key.
+2. `curl $MCP/.well-known/oauth-protected-resource`: `resource` is exactly the URL you give hosts, and `authorization_servers[0]` is the issuer.
+3. Call a scoped tool without a token: the tool error carries `_meta["mcp/www_authenticate"]` with `resource_metadata`. Call any tool with a made-up bearer: HTTP 401 with `WWW-Authenticate`.
+4. Add the connector in Claude (Settings, Connectors, URL `$MCP/mcp`) and in ChatGPT (developer mode, same URL). Sign in as an editor on the consent page, ask for `admin_list_articles`, then a write, and check that the article's author is the signed-in editor.
+5. Sign in as a user without an editor profile: the consent page offers only Cancel; a token obtained another way sees only the anonymous tools.
+6. Revoke the grant, then wait for `jwt_expiry`: the access token stops working.
 
 ## Tools
 
@@ -101,7 +173,7 @@ Editor tools (`oauth2`), all names unchanged from the former `/mcp/admin` server
 | `newsroom.write` | `admin_create_article`, `admin_update_article`, `admin_update_distribution`, `admin_update_newsletter_subscription`, `admin_upload_media`, `admin_moderate_comment`, `admin_newsletter_save_campaign_draft`, `admin_newsletter_cancel_campaign`, `admin_social_enqueue`, `admin_social_requeue`, `admin_social_cancel`, `admin_social_retry` |
 | `newsroom.publish` | `admin_publish_article`, `admin_delete_article`, `admin_delete_media`, `admin_comment_process_notifications`, `admin_newsletter_send_campaign`, `admin_newsletter_schedule_campaign`, `admin_newsletter_request_subscription`, `admin_newsletter_erase_subscription`, `admin_newsletter_process_outbox`, `admin_social_process_outbox` |
 
-Production persistence for the editor tools additionally requires `SUPABASE_SERVICE_ROLE_KEY` and `NEURA_MCP_ADMIN_AUTHOR_ID`. In demo mode (no Supabase, outside production) the editorial tools work on the in-memory repository; comment moderation, newsletter and social tools answer with a generic "not configured" tool error. Generate the API key with `openssl rand -hex 32` and rotate it on both ends together.
+Production persistence for the editor tools additionally requires `SUPABASE_SERVICE_ROLE_KEY`, and `NEURA_MCP_ADMIN_AUTHOR_ID` for the API key (a signed-in editor is attributed to their own `author_id`). In demo mode (no Supabase, outside production) the editorial tools work on the in-memory repository; comment moderation, newsletter and social tools answer with a generic "not configured" tool error. Generate the API key with `openssl rand -hex 32` and rotate it on both ends together.
 
 Supported locales are `en` and `it`; English is the default.
 
@@ -141,7 +213,7 @@ For clients that accept remote HTTP servers, use the canonical HTTPS endpoint:
 }
 ```
 
-Clients that sign in send the token as `Authorization: Bearer …`; the repository-local plugin under `plugins/` is documented in [AGENT_PLUGIN.md](AGENT_PLUGIN.md).
+Clients that sign in (see [Sign-in](#sign-in-with-supabase-auth)) send the token as `Authorization: Bearer …`; the repository-local plugin under `plugins/` is documented in [AGENT_PLUGIN.md](AGENT_PLUGIN.md).
 
 ## Error behavior
 

@@ -1,0 +1,56 @@
+.consent-details {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0 0 1.5rem;
+}
+
+.consent-details div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.consent-details dt,
+.consent-section h2 {
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.consent-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.consent-note {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.consent-section {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.consent-section ul {
+  display: grid;
+  gap: 0.35rem;
+  padding-left: 1.1rem;
+  margin: 0;
+}
+
+.consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.consent-actions .auth-submit {
+  flex: 1 1 12rem;
+}
+
+.consent-deny {
+  border-color: var(--rule-strong);
+  background: transparent;
+}

@@ -12,6 +12,7 @@
     "@atlasnews/contract": "*",
     "@atlasnews/core": "*",
     "@modelcontextprotocol/server": "2.0.0",
+    "jose": "^6.2.8",
     "zod": "^4.4.3"
   },
   "devDependencies": {

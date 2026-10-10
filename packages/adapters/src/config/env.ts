@@ -73,12 +73,48 @@ export function getMcpAdminApiKey() {
   return value && value.length >= 32 ? value : null;
 }
 
-export function getSupabaseAdminEnvironment() {
+/**
+ * Service-role access acting as one author. A signed-in editor passes their own `author_id`;
+ * the shared API key falls back to `NEURA_MCP_ADMIN_AUTHOR_ID`.
+ */
+export function getSupabaseAdminEnvironment(actorAuthorId?: string) {
   const environment = getSupabaseServiceEnvironment();
-  const authorId = process.env.NEURA_MCP_ADMIN_AUTHOR_ID?.trim();
+  const authorId = actorAuthorId?.trim() || process.env.NEURA_MCP_ADMIN_AUTHOR_ID?.trim();
 
   if (!environment || !authorId) return null;
   return { ...environment, authorId };
+}
+
+/** Scopes that Supabase Auth can grant. It has no custom scopes, so newsroom permissions come from the profile role. */
+const supabaseOAuthScopes = ["email"] as const;
+
+/** Origin of the MCP server as hosts reach it, when configured; behind a proxy the request URL cannot be trusted. */
+export function getConfiguredMcpUrl() {
+  return parseHttpUrl(process.env.NEXT_PUBLIC_MCP_URL);
+}
+
+/**
+ * Supabase Auth as the OAuth authorization server for the MCP endpoint. Present only when the
+ * project URL and the service-role key (used to read the editor's profile) are configured.
+ */
+export function getMcpOAuthEnvironment() {
+  const service = getSupabaseServiceEnvironment();
+  if (!service) return null;
+
+  const base = new URL(service.url);
+  if (!base.pathname.endsWith("/")) base.pathname += "/";
+  const configuredIssuer = parseHttpUrl(process.env.NEURA_MCP_OAUTH_ISSUER);
+  const issuer = (configuredIssuer ?? new URL("auth/v1", base)).toString().replace(/\/+$/, "");
+  const audience = serverValue("NEURA_MCP_OAUTH_AUDIENCE");
+
+  return {
+    issuer,
+    jwksUrl: new URL(`${issuer}/.well-known/jwks.json`),
+    /** Required `aud`; null accepts Supabase's own `authenticated` audience. */
+    audience,
+    scopes: supabaseOAuthScopes as readonly string[],
+    profiles: { url: service.url, serviceRoleKey: service.serviceRoleKey },
+  };
 }
 
 export function getSupabaseServiceEnvironment() {
@@ -167,7 +203,7 @@ export function getOperationalCapabilities() {
     xPublishing: Boolean(social.service && social.x),
     whatsappPublishing: Boolean(social.service && social.whatsapp),
     scheduler: Boolean(getCronSecret()),
-    adminMcp: Boolean(getMcpAdminApiKey() && getSupabaseAdminEnvironment()),
+    adminMcp: Boolean(getMcpOAuthEnvironment() || (getMcpAdminApiKey() && getSupabaseAdminEnvironment())),
   };
 }
 

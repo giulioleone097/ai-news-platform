@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  getConfiguredMcpUrl,
   getContentMode,
+  getMcpOAuthEnvironment,
   getOperationalCapabilities,
   getProductionReadiness,
   isDemoStudioEnabled,
@@ -135,5 +137,34 @@ describe("Studio environment boundary", () => {
     expect(getOperationalCapabilities().commentNotifications).toBe(false);
     expect(getProductionReadiness().issues).toContain("capability-newsletterDelivery");
     expect(getProductionReadiness().issues).toContain("capability-commentNotifications");
+  });
+
+  it("derives the MCP sign-in server from the Supabase project and fails closed without the service key", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "public-key");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
+    expect(getMcpOAuthEnvironment()).toBeNull();
+
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "s".repeat(40));
+    expect(getMcpOAuthEnvironment()).toMatchObject({
+      issuer: "https://project.supabase.co/auth/v1",
+      jwksUrl: new URL("https://project.supabase.co/auth/v1/.well-known/jwks.json"),
+      audience: null,
+      scopes: ["email"],
+    });
+
+    vi.stubEnv("NEURA_MCP_OAUTH_ISSUER", "https://auth.news.example.com/auth/v1/");
+    vi.stubEnv("NEURA_MCP_OAUTH_AUDIENCE", "https://mcp.news.example.com/mcp");
+    expect(getMcpOAuthEnvironment()).toMatchObject({
+      issuer: "https://auth.news.example.com/auth/v1",
+      audience: "https://mcp.news.example.com/mcp",
+    });
+  });
+
+  it("only trusts an explicitly configured public MCP URL", () => {
+    vi.stubEnv("NEXT_PUBLIC_MCP_URL", "");
+    expect(getConfiguredMcpUrl()).toBeNull();
+    vi.stubEnv("NEXT_PUBLIC_MCP_URL", "https://mcp.news.example.com");
+    expect(getConfiguredMcpUrl()?.origin).toBe("https://mcp.news.example.com");
   });
 });

@@ -63,6 +63,15 @@ enable_manual_linking = false
 minimum_password_length = 8
 password_requirements = "lower_upper_letters_digits"
 
+# Supabase Auth as the OAuth 2.1 authorization server for the MCP endpoint (apps/mcp). Hosts such as
+# ChatGPT and Claude register themselves, send the editor to the consent page of the web app
+# (site_url + authorization_url_path), and receive ES256 access tokens that apps/mcp checks against
+# the JWKS. Restart the stack (`supabase stop`, `supabase start`) for a change to take effect.
+[auth.oauth_server]
+enabled = true
+authorization_url_path = "/oauth/consent"
+allow_dynamic_registration = true
+
 [auth.rate_limit]
 email_sent = 2
 sms_sent = 30
