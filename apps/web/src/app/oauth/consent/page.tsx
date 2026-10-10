@@ -35,7 +35,7 @@ function Panel({ copy, children }: { copy: ConsentCopy; children: React.ReactNod
           <ArrowLeft aria-hidden="true" size={16} />
           {copy.backToSite}
         </Link>
-        <div className="auth-heading">
+        <div className="auth-heading consent-heading">
           <p className="auth-eyebrow">{copy.eyebrow}</p>
           {children}
         </div>

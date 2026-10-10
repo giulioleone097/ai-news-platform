@@ -1300,6 +1300,7 @@ svg {
   align-items: center;
   gap: 0.45rem;
   margin-bottom: clamp(3rem, 10vh, 7rem);
+  min-height: 2.75rem;
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 700;
@@ -1391,6 +1392,7 @@ svg {
 
 .auth-field input:focus {
   border-color: var(--coral-dark);
+  box-shadow: 0 1px 0 var(--coral-dark);
   outline: none;
 }
 
@@ -1404,7 +1406,7 @@ svg {
   border: 1px solid var(--coral);
   border-radius: var(--radius);
   margin-top: 0.6rem;
-  color: var(--ink);
+  color: white;
   background: var(--coral);
   font-size: 0.82rem;
   font-weight: 800;
@@ -1801,7 +1803,8 @@ svg {
   }
 
   .button--primary,
-  .newsletter button {
+  .newsletter button,
+  .auth-submit {
     color: #151719;
   }
 }
