@@ -27,13 +27,21 @@ describe("public editorial cache invalidation", () => {
       ["/it"],
       ["/it/latest"],
       ["/it/search"],
-      ["/it/articles/[slug]", "page"],
-      ["/it/categories/[slug]", "page"],
+      ["/it/entities"],
+      ["/[locale]/articles/[slug]", "page"],
+      ["/[locale]/categories/[slug]", "page"],
+      ["/[locale]/entities/[slug]", "page"],
+      ["/[locale]/status/[status]", "page"],
       ["/it/articles/vecchio-slug"],
+      ["/it/md/articles/vecchio-slug"],
       ["/it/articles/nuovo-slug"],
+      ["/it/md/articles/nuovo-slug"],
       ["/api/articles"],
       ["/it/feed.xml"],
+      ["/it/feed.json"],
       ["/sitemap.xml"],
+      ["/news-sitemap.xml"],
+      ["/llms.txt"],
     ]);
   });
 });

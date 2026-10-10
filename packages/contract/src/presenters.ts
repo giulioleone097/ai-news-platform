@@ -5,11 +5,8 @@ import type {
   EntityRef,
 } from "@atlasnews/core/editorial/domain/article";
 import type { EntityDetail } from "@atlasnews/core/editorial/domain/entity";
-import {
-  renderStoryMarkdown,
-  type StoryMarkdownLabels,
-} from "@atlasnews/core/editorial/application/story-markdown";
-import type { Locale } from "@atlasnews/core/locale";
+import { renderStoryMarkdown } from "@atlasnews/core/editorial/application/story-markdown";
+import { storyLabels } from "@atlasnews/core/editorial/application/story-labels";
 
 export function articlePath(article: Pick<Article, "locale" | "slug">) {
   return `/${article.locale}/articles/${article.slug}`;
@@ -61,25 +58,6 @@ export function toEntity(entity: EntityDetail) {
     parent: entity.parent ? { ...entity.parent } : null,
   };
 }
-
-/**
- * The words of the Markdown export, per locale. They repeat the story section of the web
- * messages, because the contract cannot import the web app; core should own them.
- */
-const storyLabels: Record<Locale, StoryMarkdownLabels> = {
-  en: {
-    claimStatus: { confirmed: "Confirmed", rollout: "Rolling out", test: "In test", rumour: "Rumour", analysis: "Analysis" },
-    entityKind: { company: "Company", model: "Model", product: "Product" },
-    keyPoints: "Key points",
-    sources: "Sources",
-  },
-  it: {
-    claimStatus: { confirmed: "Confermato", rollout: "In rilascio", test: "In test", rumour: "Rumor", analysis: "Analisi" },
-    entityKind: { company: "Azienda", model: "Modello", product: "Prodotto" },
-    keyPoints: "Punti chiave",
-    sources: "Fonti",
-  },
-};
 
 /** The article as Markdown with its public URL, for `fetch` and for article resources. */
 export function articleAsMarkdown(article: Article, url: string) {

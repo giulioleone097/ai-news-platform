@@ -156,6 +156,11 @@ svg {
   grid-area: nav;
 }
 
+/* Phone shows the chip row after the actions; the desktop row (see the 68rem query) is hidden here. */
+.site-header__inner .entity-nav--desktop {
+  display: none;
+}
+
 .site-header__actions {
   display: flex;
   min-width: 0;
@@ -595,6 +600,14 @@ svg {
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-rows: var(--header-height);
     column-gap: clamp(1rem, 3vw, 2.5rem);
+  }
+
+  .site-header__inner .entity-nav--desktop {
+    display: flex;
+  }
+
+  .site-header__inner .entity-nav--phone {
+    display: none;
   }
 
   .brand {

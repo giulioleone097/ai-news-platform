@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
+import { claimStatuses, type ClaimStatus } from "@atlasnews/core/editorial/domain/article";
 import { locales, localizedPath } from "@/i18n";
 import {
   getPublicCategories,
@@ -31,8 +32,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const latestLanguages = withDefault(Object.fromEntries(
     locales.map((locale) => [locale, absolute(localizedPath("/latest", locale))]),
   ));
+  const entitiesLanguages = withDefault(Object.fromEntries(
+    locales.map((locale) => [locale, absolute(localizedPath("/entities", locale))]),
+  ));
   const entityLanguages = (slug: string) => withDefault(Object.fromEntries(
     locales.map((locale) => [locale, absolute(localizedPath(`/entities/${slug}`, locale))]),
+  ));
+  const statusLanguages = (status: ClaimStatus) => withDefault(Object.fromEntries(
+    locales.map((locale) => [locale, absolute(localizedPath(`/status/${status}`, locale))]),
   ));
 
   return [
@@ -49,6 +56,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.9,
         alternates: { languages: latestLanguages },
       },
+      {
+        url: absolute(localizedPath("/entities", locale)),
+        changeFrequency: "daily" as const,
+        priority: 0.7,
+        alternates: { languages: entitiesLanguages },
+      },
+      ...claimStatuses.map((status) => ({
+        url: absolute(localizedPath(`/status/${status}`, locale)),
+        changeFrequency: "daily" as const,
+        priority: 0.6,
+        alternates: { languages: statusLanguages(status) },
+      })),
       ...categories.map((category) => {
         const languages = withDefault(Object.fromEntries(
           localizedData.map((localized) => {

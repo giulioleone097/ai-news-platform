@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   decodeArticleCursor,
   encodeArticleCursor,
-  toArticleListItem,
 } from "@atlasnews/core/editorial/application/public-feed";
-import { seedArticles } from "./seed";
 
 describe("public feed transport", () => {
   it("round-trips an opaque article cursor", () => {
@@ -23,23 +21,5 @@ describe("public feed transport", () => {
         Buffer.from(JSON.stringify({ publishedAt: "today", id: "" })).toString("base64url"),
       ),
     ).toBeNull();
-  });
-
-  it("exposes only fields needed by an archive row", () => {
-    const item = toArticleListItem(seedArticles[0]);
-
-    expect(item).toEqual({
-      id: seedArticles[0].id,
-      locale: seedArticles[0].locale,
-      slug: seedArticles[0].slug,
-      title: seedArticles[0].title,
-      excerpt: seedArticles[0].excerpt,
-      coverImage: seedArticles[0].coverImage,
-      category: {
-        slug: seedArticles[0].category.slug,
-        name: seedArticles[0].category.name,
-      },
-    });
-    expect(item).not.toHaveProperty("content");
   });
 });

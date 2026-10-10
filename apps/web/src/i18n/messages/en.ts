@@ -1,3 +1,5 @@
+import { storyLabels } from "@atlasnews/core/editorial/application/story-labels";
+
 export const en = {
   common: {
     brandName: "AtlasNews",
@@ -201,22 +203,7 @@ export const en = {
     demoNotice: "Demo mode is active. Editorial data stays local to this instance.",
     backToSite: "Back to NEURA",
   },
-  story: {
-    claimStatus: {
-      confirmed: "Confirmed",
-      rollout: "Rolling out",
-      test: "In test",
-      rumour: "Rumour",
-      analysis: "Analysis",
-    },
-    entityKind: {
-      company: "Company",
-      model: "Model",
-      product: "Product",
-    },
-    keyPoints: "Key points",
-    sources: "Sources",
-  },
+  story: storyLabels.en,
   studio: {
     name: "NEURA Studio",
     navigationLabel: "Studio navigation",

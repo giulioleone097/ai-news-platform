@@ -15,7 +15,6 @@ import type {
   MediaUpload,
   NewsletterPage,
   NewsletterQuery,
-  NewsletterStatus,
 } from "./editorial-operations";
 
 export interface ArticleRepository {
@@ -36,7 +35,8 @@ export interface NewsletterRepository {
     locale: Locale,
   ): Promise<void>;
   listSubscriptions(query: NewsletterQuery): Promise<NewsletterPage>;
-  updateSubscriptionStatus(id: string, status: NewsletterStatus): Promise<void>;
+  /** Editors may only unsubscribe; reactivation goes through a fresh double opt-in. */
+  updateSubscriptionStatus(id: string, status: "unsubscribed"): Promise<void>;
 }
 
 export interface DistributionRepository {

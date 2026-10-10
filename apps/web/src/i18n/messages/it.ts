@@ -1,3 +1,4 @@
+import { storyLabels } from "@atlasnews/core/editorial/application/story-labels";
 import type { Messages } from "./en";
 
 export const it = {
@@ -203,22 +204,7 @@ export const it = {
     demoNotice: "La modalità demo è attiva. I dati editoriali restano locali a questa istanza.",
     backToSite: "Torna a NEURA",
   },
-  story: {
-    claimStatus: {
-      confirmed: "Confermato",
-      rollout: "In rilascio",
-      test: "In test",
-      rumour: "Rumor",
-      analysis: "Analisi",
-    },
-    entityKind: {
-      company: "Azienda",
-      model: "Modello",
-      product: "Prodotto",
-    },
-    keyPoints: "Punti chiave",
-    sources: "Fonti",
-  },
+  story: storyLabels.it,
   studio: {
     name: "NEURA Studio",
     navigationLabel: "Navigazione Studio",
