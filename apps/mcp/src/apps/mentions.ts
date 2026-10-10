@@ -4,7 +4,10 @@ import * as z from "zod/v4";
 import { locales } from "@atlasnews/core/locale";
 import type { ArticleRepository } from "@atlasnews/core/editorial/domain/article-repository";
 
-import { failure, readOnlyAnnotations, sourceUnavailableMessage } from "../public-presenters";
+import { readOnly, sourceUnavailableMessage } from "@atlasnews/contract";
+
+import { securitySchemes } from "../auth";
+import { failure } from "../results";
 import { articleResourceLink } from "./article-resources";
 
 type MentionReader = Pick<ArticleRepository, "listPublished">;
@@ -29,12 +32,12 @@ export function registerMentionSearch(server: McpServer, reader: MentionReader) 
   server.registerTool(
     mentionSearchTool,
     {
-      title: "Mention NEURA articles",
-      description: "Find published NEURA articles to mention in the ChatGPT composer.",
+      title: "Mention AtlasNews articles",
+      description: "Find published AtlasNews articles to mention in the ChatGPT composer.",
       inputSchema: { query: z.string().max(160).describe("Typeahead text, possibly empty.") },
       outputSchema: { items: z.array(resourceLinkSchema) },
-      annotations: readOnlyAnnotations,
-      _meta: { ui: { visibility: ["app"] } },
+      annotations: readOnly,
+      _meta: { securitySchemes: securitySchemes([]), ui: { visibility: ["app"] } },
     },
     async ({ query }) => {
       const text = query.trim();

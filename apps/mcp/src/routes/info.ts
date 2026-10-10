@@ -1,23 +1,30 @@
+import { mcpCapabilities, scopes } from "@atlasnews/contract";
 import { defaultLocale, locales } from "@atlasnews/core/locale";
-import {
-  adminMcpTools,
-  publicMcpProtocolVersion,
-  publicMcpServerVersion,
-  publicMcpTools,
-} from "../metadata";
-import { newsroomUiUri } from "../apps/ui-resource";
 import { mcpEventNames } from "@atlasnews/core/mcp-events/domain/events";
 
+import { appToolNames } from "../apps";
+import { newsroomEntrypointTools } from "../apps/entrypoints";
+import { articleResourceTemplate } from "../apps/article-resources";
+import { newsroomUiUri } from "../apps/ui-resource";
+import { mcpProtocolVersion, mcpServerName, mcpServerVersion } from "../metadata";
+
 export function GET() {
+  const tools = (anonymousOnly: boolean) => [
+    ...mcpCapabilities
+      .filter((capability) => (capability.scopes.length === 0) === anonymousOnly)
+      .map((capability) => capability.name),
+    ...(anonymousOnly ? appToolNames : []),
+  ];
+
   return Response.json(
     {
-      name: "neura-ai-news",
-      version: publicMcpServerVersion,
+      name: mcpServerName,
+      version: mcpServerVersion,
       description:
-        "Read-only access to NEURA's published AI news and approved comments in English and Italian.",
+        "AtlasNews published AI news and approved comments in English and Italian, plus newsroom tools for signed-in editors.",
       protocol: {
         name: "Model Context Protocol",
-        version: publicMcpProtocolVersion,
+        version: mcpProtocolVersion,
         transport: "streamable-http",
         endpoint: "/mcp",
         stateless: true,
@@ -25,22 +32,24 @@ export function GET() {
         requestHeaders: {
           Accept: "application/json, text/event-stream",
           "Content-Type": "application/json",
-          "MCP-Protocol-Version": publicMcpProtocolVersion,
+          "MCP-Protocol-Version": mcpProtocolVersion,
           "MCP-Method": "<json-rpc method>",
           "MCP-Name": "<tool name for tools/call>",
         },
       },
       access: {
-        authentication: "none",
-        mode: "read-only",
+        anonymous: "read-only tools",
+        authenticated: "Authorization: Bearer <token>; every tool declares the scopes it needs",
+        scopes,
+        resourceMetadata: "/.well-known/oauth-protected-resource",
       },
       internationalization: {
         defaultLocale,
         locales,
       },
       capabilities: {
-        tools: publicMcpTools,
-        resources: ["neura://articles/{locale}/{slug}", newsroomUiUri],
+        tools: { anonymous: tools(true), scoped: tools(false) },
+        resources: [articleResourceTemplate, newsroomUiUri],
         prompts: false,
         events: {
           names: mcpEventNames,
@@ -50,13 +59,8 @@ export function GET() {
       },
       apps: {
         uiResource: newsroomUiUri,
-        entrypoints: { global: "open_newsroom", thread: "open_news_panel" },
+        entrypoints: { global: newsroomEntrypointTools[0], thread: newsroomEntrypointTools[1] },
         openaiExtensions: ["openai/ui", "openai/mentions", "openai/elicitation", "openai/message", "openai/modelContext", "openai/deepLink"],
-      },
-      administration: {
-        endpoint: "/mcp/admin",
-        authentication: "bearer-api-key",
-        tools: adminMcpTools,
       },
       discovery: {
         server: "server/discover",

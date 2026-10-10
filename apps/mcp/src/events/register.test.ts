@@ -22,7 +22,7 @@ let service: McpEventsService;
 function createHandler(events: McpEventsService | null) {
   return createMcpHandler(
     () => {
-      const server = new McpServer({ name: "neura-test", version: "2.0.0" });
+      const server = new McpServer({ name: "atlasnews-test", version: "2.0.0" });
       registerMcpEvents(server, { service: events });
       return server;
     },

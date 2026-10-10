@@ -96,7 +96,7 @@ describe("MCP Apps and OpenAI extensions", () => {
     const [first] = result.structuredContent.items;
 
     expect(first.type).toBe("resource_link");
-    expect(first.uri).toMatch(/^neura:\/\/articles\/(en|it)\/[a-z0-9-]+$/);
+    expect(first.uri).toMatch(/^atlasnews:\/\/articles\/(en|it)\/[a-z0-9-]+$/);
 
     const { payload } = await sendRpc({
       jsonrpc: "2.0",
@@ -110,10 +110,10 @@ describe("MCP Apps and OpenAI extensions", () => {
       jsonrpc: "2.0",
       id: 3,
       method: "resources/read",
-      params: modernParams({ uri: "neura://articles/en/does-not-exist" }),
+      params: modernParams({ uri: "atlasnews://articles/en/does-not-exist" }),
     });
     // MCP 2026-07-28: a resources/read miss is -32602 with data { uri }.
-    expect(missing.payload.error).toMatchObject({ code: -32602, data: { uri: "neura://articles/en/does-not-exist" } });
+    expect(missing.payload.error).toMatchObject({ code: -32602, data: { uri: "atlasnews://articles/en/does-not-exist" } });
   });
 
   it("falls back to every topic when the host cannot render OpenAI forms", async () => {

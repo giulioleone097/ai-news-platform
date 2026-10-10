@@ -8,14 +8,14 @@ import { isLocale, locales } from "@atlasnews/core/locale";
 import { slugPattern, type Article } from "@atlasnews/core/editorial/domain/article";
 import type { ArticleRepository } from "@atlasnews/core/editorial/domain/article-repository";
 
-import { articlePath } from "../public-presenters";
+import { articleAsMarkdown, articlePath } from "@atlasnews/contract";
 
 type ArticleResourceReader = Pick<ArticleRepository, "listPublished" | "findBySlug">;
 
-export const articleResourceTemplate = "neura://articles/{locale}/{slug}";
+export const articleResourceTemplate = "atlasnews://articles/{locale}/{slug}";
 
 export function articleResourceUri(article: Pick<Article, "locale" | "slug">) {
-  return `neura://articles/${article.locale}/${article.slug}`;
+  return `atlasnews://articles/${article.locale}/${article.slug}`;
 }
 
 export function articleResource(article: Article) {
@@ -32,20 +32,6 @@ export function articleResourceLink(article: Article) {
   return { type: "resource_link" as const, ...articleResource(article) };
 }
 
-export function articleAsMarkdown(article: Article, siteUrl: URL) {
-  const url = new URL(articlePath(article), siteUrl).href;
-  return [
-    `# ${article.title}`,
-    "",
-    `${article.category.name} · ${article.publishedAt ?? article.updatedAt} · ${article.readingMinutes} min · ${article.author.name}`,
-    `Source: ${url}`,
-    "",
-    `> ${article.excerpt}`,
-    "",
-    article.content,
-  ].join("\n");
-}
-
 /**
  * Exposes published articles as MCP resources, so composer mentions and other
  * resource links resolve to the article text instead of a bare URL.
@@ -56,7 +42,7 @@ export function registerArticleResources(
   siteUrl: URL,
 ) {
   server.registerResource(
-    "neura-article",
+    "atlasnews-article",
     new ResourceTemplate(articleResourceTemplate, {
       list: async () => {
         const pages = await Promise.all(
@@ -66,8 +52,8 @@ export function registerArticleResources(
       },
     }),
     {
-      title: "NEURA article",
-      description: "A published NEURA AI news article as Markdown, by locale and slug.",
+      title: "AtlasNews article",
+      description: "A published AtlasNews AI news article as Markdown, by locale and slug.",
       mimeType: "text/markdown",
     },
     async (uri, variables) => {
@@ -83,7 +69,7 @@ export function registerArticleResources(
           {
             uri: articleResourceUri(article),
             mimeType: "text/markdown",
-            text: articleAsMarkdown(article, siteUrl),
+            text: articleAsMarkdown(article, new URL(articlePath(article), siteUrl).href),
           },
         ],
       };

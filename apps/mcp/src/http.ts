@@ -1,10 +1,17 @@
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { getAllowedMcpOrigins } from "@atlasnews/adapters/config/env";
 
+import type { CapabilityPorts } from "@atlasnews/contract";
+import type { McpEventsService } from "@atlasnews/core/mcp-events/application/mcp-events-service";
+
+import type { McpAppsOptions } from "./apps";
 import {
-  createPublicMcpServer,
-  type PublicEditorialReader,
-} from "./public-server";
+  bearerChallenge,
+  resolvePrincipal,
+  Unauthorized,
+  type AccessTokenVerifier,
+} from "./auth";
+import { createAtlasNewsServer } from "./server";
 
 const baseHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -23,14 +30,15 @@ function getCorsOrigin(request?: Request) {
   return origin && allowedOrigins.includes(origin) ? origin : null;
 }
 
-function withPublicHeaders(response: Response, request?: Request) {
+/** Anonymous answers carry the CORS headers; answers for a signed-in editor never do. */
+function withPublicHeaders(response: Response, request?: Request, cors = true) {
   const headers = new Headers(response.headers);
   for (const [name, value] of Object.entries(baseHeaders)) {
     headers.set(name, value);
   }
-  const corsOrigin = getCorsOrigin(request);
+  const corsOrigin = cors ? getCorsOrigin(request) : null;
   if (corsOrigin) headers.set("Access-Control-Allow-Origin", corsOrigin);
-  if (corsOrigin !== "*") headers.append("Vary", "Origin");
+  if (cors && corsOrigin !== "*") headers.append("Vary", "Origin");
 
   return new Response(response.body, {
     status: response.status,
@@ -39,7 +47,7 @@ function withPublicHeaders(response: Response, request?: Request) {
   });
 }
 
-function jsonRpcError(status: number, code: number, message: string, request?: Request) {
+function jsonRpcError(status: number, code: number, message: string, request?: Request, cors = true) {
   return withPublicHeaders(
     Response.json(
       {
@@ -50,6 +58,7 @@ function jsonRpcError(status: number, code: number, message: string, request?: R
       { status },
     ),
     request,
+    cors,
   );
 }
 
@@ -98,7 +107,7 @@ export async function readBoundedMcpRequest(request: Request): Promise<Request |
   });
 }
 
-export function publicMcpOptionsResponse(request?: Request) {
+export function mcpOptionsResponse(request?: Request) {
   const allowedOrigins = getAllowedMcpOrigins();
   const origin = request?.headers.get("origin");
   if (allowedOrigins.length && origin && !allowedOrigins.includes(origin)) {
@@ -107,38 +116,80 @@ export function publicMcpOptionsResponse(request?: Request) {
   return withPublicHeaders(new Response(null, { status: 204 }), request);
 }
 
-export function publicMcpMethodNotAllowedResponse(request?: Request) {
+export function mcpMethodNotAllowedResponse(request?: Request) {
   const response = jsonRpcError(405, -32000, "Method not allowed.", request);
   response.headers.set("Allow", "POST, OPTIONS");
   return response;
 }
 
-export async function handlePublicMcpRequest(
-  request: Request,
-  reader: PublicEditorialReader,
-) {
+export interface McpEndpointDependencies {
+  verifier: AccessTokenVerifier;
+  createPorts(): CapabilityPorts;
+  apps?: McpAppsOptions;
+  events?: McpEventsService | null;
+}
+
+function unauthorizedResponse(request: Request) {
+  const response = jsonRpcError(401, -32001, "Valid Bearer authentication required.", request, false);
+  response.headers.set(
+    "WWW-Authenticate",
+    bearerChallenge(request, { error: "invalid_token", description: "The access token is missing, expired or invalid" }),
+  );
+  return response;
+}
+
+/**
+ * The single MCP endpoint. The caller is resolved once, from the Authorization header:
+ * none means anonymous (read tools only), a valid token means an editor with its scopes,
+ * and a token that does not verify is a 401 with a Bearer challenge.
+ */
+export async function handleMcpRequest(request: Request, deps: McpEndpointDependencies) {
+  let principal;
+  try {
+    principal = await resolvePrincipal(request, deps.verifier);
+  } catch (error) {
+    return error instanceof Unauthorized
+      ? unauthorizedResponse(request)
+      : jsonRpcError(500, -32603, "Internal server error.", request, false);
+  }
+  const cors = principal.kind === "anonymous";
+
   let boundedRequest: Request | null;
   try {
     boundedRequest = await readBoundedMcpRequest(request);
   } catch {
-    return jsonRpcError(400, -32700, "Invalid request body.", request);
+    return jsonRpcError(400, -32700, "Invalid request body.", request, cors);
+  }
+  if (!boundedRequest) return jsonRpcError(413, -32001, "Request body too large.", request, cors);
+
+  let ports: CapabilityPorts;
+  try {
+    ports = deps.createPorts();
+  } catch {
+    return jsonRpcError(503, -32003, "The editorial source is not configured.", request, cors);
   }
 
-  if (!boundedRequest) {
-    return jsonRpcError(413, -32001, "Request body too large.", request);
-  }
-
-  const handler = createMcpHandler(() => createPublicMcpServer(reader), {
-    legacy: "stateless",
-    responseMode: "auto",
-  });
+  const handler = createMcpHandler(
+    () => createAtlasNewsServer({
+      ports,
+      principal,
+      apps: deps.apps,
+      events: deps.events,
+      challenge: (missing) => bearerChallenge(request, {
+        error: "insufficient_scope",
+        description: principal.kind === "anonymous" ? "You need to sign in to continue" : "This sign-in lacks a permission",
+        scope: missing,
+      }),
+    }),
+    { legacy: "stateless", responseMode: "auto" },
+  );
 
   try {
     const response = await handler.fetch(boundedRequest);
     await handler.close().catch(() => undefined);
-    return withPublicHeaders(response, request);
+    return withPublicHeaders(response, request, cors);
   } catch {
     await handler.close().catch(() => undefined);
-    return jsonRpcError(500, -32603, "Internal server error.", request);
+    return jsonRpcError(500, -32603, "Internal server error.", request, cors);
   }
 }

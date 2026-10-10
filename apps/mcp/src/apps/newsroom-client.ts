@@ -1,5 +1,5 @@
 /*
- * Browser runtime of the NEURA newsroom MCP App. It is serialized with
+ * Browser runtime of the AtlasNews newsroom MCP App. It is serialized with
  * Function#toString into the UI resource, so it must stay self-contained:
  * everything it needs arrives through `config` and `helpers`.
  *
@@ -25,8 +25,8 @@ export function newsroomClient(config: NewsroomClientConfig, helpers: NewsroomCl
   type Attachment = { slug: string; locale: string; title: string; url: string; thumbnail?: string };
 
   const copy: Record<string, Record<string, string>> = {
-    en: { all: "All", search: "Search AI news", more: "Load more", back: "Back", attach: "Add to chat", attached: "In chat", ask: "Ask about this", newChat: "Discuss in a new chat", site: "Open on NEURA", min: "min read", briefing: "Your AI briefing", empty: "No stories yet.", error: "NEURA is temporarily unavailable.", retry: "Retry", loading: "Loading…" },
-    it: { all: "Tutte", search: "Cerca notizie AI", more: "Carica altre", back: "Indietro", attach: "Aggiungi alla chat", attached: "Nella chat", ask: "Chiedi a riguardo", newChat: "Discuti in una nuova chat", site: "Apri su NEURA", min: "min di lettura", briefing: "Il tuo briefing AI", empty: "Ancora nessuna notizia.", error: "NEURA non è momentaneamente disponibile.", retry: "Riprova", loading: "Caricamento…" },
+    en: { all: "All", search: "Search AI news", more: "Load more", back: "Back", attach: "Add to chat", attached: "In chat", ask: "Ask about this", newChat: "Discuss in a new chat", site: "Open on AtlasNews", min: "min read", briefing: "Your AI briefing", empty: "No stories yet.", error: "AtlasNews is temporarily unavailable.", retry: "Retry", loading: "Loading…" },
+    it: { all: "Tutte", search: "Cerca notizie AI", more: "Carica altre", back: "Indietro", attach: "Aggiungi alla chat", attached: "Nella chat", ask: "Chiedi a riguardo", newChat: "Discuti in una nuova chat", site: "Apri su AtlasNews", min: "min di lettura", briefing: "Il tuo briefing AI", empty: "Ancora nessuna notizia.", error: "AtlasNews non è momentaneamente disponibile.", retry: "Riprova", loading: "Caricamento…" },
   };
   const state = {
     locale: config.locales[0], localeChosen: false, route: { view: "feed" } as NewsroomRoute,
@@ -194,17 +194,17 @@ export function newsroomClient(config: NewsroomClientConfig, helpers: NewsroomCl
     clearTimeout(contextTimer);
     contextTimer = setTimeout(() => {
       const view = state.route.view === "article" && state.article
-        ? `The user is reading the NEURA article "${state.article.title}" (${absolute(state.article.path)}).`
-        : `The user is browsing NEURA ${state.locale.toUpperCase()} AI news${state.route.view === "feed" && state.route.category ? ` in category ${state.route.category}` : ""}.`;
+        ? `The user is reading the AtlasNews article "${state.article.title}" (${absolute(state.article.path)}).`
+        : `The user is browsing AtlasNews ${state.locale.toUpperCase()} AI news${state.route.view === "feed" && state.route.category ? ` in category ${state.route.category}` : ""}.`;
       const content: Json[] = state.attached.map((item) => ({
         type: "text",
-        text: `NEURA article "${item.title}" (${item.url}). Fetch it with get_article {"locale":"${item.locale}","slug":"${item.slug}"}.`,
+        text: `AtlasNews article "${item.title}" (${item.url}). Fetch it with get_article {"locale":"${item.locale}","slug":"${item.slug}"}.`,
         _meta: { "openai/title": item.title, ...(item.thumbnail ? { "openai/thumbnail": { src: item.thumbnail } } : {}) },
       }));
       content.push({ type: "text", text: view, annotations: { audience: ["assistant"] } });
       void request("ui/update-model-context", {
         content,
-        structuredContent: { app: "neura-newsroom", route: state.route, attached: state.attached },
+        structuredContent: { app: "atlasnews-newsroom", route: state.route, attached: state.attached },
       }).catch(() => undefined);
     }, 250);
   }
@@ -236,8 +236,8 @@ export function newsroomClient(config: NewsroomClientConfig, helpers: NewsroomCl
     }
     if ((action === "ask" || action === "new-chat") && attachment) {
       const text = state.locale === "it"
-        ? `Spiegami perché è importante l'articolo NEURA "${attachment.title}" (${attachment.url}) e cosa tenere d'occhio.`
-        : `Explain why the NEURA article "${attachment.title}" (${attachment.url}) matters and what to watch next.`;
+        ? `Spiegami perché è importante l'articolo AtlasNews "${attachment.title}" (${attachment.url}) e cosa tenere d'occhio.`
+        : `Explain why the AtlasNews article "${attachment.title}" (${attachment.url}) matters and what to watch next.`;
       const meta = action === "new-chat" ? { _meta: { "openai/message": { target: "new", send: false } } } : {};
       return void request("ui/message", { role: "user", content: [{ type: "text", text }], ...meta }).catch(() => undefined);
     }
@@ -268,7 +268,7 @@ export function newsroomClient(config: NewsroomClientConfig, helpers: NewsroomCl
     <p class="meta">${escape(item.readingMinutes)} ${t("min")}</p></article>`;
 
   function render() {
-    const header = `<header class="bar"><strong class="brand">NEURA</strong>
+    const header = `<header class="bar"><strong class="brand">AtlasNews</strong>
       <form class="search" role="search"><input name="q" type="search" minlength="2" maxlength="160" placeholder="${t("search")}" aria-label="${t("search")}" value="${state.route.view === "search" ? escape(state.route.query) : ""}"></form>
       <nav class="locales">${config.locales.map((locale) => `<button data-action="locale" data-locale="${locale}" aria-pressed="${locale === state.locale}">${locale.toUpperCase()}</button>`).join("")}</nav></header>`;
     let body = "";
@@ -304,7 +304,7 @@ export function newsroomClient(config: NewsroomClientConfig, helpers: NewsroomCl
   }
 
   // --- Persistence for instant global-entrypoint reopen ---
-  const cacheKey = () => `neura:newsroom:v1:${state.locale}`;
+  const cacheKey = () => `atlasnews:newsroom:v1:${state.locale}`;
   function saveCache() {
     if (state.route.view !== "feed" || state.route.category) return;
     try { localStorage.setItem(cacheKey(), JSON.stringify({ items: state.items.slice(0, 12), categories: state.categories })); } catch { /* storage unavailable */ }
@@ -325,7 +325,7 @@ export function newsroomClient(config: NewsroomClientConfig, helpers: NewsroomCl
     try {
       const result = await request("ui/initialize", {
         protocolVersion: "2026-01-26",
-        appInfo: { name: "neura-newsroom", version: config.version },
+        appInfo: { name: "atlasnews-newsroom", version: config.version },
         appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] },
       });
       state.hostCapabilities = result.hostCapabilities ?? {};

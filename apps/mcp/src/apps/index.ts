@@ -3,12 +3,15 @@ import type { Icon, McpServer } from "@modelcontextprotocol/server";
 import type { ArticleRepository } from "@atlasnews/core/editorial/domain/article-repository";
 
 import { registerArticleResources } from "./article-resources";
-import { registerBriefingTool } from "./briefing";
-import { registerNewsroomEntrypoints } from "./entrypoints";
-import { registerMentionSearch } from "./mentions";
+import { briefingTool, registerBriefingTool } from "./briefing";
+import { newsroomEntrypointTools, registerNewsroomEntrypoints } from "./entrypoints";
+import { mentionSearchTool, registerMentionSearch } from "./mentions";
 import { registerNewsroomResource, type NewsroomAppOptions } from "./ui-resource";
 
 export type McpAppsOptions = NewsroomAppOptions;
+
+/** The tools of the MCP Apps surface; the rest of the tool list comes from the capability catalogue. */
+export const appToolNames = [...newsroomEntrypointTools, briefingTool, mentionSearchTool] as const;
 
 type AppsReader = Pick<ArticleRepository, "listPublished" | "findBySlug" | "listCategories">;
 

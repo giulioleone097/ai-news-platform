@@ -94,7 +94,7 @@ export function parseDeepLink(url: string, locales: readonly string[]): Newsroom
   const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
   let parsed: URL;
   try {
-    parsed = new URL(url, "https://neura.invalid");
+    parsed = new URL(url, "https://atlasnews.invalid");
   } catch {
     return { view: "feed" };
   }

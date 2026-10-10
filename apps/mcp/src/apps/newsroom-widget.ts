@@ -37,5 +37,5 @@ export function renderNewsroomWidget(options: { siteOrigin: string; version: str
   if (/<\/script/i.test(script)) throw new Error("Newsroom widget script must not contain a closing script tag.");
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NEURA</title><style>${styles}</style></head><body><div id="app" aria-live="polite"></div><script>${script}</script></body></html>`;
+<title>AtlasNews</title><style>${styles}</style></head><body><div id="app" aria-live="polite"></div><script>${script}</script></body></html>`;
 }

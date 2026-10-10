@@ -4,7 +4,7 @@ import type { SocialOutboxProcessor } from "@atlasnews/core/social-publishing/ap
 import { SocialPublishingService } from "@atlasnews/core/social-publishing/application/social-publishing-service";
 import type { SocialOutboxRepository, SocialProviderRegistry } from "@atlasnews/core/social-publishing/domain/ports";
 import type { SocialOutboxJob } from "@atlasnews/core/social-publishing/domain/social-publication";
-import { createSocialPublishingMcpHandlers } from "./handlers";
+import { createSocialPublishingMcpHandlers } from "./social-outbox";
 
 const job: SocialOutboxJob = {
   id: "fc7c6331-56a3-42dc-8932-6b4394bc4c9f",

@@ -10,11 +10,12 @@ import {
   categoryOutputSchema,
   categorySlugSchema,
   localeSchema,
-  readOnlyAnnotations,
-  safely,
+  readOnly,
   toArticleSummary,
   toCategory,
-} from "../public-presenters";
+} from "@atlasnews/contract";
+
+import { safely } from "../results";
 import { newsroomToolMeta } from "./ui-resource";
 
 type EntrypointReader = Pick<ArticleRepository, "listPublished" | "listCategories">;
@@ -56,12 +57,12 @@ export function registerNewsroomEntrypoints(
   server.registerTool(
     "open_newsroom",
     {
-      title: "NEURA",
+      title: "AtlasNews",
       description:
-        "Open the NEURA AI newsroom fullscreen from the ChatGPT sidebar: latest stories, categories, search and reading.",
+        "Open the AtlasNews AI newsroom fullscreen from the ChatGPT sidebar: latest stories, categories, search and reading.",
       inputSchema,
       outputSchema,
-      annotations: readOnlyAnnotations,
+      annotations: readOnly,
       icons,
       _meta: newsroomToolMeta({ visibility: ["app"], entrypoint: { type: "global" } }),
     },
@@ -73,10 +74,10 @@ export function registerNewsroomEntrypoints(
     {
       title: "AI news beside chat",
       description:
-        "Open a NEURA reading panel next to the current conversation to browse stories and add them to the chat.",
+        "Open a AtlasNews reading panel next to the current conversation to browse stories and add them to the chat.",
       inputSchema,
       outputSchema,
-      annotations: readOnlyAnnotations,
+      annotations: readOnly,
       icons,
       _meta: newsroomToolMeta({ visibility: ["app"], entrypoint: { type: "thread" } }),
     },

@@ -1,14 +1,18 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 
+import { newsroomAppUri } from "@atlasnews/contract";
+
+import { securitySchemes } from "../auth";
+
 import { renderNewsroomWidget } from "./newsroom-widget";
 
-/** Bump the version segment whenever the widget HTML changes so hosts drop cached copies. */
-export const newsroomUiUri = "ui://neura/newsroom-v1.html";
+/** The URI lives in the contract; bump its version segment whenever the widget HTML changes so hosts drop cached copies. */
+export const newsroomUiUri = newsroomAppUri;
 export const mcpAppMimeType = "text/html;profile=mcp-app";
 
 type Visibility = "model" | "app";
 
-/** Tool `_meta` that renders a tool's result in the NEURA newsroom MCP App. */
+/** Tool `_meta` that renders a tool's result in the AtlasNews newsroom MCP App. */
 export function newsroomToolMeta(
   options: {
     visibility?: Visibility[];
@@ -16,6 +20,7 @@ export function newsroomToolMeta(
   } = {},
 ) {
   return {
+    securitySchemes: securitySchemes([]),
     ui: {
       resourceUri: newsroomUiUri,
       ...(options.visibility ? { visibility: options.visibility } : {}),
@@ -39,11 +44,11 @@ export function registerNewsroomResource(server: McpServer, options: NewsroomApp
   const resourceDomains = [...new Set([options.siteUrl.origin, ...options.assetOrigins])];
 
   server.registerResource(
-    "neura-newsroom",
+    "atlasnews-newsroom",
     newsroomUiUri,
     {
-      title: "NEURA newsroom",
-      description: "Interactive NEURA AI news reader for ChatGPT, Claude and other MCP Apps hosts.",
+      title: "AtlasNews newsroom",
+      description: "Interactive AtlasNews AI news reader for ChatGPT, Claude and other MCP Apps hosts.",
       mimeType: mcpAppMimeType,
     },
     async () => ({

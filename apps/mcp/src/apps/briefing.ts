@@ -13,19 +13,19 @@ import type { ArticleRepository } from "@atlasnews/core/editorial/domain/article
 import {
   articleSummaryOutputSchema,
   categorySlugSchema,
-  failure,
   localeSchema,
-  readOnlyAnnotations,
-  safely,
+  readOnly,
   sourceUnavailableMessage,
-  success,
   toArticleSummary,
-} from "../public-presenters";
+} from "@atlasnews/contract";
+
+import { failure, safely, success } from "../results";
 import { newsroomToolMeta } from "./ui-resource";
 
 type BriefingReader = Pick<ArticleRepository, "listPublished" | "listCategories">;
 
 export const briefingFormKey = "briefing_preferences";
+export const briefingTool = "build_briefing";
 const maxTopics = 8;
 const defaultStoriesPerTopic = 3;
 
@@ -115,8 +115,8 @@ async function buildForm(reader: BriefingReader, locale: Locale, siteUrl: URL): 
         params: {
           mode: "form",
           message: locale === "it"
-            ? "Scegli gli argomenti del tuo briefing NEURA."
-            : "Choose the topics for your NEURA briefing.",
+            ? "Scegli gli argomenti del tuo briefing AtlasNews."
+            : "Choose the topics for your AtlasNews briefing.",
           // OpenAI-registered servers carry the real schema in _meta; the core form stays empty.
           requestedSchema: { type: "object", properties: {} },
           _meta: { "openai/elicitation": { requestedSchema } },
@@ -148,11 +148,11 @@ async function buildBriefing(
 
 export function registerBriefingTool(server: McpServer, reader: BriefingReader, siteUrl: URL) {
   server.registerTool(
-    "build_briefing",
+    briefingTool,
     {
       title: "Build an AI news briefing",
       description:
-        "Build a NEURA briefing of the latest stories grouped by topic. Omit topics to let the user pick topics, language and depth in a native ChatGPT form when available; otherwise every topic is included.",
+        "Build a AtlasNews briefing of the latest stories grouped by topic. Omit topics to let the user pick topics, language and depth in a native ChatGPT form when available; otherwise every topic is included.",
       inputSchema: {
         locale: localeSchema,
         topics: z.array(categorySlugSchema).min(1).max(maxTopics).optional()
@@ -166,7 +166,7 @@ export function registerBriefingTool(server: McpServer, reader: BriefingReader, 
           items: z.array(articleSummaryOutputSchema),
         })),
       },
-      annotations: readOnlyAnnotations,
+      annotations: readOnly,
       _meta: newsroomToolMeta(),
     },
     async ({ locale, topics, storiesPerTopic }, context): Promise<CallToolResult | InputRequiredResult> => {
