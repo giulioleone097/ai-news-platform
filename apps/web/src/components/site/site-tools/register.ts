@@ -1,4 +1,4 @@
-import { pageCapabilities, type PageToolName } from "@atlasnews/contract/page";
+import { pageCapabilities, type PageCapability, type PageToolName } from "@atlasnews/contract/page";
 import { createSiteTools, type SiteToolsEnvironment, type ToolResult } from "./tools";
 
 /** The part of `document.modelContext` that the site uses (WebMCP `registerTool`). */
@@ -18,25 +18,32 @@ export interface ModelContextLike {
 
 const active = new WeakMap<object, () => void>();
 
+type ToolRunner = (input: unknown, signal?: AbortSignal) => Promise<ToolResult>;
+
 /**
- * Registers every page capability of the catalogue with the browser's agent, once per
- * `context`, and returns the function that unregisters them. The text, schema and hints
- * come from the catalogue; only the handlers belong to the site.
+ * Registers the catalogue's capabilities that `runnerFor` can run with the browser's agent, once per
+ * `context` and `registry`, and returns the function that unregisters them. The text, schema and
+ * hints come from the catalogue; only the handlers belong to the site. The reader site and the
+ * Studio each pass their own `registry`.
  */
-export function registerSiteTools(context: ModelContextLike, env: SiteToolsEnvironment): () => void {
-  const registered = active.get(context);
+export function registerCapabilities(
+  context: ModelContextLike,
+  capabilities: readonly PageCapability[],
+  runnerFor: (name: string) => ToolRunner | undefined,
+  registry: WeakMap<object, () => void>,
+): () => void {
+  const registered = registry.get(context);
   if (registered) return registered;
 
   const controller = new AbortController();
-  const tools = createSiteTools(env);
   const dispose = () => {
     controller.abort();
-    active.delete(context);
+    registry.delete(context);
   };
-  active.set(context, dispose);
+  registry.set(context, dispose);
 
-  for (const capability of pageCapabilities) {
-    const run = tools[capability.name as PageToolName];
+  for (const capability of capabilities) {
+    const run = runnerFor(capability.name);
     if (!run) continue;
     // `async` keeps a throwing `registerTool` on the same path as a rejected one.
     (async () =>
@@ -56,4 +63,10 @@ export function registerSiteTools(context: ModelContextLike, env: SiteToolsEnvir
     });
   }
   return dispose;
+}
+
+/** Registers every reader capability of the catalogue with the browser's agent. */
+export function registerSiteTools(context: ModelContextLike, env: SiteToolsEnvironment): () => void {
+  const tools = createSiteTools(env);
+  return registerCapabilities(context, pageCapabilities, (name) => tools[name as PageToolName], active);
 }

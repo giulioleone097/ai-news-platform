@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import "./studio.css";
+import { StudioSiteTools } from "@/components/studio/site-tools/studio-site-tools";
 import { StudioShell } from "@/components/studio/studio-shell";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
@@ -22,6 +23,7 @@ export default async function StudioLayout({
   return (
     <StudioShell editor={editor} locale={locale} messages={messages}>
       {children}
+      <StudioSiteTools locale={locale} />
     </StudioShell>
   );
 }
