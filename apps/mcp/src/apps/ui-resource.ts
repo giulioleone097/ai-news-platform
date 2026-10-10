@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 
+import { getMcpUiDomain } from "@atlasnews/adapters/config/env";
 import { newsroomAppUri } from "@atlasnews/contract";
 
 import { securitySchemes } from "../auth";
@@ -42,6 +43,7 @@ export interface NewsroomAppOptions {
 
 export function registerNewsroomResource(server: McpServer, options: NewsroomAppOptions) {
   const resourceDomains = [...new Set([options.siteUrl.origin, ...options.assetOrigins])];
+  const uiDomain = getMcpUiDomain();
 
   server.registerResource(
     "atlasnews-newsroom",
@@ -64,6 +66,8 @@ export function registerNewsroomResource(server: McpServer, options: NewsroomApp
             ui: {
               csp: { resourceDomains, connectDomains: [] },
               prefersBorder: true,
+              // Only when the operator configures it; other hosts derive their own domain.
+              ...(uiDomain ? { domain: uiDomain } : {}),
             },
             // Lets ChatGPT pick a display mode before the app initializes.
             "openai/ui": {

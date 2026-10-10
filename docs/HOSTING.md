@@ -37,6 +37,8 @@ Names come from [.env.example](../.env.example), [DEPLOYMENT.md](DEPLOYMENT.md) 
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only. Enables editor sign-in and the admin tools. |
 | `ATLASNEWS_MCP_ADMIN_API_KEY`, `ATLASNEWS_MCP_ADMIN_AUTHOR_ID` | Optional CI and CLI credential (32+ characters) and its author. |
 | `ATLASNEWS_MCP_OAUTH_ISSUER`, `ATLASNEWS_MCP_OAUTH_AUDIENCE` | Optional overrides for sign-in. |
+| `ATLASNEWS_OPENAI_APPS_CHALLENGE` | Optional OpenAI domain-verification token. `GET /.well-known/openai-apps-challenge` returns it as `text/plain` with `Cache-Control: no-store`; unset, blank or invalid answers `404`. One line of printable ASCII without spaces, 8 to 256 characters. |
+| `ATLASNEWS_MCP_UI_DOMAIN` | Optional dedicated origin of the hosted UI, sent as `_meta.ui.domain`. OpenAI requires it for a plugin that ships UI, unique per plugin. Must be `https://` with no path, query, fragment or trailing path, for example `https://ui.news.example.com`; invalid values are ignored and the metadata stays unchanged. |
 | `NEXT_PUBLIC_MCP_URL` | Public origin of this server, no path. Required for editor sign-in (without it only the API key works); set it to the exact origin hosts were given. |
 | `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` | Optional comma-separated OAuth client ids to accept. Empty accepts every client of the Supabase project (not recommended in production). |
 | `ATLASNEWS_CLIENT_IP_HEADER` | Optional name of the one header your proxy overwrites with the client's IP address. It keys the `events/subscribe` rate limit; empty means one shared window. See [DEPLOYMENT.md](DEPLOYMENT.md#client-address-and-rate-limits). |
