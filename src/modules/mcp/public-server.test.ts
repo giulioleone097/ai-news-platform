@@ -1,19 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  CLIENT_CAPABILITIES_META_KEY,
-  CLIENT_INFO_META_KEY,
-  PROTOCOL_VERSION_META_KEY,
-  SERVER_INFO_META_KEY,
-} from "@modelcontextprotocol/server";
+import { SERVER_INFO_META_KEY } from "@modelcontextprotocol/server";
 
 import { MemoryEditorialRepository } from "@/modules/editorial/infrastructure/memory-editorial-repository";
 import { GET as getMcpInfo } from "@/app/api/mcp/info/route";
 
 import { handlePublicMcpRequest, publicMcpOptionsResponse } from "./http";
+import { modernParams, sendRpc } from "./mcp-test-client";
 import { publicMcpProtocolVersion, publicMcpTools } from "./metadata";
 import { listPublishedArticleComments } from "./public-server";
 
-const protocolVersion = publicMcpProtocolVersion;
 const originalAllowedOrigins = process.env.MCP_ALLOWED_ORIGINS;
 
 afterEach(() => {
@@ -21,58 +16,7 @@ afterEach(() => {
   else process.env.MCP_ALLOWED_ORIGINS = originalAllowedOrigins;
 });
 
-function rpcRequest(body: unknown, version = protocolVersion) {
-  const method =
-    typeof body === "object" && body !== null && "method" in body
-      ? String(body.method)
-      : undefined;
-  const name =
-    typeof body === "object" &&
-    body !== null &&
-    "params" in body &&
-    typeof body.params === "object" &&
-    body.params !== null &&
-    "name" in body.params
-      ? String(body.params.name)
-      : undefined;
-  return new Request("http://localhost:3000/api/mcp", {
-    method: "POST",
-    headers: {
-      Accept: "application/json, text/event-stream",
-      "Content-Type": "application/json",
-      "MCP-Protocol-Version": version,
-      ...(version === protocolVersion && method ? { "MCP-Method": method } : {}),
-      ...(version === protocolVersion && name ? { "MCP-Name": name } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-}
-
-async function send(body: unknown, version = protocolVersion) {
-  const repository = new MemoryEditorialRepository();
-  const response = await handlePublicMcpRequest(rpcRequest(body, version), repository);
-  const text = await response.text();
-  const payload = response.headers.get("content-type")?.includes("text/event-stream")
-    ? JSON.parse(
-        text
-          .split("\n")
-          .find((line) => line.startsWith("data: "))!
-          .slice(6),
-      )
-    : JSON.parse(text);
-  return { response, payload };
-}
-
-function modernParams(params: Record<string, unknown> = {}) {
-  return {
-    ...params,
-    _meta: {
-      [PROTOCOL_VERSION_META_KEY]: protocolVersion,
-      [CLIENT_INFO_META_KEY]: { name: "neura-test", version: "2.0.0" },
-      [CLIENT_CAPABILITIES_META_KEY]: {},
-    },
-  };
-}
+const send = sendRpc;
 
 describe("public MCP server", () => {
   it("discovers the latest protocol and exposes only the public tools", async () => {
@@ -84,7 +28,7 @@ describe("public MCP server", () => {
     });
     expect(discovered.response.status).toBe(200);
     expect(discovered.response.headers.get("mcp-session-id")).toBeNull();
-    expect(discovered.payload.result.supportedVersions).toContain(protocolVersion);
+    expect(discovered.payload.result.supportedVersions).toContain(publicMcpProtocolVersion);
     expect(discovered.payload.result.capabilities.tools).toBeDefined();
     expect(discovered.payload.result._meta[SERVER_INFO_META_KEY].name).toBe(
       "neura-ai-news",

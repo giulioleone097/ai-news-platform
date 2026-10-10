@@ -11,6 +11,7 @@ An English-first, internationalized AI news platform built with Next.js, Supabas
 - Real LinkedIn, X and WhatsApp publishing through leased, idempotent Supabase outboxes with retry/read-back.
 - Supabase Postgres and Storage with full-text search, row-level security, editorial roles, translations, consent registries and immutable media.
 - Public, stateless, read-only MCP server at `/api/mcp`; approved comments are included without exposing private moderation data.
+- ChatGPT and Claude app surface on the public MCP: an MCP Apps newsroom UI, ChatGPT sidebar and side-panel entrypoints, deep links, composer @-mentions, a native-form briefing, article resources and MCP Events webhooks for newly published articles. See [OPENAI_EXTENSIONS.md](docs/OPENAI_EXTENSIONS.md).
 - API-key-protected admin MCP at `/api/mcp/admin` with editorial CRUD, comment moderation, campaigns, media and social outbox tools.
 - Portable agent plugin manifests for Codex/OpenAI, Claude Code, and GitHub Copilot CLI.
 - Hexagonal boundaries: domain and application code do not depend on Next.js or Supabase.
@@ -83,7 +84,7 @@ See [MCP.md](docs/MCP.md) for public and admin tools, modern discovery, paginati
 4. Bootstrap the first Auth editor through the Supabase Dashboard and a bounded SQL grant.
 5. Configure Resend, LinkedIn, X and WhatsApp credentials/webhooks, plus the Vercel cron secret.
 6. Import this repository into Vercel, set the documented environment variables, and deploy.
-7. Run the HTTP, localization, Supabase, comments, newsletter, social-outbox and MCP smoke checks.
+7. Run the HTTP, localization, Supabase, comments, newsletter, social-outbox, MCP and MCP Events smoke checks.
 
 Full instructions: [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
@@ -93,6 +94,7 @@ Full instructions: [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 - [Deployment and environment setup](docs/DEPLOYMENT.md)
 - [Internationalization and content model](docs/INTERNATIONALIZATION.md)
 - [MCP server and client usage](docs/MCP.md)
+- [OpenAI plugin extensions and MCP Events](docs/OPENAI_EXTENSIONS.md)
 - [Cross-client agent plugin](docs/AGENT_PLUGIN.md)
 - [Operations, performance budgets, troubleshooting, and rollback](docs/OPERATIONS.md)
 - [Independent optimization report](docs/OPTIMIZATION_REPORT.md)
@@ -119,6 +121,8 @@ src/modules/comments/                 threaded comments, moderation and notifica
 src/modules/newsletter-delivery/      campaigns, Resend and consent lifecycle
 src/modules/social-publishing/        provider adapters and social outbox
 src/modules/mcp/                       public and authenticated MCP adapters
+src/modules/mcp/apps/                  MCP Apps UI and OpenAI extensions (entrypoints, mentions, forms)
+src/modules/mcp-events/                MCP Events subscriptions, verification and webhook outbox
 plugins/neura-ai-news/                 portable agent plugin bundle
 supabase/migrations/                  versioned database schema and RLS
 supabase/seed.sql                     deterministic development content

@@ -180,7 +180,7 @@ Add environment variables separately for Preview and Production. Keep Preview de
 
 The MCP functions have a 10-second maximum duration. Their normal calls should remain far below that budget.
 
-The committed Vercel configuration invokes the social, newsletter and comment-notification workers every minute. These functions have a 60-second ceiling, authenticate `Authorization: Bearer $CRON_SECRET`, lease rows with `SKIP LOCKED`, and are safe when Vercel delivers a cron more than once. Confirm that the selected Vercel plan supports per-minute crons. Register these provider callbacks at their exact production origins:
+The committed Vercel configuration invokes the social, newsletter, comment-notification and MCP Events workers every minute. These functions have a 60-second ceiling, authenticate `Authorization: Bearer $CRON_SECRET`, lease rows with `SKIP LOCKED`, and are safe when Vercel delivers a cron more than once. Confirm that the selected Vercel plan supports per-minute crons. Register these provider callbacks at their exact production origins:
 
 ```text
 POST https://<canonical-host>/api/webhooks/newsletter

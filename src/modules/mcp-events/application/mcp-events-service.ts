@@ -1,0 +1,177 @@
+import { invalidParams } from "../domain/errors";
+import {
+  articlePublishedArgumentsSchema,
+  isMcpEventName,
+  listMcpEventDefinitions,
+  mcpEventPrincipal,
+  type ArticlePublishedArguments,
+  type McpEventDefinition,
+  type McpEventName,
+} from "../domain/events";
+import type { McpEventsRepository } from "../domain/ports";
+import type { EventSubscription } from "../domain/subscription";
+import { deriveSubscriptionId } from "./canonical-json";
+import type { CallbackVerifier } from "./callback-verifier";
+import { parseCallbackUrl } from "./callback-url";
+import { decodeSigningSecret } from "./signing-secret";
+import { grantSubscriptionTtl } from "./subscription-ttl";
+
+export const maximumSubscriptionsPerHost = 25;
+export const verificationCacheMs = 24 * 60 * 60 * 1000;
+export const secretRotationWindowMs = 60 * 60 * 1000;
+
+export interface SubscribeInput {
+  name: string;
+  arguments?: Record<string, unknown>;
+  delivery: { mode: string; url: string; secret: string };
+  ttlMs?: number | null;
+}
+
+export interface UnsubscribeInput {
+  name: string;
+  arguments?: Record<string, unknown>;
+  delivery: { mode: string; url: string };
+}
+
+export interface SubscribeResult {
+  id: string;
+  refreshBefore: string;
+  cursor: null;
+  truncated: false;
+}
+
+/** Use cases behind events/list, events/subscribe and events/unsubscribe. */
+export interface McpEventsService {
+  list(): Promise<{ events: McpEventDefinition[] }>;
+  subscribe(input: SubscribeInput): Promise<SubscribeResult>;
+  unsubscribe(input: UnsubscribeInput): Promise<Record<string, never>>;
+}
+
+function parseEventName(name: string): McpEventName {
+  if (!isMcpEventName(name)) throw invalidParams(`Unknown event "${name}".`);
+  return name;
+}
+
+function parseArguments(value: Record<string, unknown> | undefined): ArticlePublishedArguments {
+  const parsed = articlePublishedArgumentsSchema.safeParse(value ?? {});
+  if (!parsed.success) {
+    throw invalidParams(`Invalid event arguments: ${parsed.error.issues[0]?.message ?? "invalid"}.`);
+  }
+  return parsed.data;
+}
+
+function requireWebhook(mode: string) {
+  if (mode !== "webhook") throw invalidParams("Only webhook delivery is supported.");
+}
+
+export class DefaultMcpEventsService implements McpEventsService {
+  constructor(
+    private readonly repository: McpEventsRepository,
+    private readonly verifier: CallbackVerifier,
+    private readonly clock: () => Date = () => new Date(),
+  ) {}
+
+  async list() {
+    return { events: listMcpEventDefinitions() };
+  }
+
+  async subscribe(input: SubscribeInput): Promise<SubscribeResult> {
+    const name = parseEventName(input.name);
+    const args = parseArguments(input.arguments);
+    requireWebhook(input.delivery.mode);
+    const secret = input.delivery.secret;
+    if (!decodeSigningSecret(secret)) {
+      throw invalidParams("Signing secret must be whsec_ followed by base64 of 24 to 64 bytes.");
+    }
+    const url = parseCallbackUrl(input.delivery.url);
+    const now = this.clock();
+    const id = deriveSubscriptionId({
+      principal: mcpEventPrincipal,
+      url: url.href,
+      name,
+      arguments: args,
+    });
+
+    const existing = await this.repository.find(id);
+    const wasLive = existing !== null && existing.status === "active"
+      && Date.parse(existing.expiresAt) > now.getTime();
+    if (!wasLive) {
+      const live = await this.repository.countLiveForHost(url.hostname, id, now);
+      if (live >= maximumSubscriptionsPerHost) {
+        throw invalidParams(
+          `Too many active subscriptions for ${url.hostname}.`,
+          "subscription_limit",
+        );
+      }
+    }
+
+    const verifiedAt = await this.verifiedAt({ url: url.href, id, secret, now });
+    const expiresAt = new Date(now.getTime() + grantSubscriptionTtl(input.ttlMs)).toISOString();
+    await this.repository.save(this.merge({ existing, wasLive, id, name, args, url, secret, expiresAt, verifiedAt, now }));
+    return { id, refreshBefore: expiresAt, cursor: null, truncated: false };
+  }
+
+  async unsubscribe(input: UnsubscribeInput) {
+    const name = parseEventName(input.name);
+    const args = parseArguments(input.arguments);
+    requireWebhook(input.delivery.mode);
+    const url = parseCallbackUrl(input.delivery.url);
+    await this.repository.deactivate(
+      deriveSubscriptionId({ principal: mcpEventPrincipal, url: url.href, name, arguments: args }),
+      "unsubscribed",
+    );
+    return {};
+  }
+
+  private async verifiedAt(input: { url: string; id: string; secret: string; now: Date }) {
+    const cached = await this.repository.findVerifiedAt({
+      principal: mcpEventPrincipal,
+      url: input.url,
+      secret: input.secret,
+      since: new Date(input.now.getTime() - verificationCacheMs),
+    });
+    if (cached) return cached;
+    await this.verifier.verify({ url: input.url, subscriptionId: input.id, secret: input.secret });
+    return input.now.toISOString();
+  }
+
+  private merge(input: {
+    existing: EventSubscription | null;
+    wasLive: boolean;
+    id: string;
+    name: McpEventName;
+    args: ArticlePublishedArguments;
+    url: URL;
+    secret: string;
+    expiresAt: string;
+    verifiedAt: string;
+    now: Date;
+  }): EventSubscription {
+    const { existing, now } = input;
+    const rotated = existing !== null && existing.secret !== input.secret;
+    const stillRotating = existing?.previousSecretExpiresAt
+      && Date.parse(existing.previousSecretExpiresAt) > now.getTime();
+    return {
+      id: input.id,
+      principal: mcpEventPrincipal,
+      eventName: input.name,
+      arguments: input.args,
+      url: input.url.href,
+      host: input.url.hostname,
+      secret: input.secret,
+      previousSecret: rotated
+        ? existing.secret
+        : stillRotating ? existing.previousSecret : null,
+      previousSecretExpiresAt: rotated
+        ? new Date(now.getTime() + secretRotationWindowMs).toISOString()
+        : stillRotating ? existing.previousSecretExpiresAt : null,
+      status: "active",
+      expiresAt: input.expiresAt,
+      verifiedAt: input.verifiedAt,
+      // No replay: a lapsed or new subscription starts from now and never backfills.
+      checkpoint: input.wasLive && existing ? existing.checkpoint : now.toISOString(),
+      createdAt: existing?.createdAt ?? now.toISOString(),
+      updatedAt: now.toISOString(),
+    };
+  }
+}
