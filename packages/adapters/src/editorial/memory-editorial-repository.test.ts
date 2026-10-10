@@ -96,7 +96,7 @@ describe("MemoryEditorialRepository", () => {
     expect(seedCategories.filter((category) => category.locale === "it")).toHaveLength(5);
   });
 
-  it("preserves an unsubscribe until an editor explicitly reactivates it", async () => {
+  it("preserves an unsubscribe; an editor cannot reactivate it directly", async () => {
     const repository = new MemoryEditorialRepository();
 
     await expect(repository.subscribe("reader@example.com", "test", "en")).resolves.toBeUndefined();
@@ -106,8 +106,9 @@ describe("MemoryEditorialRepository", () => {
 
     await expect(repository.subscribe("reader@example.com", "test", "it")).resolves.toBeUndefined();
     expect((await repository.listSubscriptions({ locale: "it" })).total).toBe(0);
-    await repository.updateSubscriptionStatus(created.id, "active");
-    expect((await repository.listSubscriptions({ locale: "en" })).items[0].status).toBe("active");
+    // Reactivation is never a direct status change: it goes through a fresh double opt-in email.
+    await expect(repository.updateSubscriptionStatus(created.id, "active")).rejects.toThrow("double opt-in");
+    expect((await repository.listSubscriptions({ locale: "en" })).items[0].status).toBe("unsubscribed");
   });
 
   it("paginates newsletter subscriptions without truncating exports", async () => {

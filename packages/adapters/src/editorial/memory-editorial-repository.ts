@@ -21,13 +21,14 @@ import type {
   MediaRepository,
   NewsletterRepository,
 } from "@atlasnews/core/editorial/domain/article-repository";
-import type {
-  DistributionPublication,
-  DistributionUpdate,
-  MediaUpload,
-  NewsletterQuery,
-  NewsletterStatus,
-  NewsletterSubscription,
+import {
+  canEditorSetNewsletterStatus,
+  type DistributionPublication,
+  type DistributionUpdate,
+  type MediaUpload,
+  type NewsletterQuery,
+  type NewsletterStatus,
+  type NewsletterSubscription,
 } from "@atlasnews/core/editorial/domain/editorial-operations";
 import type { Locale } from "@atlasnews/core/locale";
 import { getEditorialMediaReferenceKey } from "@atlasnews/core/editorial/domain/editorial-image";
@@ -374,8 +375,11 @@ export class MemoryEditorialRepository
   async updateSubscriptionStatus(id: string, status: NewsletterStatus) {
     const subscription = [...this.subscribers.values()].find((item) => item.id === id);
     if (!subscription) throw new Error("Newsletter subscription not found");
+    if (!canEditorSetNewsletterStatus(subscription.status, status)) {
+      throw new Error("Newsletter reactivation requires double opt-in");
+    }
     subscription.status = status;
-    subscription.unsubscribedAt = status === "unsubscribed" ? new Date().toISOString() : null;
+    subscription.unsubscribedAt = subscription.unsubscribedAt ?? new Date().toISOString();
   }
 
   async listPublications(locale: Locale) {

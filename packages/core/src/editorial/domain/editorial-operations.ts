@@ -2,10 +2,41 @@ import type { Locale } from "../../locale";
 import type { SocialChannel } from "./article";
 
 export const distributionStatuses = ["draft", "ready", "published", "failed"] as const;
-export const newsletterStatuses = ["active", "unsubscribed"] as const;
+/**
+ * Lifecycle of a subscriber under double opt-in: `pending` until the confirmation link is used,
+ * `active` once confirmed, `unsubscribed` by the reader or an editor, and `suppressed` after a
+ * bounce, complaint or erasure (set by delivery events, never by an editor).
+ */
+export const newsletterStatuses = ["pending", "active", "unsubscribed", "suppressed"] as const;
 
 export type DistributionStatus = (typeof distributionStatuses)[number];
 export type NewsletterStatus = (typeof newsletterStatuses)[number];
+
+export type NewsletterEditorAction = "unsubscribe" | "reconfirm";
+
+/** The only status an editor sets directly; every way back to `active` goes through a fresh confirmation email. */
+export function isEditorSettableNewsletterStatus(status: NewsletterStatus): status is "unsubscribed" {
+  return status === "unsubscribed";
+}
+
+/**
+ * What an editor may do to a subscriber in this state. `unsubscribe` is allowed for anyone not
+ * suppressed. `reconfirm` sends a fresh double opt-in email, which only makes sense for a subscriber
+ * who is not yet (or no longer) confirmed; suppressed addresses cannot be re-subscribed from the Studio.
+ */
+export function newsletterEditorActions(status: NewsletterStatus): NewsletterEditorAction[] {
+  switch (status) {
+    case "pending": return ["unsubscribe", "reconfirm"];
+    case "active": return ["unsubscribe"];
+    case "unsubscribed": return ["reconfirm"];
+    case "suppressed": return [];
+  }
+}
+
+/** Whether an editor may move a subscriber from `from` to `to` directly (unsubscribing twice is a no-op). */
+export function canEditorSetNewsletterStatus(from: NewsletterStatus, to: NewsletterStatus) {
+  return isEditorSettableNewsletterStatus(to) && from !== "suppressed";
+}
 
 export interface DistributionPublication {
   id: string;

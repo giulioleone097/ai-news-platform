@@ -6,11 +6,13 @@ import { studioSupplementalCopy } from "@/components/studio/studio-copy";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import {
+  newsletterEditorActions,
   newsletterStatuses,
   type NewsletterStatus,
 } from "@atlasnews/core/editorial/domain/editorial-operations";
 import { getStudioEditorialRepositories } from "@/server/composition";
 import { updateNewsletterSubscriptionAction } from "../actions";
+import { subscriberStatusLabels, subscriberStatusTone, suppressedHint } from "./subscriber-status";
 import { requestNewsletterReconfirmationAction } from "./subscription-actions";
 
 export const metadata: Metadata = { robots: { index: false } };
@@ -60,6 +62,7 @@ export default async function StudioNewsletterPage({
     repositories.newsletter.listSubscriptions({ locale, status: "active", limit: 1 }),
   ]);
   const messages = getMessages(locale);
+  const statusLabels = subscriberStatusLabels[locale];
   const copy = studioSupplementalCopy[locale];
   const firstResult = subscriptions.total ? subscriptions.offset + 1 : 0;
   const lastResult = subscriptions.offset + subscriptions.items.length;
@@ -115,8 +118,9 @@ export default async function StudioNewsletterPage({
         </label>
         <select aria-label={copy.distributionStatus} defaultValue={status ?? ""} name="status">
           <option value="">{copy.allSubscribers}</option>
-          <option value="active">{copy.activeSubscribers}</option>
-          <option value="unsubscribed">{copy.unsubscribedSubscribers}</option>
+          {newsletterStatuses.map((value) => (
+            <option key={value} value={value}>{statusLabels[value]}</option>
+          ))}
         </select>
         <button className="studio-button studio-button--secondary" type="submit">{messages.search.submit}</button>
       </form>
@@ -124,11 +128,14 @@ export default async function StudioNewsletterPage({
       {subscriptions.items.length ? (
         <section className="studio-audience-list" aria-label={copy.newsletterTitle}>
           {subscriptions.items.map((subscription) => {
+            const actions = newsletterEditorActions(subscription.status);
             return (
               <article key={subscription.id}>
                 <div className="studio-audience-list__identity">
                   <strong>{subscription.email}</strong>
-                  <span className={`studio-status studio-status--${subscription.status}`}>{subscription.status}</span>
+                  <span className={`studio-status studio-status--${subscriberStatusTone[subscription.status]}`}>
+                    {statusLabels[subscription.status]}
+                  </span>
                 </div>
                 <dl>
                   <div><dt>{copy.sourceLabel}</dt><dd>{subscription.source}</dd></div>
@@ -137,20 +144,22 @@ export default async function StudioNewsletterPage({
                     <dd><time dateTime={subscription.consentedAt}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(subscription.consentedAt))}</time></dd>
                   </div>
                 </dl>
-                {subscription.status === "active" ? (
+                {actions.includes("unsubscribe") ? (
                   <form action={updateNewsletterSubscriptionAction}>
                     <input name="id" type="hidden" value={subscription.id} />
                     <input name="locale" type="hidden" value={locale} />
                     <input name="status" type="hidden" value="unsubscribed" />
                     <button className="studio-button studio-button--secondary" type="submit">{copy.unsubscribe}</button>
                   </form>
-                ) : (
+                ) : null}
+                {actions.includes("reconfirm") ? (
                   <form action={requestNewsletterReconfirmationAction}>
                     <input name="email" type="hidden" value={subscription.email} />
                     <input name="locale" type="hidden" value={locale} />
                     <button className="studio-button studio-button--secondary" type="submit">{copy.reactivate}</button>
                   </form>
-                )}
+                ) : null}
+                {subscription.status === "suppressed" ? <p>{suppressedHint[locale]}</p> : null}
               </article>
             );
           })}

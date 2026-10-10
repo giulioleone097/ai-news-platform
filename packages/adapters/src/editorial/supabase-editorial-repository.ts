@@ -29,6 +29,7 @@ import type {
 } from "@atlasnews/core/editorial/domain/article-repository";
 import {
   distributionStatuses,
+  isEditorSettableNewsletterStatus,
   newsletterStatuses,
   type DistributionPublication,
   type DistributionUpdate,
@@ -581,8 +582,6 @@ export class SupabaseEditorialRepository
         { count: "exact" },
       )
       .eq("locale", input.locale)
-      // The double opt-in flow also stores `pending` and `suppressed` rows, which this view cannot model.
-      .in("status", newsletterStatuses)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false });
     if (input.status) query = query.eq("status", input.status);
@@ -610,7 +609,8 @@ export class SupabaseEditorialRepository
   }
 
   async updateSubscriptionStatus(id: string, status: NewsletterStatus) {
-    if (status !== "unsubscribed") {
+    // The function below only unsubscribes (and refuses suppressed rows), whatever status is asked for.
+    if (!isEditorSettableNewsletterStatus(status)) {
       throw new Error("Newsletter reactivation requires double opt-in");
     }
     const { data, error } = await this.client.rpc(
