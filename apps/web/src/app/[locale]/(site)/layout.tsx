@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
+import { SiteTools } from "@/components/site/site-tools/site-tools";
 import { isLocale } from "@/i18n";
 
 export default async function SiteLayout({
@@ -18,6 +19,7 @@ export default async function SiteLayout({
       <SiteHeader locale={locale} />
       {children}
       <SiteFooter locale={locale} />
+      <SiteTools />
     </>
   );
 }

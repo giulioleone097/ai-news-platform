@@ -203,7 +203,11 @@ export default async function ArticlePage({
 
   return (
     <main id="main-content" className="site-shell article-page">
-      <article>
+      <article
+        data-article-id={article.id}
+        data-article-slug={article.slug}
+        data-claim-status={article.claimStatus}
+      >
         <Link
           className="article-back"
           href={localizedPath(`/categories/${article.category.slug}`, locale)}
