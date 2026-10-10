@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { bulkCopy } from "@/components/studio/article-bulk/copy";
 import type { BulkAction, BulkActionResult } from "@/components/studio/article-bulk/types";
@@ -38,10 +38,11 @@ async function runBulkAction(action: BulkAction, input: { locale: Locale; ids: s
     { confirmed: true },
   ).catch(() => null);
   if (!outcome) return { status: "error", message: copy.failed };
+  // The runner is the one place that checks the session and the scopes; a signed-out person goes to the
+  // login page, as in every other Studio action, instead of reading an error they cannot act on.
+  if (!outcome.ok && outcome.status === 401) redirect(`/${locale}/login`);
   if (!outcome.ok) return { status: "error", message: outcome.error };
 
-  revalidatePath(`/${locale}/studio`);
-  revalidatePath(`/${locale}/studio/articles`);
   const count = typeof outcome.result.count === "number" ? outcome.result.count : ids.length;
   return { status: "success", message: copy.done[action](count) };
 }

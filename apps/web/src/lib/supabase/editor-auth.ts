@@ -12,6 +12,14 @@ export interface EditorIdentity {
   isDemo: boolean;
 }
 
+/** Whether anybody is signed in, editor or not: tells "sign in" (401) from "not an editor" (403). */
+export async function hasSignedInUser(): Promise<boolean> {
+  const client = await createServerSupabaseClient();
+  if (!client) return false;
+  const { data, error } = await client.auth.getUser();
+  return !error && Boolean(data.user);
+}
+
 export async function getCurrentEditor(): Promise<EditorIdentity | null> {
   const client = await createServerSupabaseClient();
   if (!client) {

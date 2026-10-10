@@ -10,7 +10,7 @@
   align-items: center;
   gap: var(--atlasnews-spacing-xs);
   min-height: 2.75rem;
-  color: var(--atlasnews-color-ink);
+  color: var(--ink);
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
@@ -29,7 +29,7 @@
   width: 1.25rem;
   height: 1.25rem;
   margin: 0;
-  accent-color: var(--atlasnews-color-coral);
+  accent-color: var(--coral);
   cursor: pointer;
 }
 
@@ -53,14 +53,14 @@
   gap: var(--atlasnews-spacing-sm);
   margin-bottom: var(--atlasnews-spacing-sm);
   padding: var(--atlasnews-spacing-sm) var(--atlasnews-spacing-md);
-  border: 1px solid var(--atlasnews-color-rule);
-  border-left: 3px solid var(--atlasnews-color-coral);
-  background: var(--atlasnews-color-paper-raised);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--coral);
+  background: var(--paper-raised);
 }
 
 .count {
   margin: 0;
-  color: var(--atlasnews-color-ink);
+  color: var(--ink);
   font-size: 0.8rem;
   font-weight: 800;
 }
@@ -78,6 +78,6 @@
 .limit {
   flex-basis: 100%;
   margin: 0;
-  color: var(--atlasnews-color-coral-dark);
+  color: var(--coral-dark);
   font-size: 0.78rem;
 }

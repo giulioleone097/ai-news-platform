@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { CategoryPatch, CategoryRecord, CategoryTextPatch } from "@atlasnews/core/editorial/domain/category";
 import { locales, isLocale, type Locale } from "@/i18n";
@@ -103,7 +102,6 @@ export async function saveCategoryAction(
       values,
     };
   }
-  revalidatePath(`/${locale}/studio/categories`);
   redirect(`/${locale}/studio/categories?saved=1`);
 }
 
@@ -127,6 +125,5 @@ export async function deleteCategoryAction(
       message: outcome.status === 400 ? outcome.error : categoryCopy[locale].deleteFailed,
     };
   }
-  revalidatePath(`/${locale}/studio/categories`);
   redirect(`/${locale}/studio/categories?deleted=1`);
 }

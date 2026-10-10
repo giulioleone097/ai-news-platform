@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   run: vi.fn(),
-  revalidatePath: vi.fn(),
+  redirect: vi.fn((path: string) => {
+    throw new Error(`redirect:${path}`);
+  }),
 }));
 
-vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
+vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/server/capabilities", () => ({ runEditorCapability: mocks.run }));
 
 import { batchLimit } from "@atlasnews/core/editorial/domain/errors";
@@ -24,7 +26,6 @@ function idsOf(count: number) {
 describe("bulk article actions", () => {
   beforeEach(() => {
     mocks.run.mockReset().mockResolvedValue({ ok: true, result: { count: ids.length, items: [] } });
-    mocks.revalidatePath.mockReset();
   });
 
   it.each([
@@ -41,7 +42,6 @@ describe("bulk article actions", () => {
       { confirmed: true },
     );
     expect(result).toEqual({ status: "success", message });
-    expect(mocks.revalidatePath.mock.calls).toEqual([["/en/studio"], ["/en/studio/articles"]]);
   });
 
   it("shows the capability's refusal and changes nothing", async () => {
@@ -51,7 +51,12 @@ describe("bulk article actions", () => {
     const result = await publishArticlesAction("it", ids);
 
     expect(result).toEqual({ status: "error", message: refusal });
-    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("sends a signed-out person to the login page", async () => {
+    mocks.run.mockResolvedValue({ ok: false, status: 401, error: "Sign in to the Studio with an editor account." });
+
+    await expect(publishArticlesAction("it", ids)).rejects.toThrow("redirect:/it/login");
   });
 
   it("reports a failure instead of throwing when the runner fails", async () => {
@@ -63,7 +68,6 @@ describe("bulk article actions", () => {
       status: "error",
       message: "The selected articles could not be updated. Try again.",
     });
-    expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
   it("rejects more than the batch limit before calling the runner", async () => {

@@ -37,7 +37,7 @@ const copy = {
 } as const satisfies Record<Locale, unknown>;
 
 const styles = `
-.studio-confirm{width:min(32rem,calc(100vw - 2rem));padding:1.4rem;border:1px solid var(--rule-strong);border-radius:var(--radius);color:var(--ink);background:var(--paper-raised);font-family:var(--font-ui)}
+.studio-confirm{margin:auto;width:min(32rem,calc(100vw - 2rem));padding:1.4rem;border:1px solid var(--rule-strong);border-radius:var(--radius);color:var(--ink);background:var(--paper-raised);font-family:var(--font-ui)}
 .studio-confirm::backdrop{background:color-mix(in srgb,var(--ink) 55%,transparent)}
 .studio-confirm__heading{margin:0 0 .5rem;font-family:var(--font-display);font-size:1.15rem}
 .studio-confirm__agent{margin:0 0 .75rem;color:var(--muted);font-size:.85rem}

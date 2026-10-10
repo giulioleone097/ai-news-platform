@@ -7,7 +7,7 @@ import { entityCopy } from "@/app/[locale]/(studio)/studio/entities/copy";
 import { StudioSubmitButton } from "@/components/studio/studio-submit-button";
 import styles from "./entities.module.css";
 
-export function EntityDeleteButton({ locale, slug }: { locale: Locale; slug: string }) {
+export function EntityDeleteButton({ locale, slug, name }: { locale: Locale; slug: string; name: string }) {
   const copy = entityCopy[locale];
   const [state, formAction] = useActionState<EntityFormState, FormData>(deleteEntityAction, { status: "idle" });
 
@@ -16,6 +16,7 @@ export function EntityDeleteButton({ locale, slug }: { locale: Locale; slug: str
       <input name="locale" type="hidden" value={locale} />
       <input name="slug" type="hidden" value={slug} />
       <StudioSubmitButton
+        ariaLabel={`${copy.deleteTitle}: ${name}`}
         className="studio-button studio-button--danger"
         idleLabel={copy.delete}
         onClick={(event) => {

@@ -71,7 +71,7 @@ export function EntityList({ items, locale }: { items: EntityListItem[]; locale:
                             <Link aria-label={`${copy.edit}: ${item.name}`} className={styles.action} href={href}>
                               <Pencil aria-hidden="true" size={16} />
                             </Link>
-                            <EntityDeleteButton locale={locale} slug={item.slug} />
+                            <EntityDeleteButton locale={locale} name={item.name} slug={item.slug} />
                           </div>
                         </td>
                       </tr>

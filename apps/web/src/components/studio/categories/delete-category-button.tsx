@@ -25,6 +25,7 @@ export function DeleteCategoryButton({
       <input name="locale" type="hidden" value={locale} />
       <input name="translationKey" type="hidden" value={translationKey} />
       <StudioSubmitButton
+        ariaLabel={`${copy.delete}: ${name}`}
         className="studio-button studio-button--danger"
         idleLabel={copy.delete}
         onClick={(event) => {

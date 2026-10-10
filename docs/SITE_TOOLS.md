@@ -40,7 +40,7 @@ Inside the Studio (`/{locale}/studio/...`, not the login page) the page register
 - Handlers: `apps/web/src/components/studio/site-tools/`
   - `studio-site-tools.tsx` is mounted in `app/[locale]/(studio)/studio/layout.tsx`. It renders nothing and loads nothing unless `document.modelContext.registerTool` exists (same `detect.ts` as the reader tools). Leaving the Studio unmounts it, which unregisters the tools.
   - `start.ts` is the lazy chunk. `register.ts` registers the catalogue's entries through the shared `registerCapabilities` of the reader tools. `tools.ts` holds the handlers. `confirm-dialog.ts` is the dialog.
-- Every tool checks its input first (an invalid call never reaches the server), then answers with the capability's JSON result or `{ "error": "..." }`; it never throws. Statuses: 400 the server's own message (invalid input or a refused rule), 401 not signed in, 403 missing permission, 404 unknown tool, 409 asks the person (below), 503 storage not configured. A successful write calls `router.refresh()`, so the Studio view shows what the agent did.
+- Every tool checks its input first (an invalid call never reaches the server), then answers with the capability's JSON result or `{ "error": "..." }`; it never throws. Statuses: 400 the server's own message (invalid input or a refused rule), 401 not signed in, 403 signed in but without an editor profile, or without the permission the tool needs, 404 unknown tool, 409 asks the person (below), 503 storage not configured. A successful write calls `router.refresh()`, so the Studio view shows what the agent did.
 
 ### Confirmation is the person's, not the agent's
 

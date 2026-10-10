@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   editor: vi.fn(),
+  signedIn: vi.fn(),
   invalidate: vi.fn(),
   revalidatePath: vi.fn(),
   repository: vi.fn(),
@@ -9,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath, revalidateTag: vi.fn() }));
-vi.mock("@/lib/editor-auth", () => ({ getEditorIdentity: mocks.editor }));
+vi.mock("@/lib/editor-auth", () => ({ getEditorIdentity: mocks.editor, isSignedIn: mocks.signedIn }));
 vi.mock("@/lib/editorial-cache", () => ({ invalidatePublicEditorialCache: mocks.invalidate }));
 // The real composition root and catalogue run; only the Studio repository can be swapped to fail.
 vi.mock("@/server/composition", async (importOriginal) => {
@@ -26,6 +27,7 @@ const entity = { kind: "company", name: "Capability Test Lab", slug: "capability
 beforeEach(async () => {
   vi.stubEnv("ATLASNEWS_CONTENT_MODE", "demo");
   mocks.editor.mockReset().mockResolvedValue(identity("editor"));
+  mocks.signedIn.mockReset().mockResolvedValue(false);
   mocks.invalidate.mockClear();
   mocks.revalidatePath.mockClear();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -40,6 +42,13 @@ describe("runEditorCapability statuses", () => {
   it("answers 401 when nobody is signed in", async () => {
     mocks.editor.mockResolvedValue(null);
     expect(await runEditorCapability("list_entities", { locale: "en" })).toMatchObject({ ok: false, status: 401 });
+  });
+
+  it("answers 403, not 401, to a signed-in account that has no editor profile", async () => {
+    mocks.editor.mockResolvedValue(null);
+    mocks.signedIn.mockResolvedValue(true);
+    expect(await runEditorCapability("list_entities", { locale: "en" })).toMatchObject({ ok: false, status: 403 });
+    expect(mocks.repository).not.toHaveBeenCalled();
   });
 
   it("answers 404 for an unknown capability and for one that is not offered to the page", async () => {

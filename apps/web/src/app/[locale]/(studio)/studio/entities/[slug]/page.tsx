@@ -47,7 +47,7 @@ export default async function EditEntityPage({
           <h2 id="entity-delete-title">{copy.deleteTitle}</h2>
         </div>
         <p>{copy.deleteHelp}</p>
-        <EntityDeleteButton locale={locale} slug={record.slug} />
+        <EntityDeleteButton locale={locale} name={record.name} slug={record.slug} />
       </section>
     </>
   );

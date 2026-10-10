@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { StudioActionState } from "@/components/studio/action-state";
 import { defaultLocale, isLocale, type Locale } from "@/i18n";
@@ -111,7 +110,6 @@ export async function saveEntityAction(
     return { ...refusal(locale, result), values, attempt: (previous.attempt ?? 0) + 1 };
   }
 
-  revalidatePath(`/${locale}/studio/entities`);
   redirect(`/${locale}/studio/entities?saved=${slug ? "updated" : "created"}`);
 }
 
@@ -127,6 +125,5 @@ export async function deleteEntityAction(
   const result = await runEditorCapability("admin_delete_entity", { slug }, { confirmed: true });
   if (!result.ok) return refusal(locale, result);
 
-  revalidatePath(`/${locale}/studio/entities`);
   redirect(`/${locale}/studio/entities?deleted=1`);
 }

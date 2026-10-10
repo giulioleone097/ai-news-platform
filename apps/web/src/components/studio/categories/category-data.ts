@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import type { Category } from "@atlasnews/core/editorial/domain/article";
 import type { CategoryRecord } from "@atlasnews/core/editorial/domain/category";
 import type { Locale } from "@/i18n";
 import {
@@ -20,19 +19,12 @@ export async function runCategoryCapability(
   return outcome;
 }
 
-/**
- * Every category with both locales, in site order. The English list gives the keys (every
- * category has an English row); each one is then read for its position and Italian row.
- */
+/** Every category with both locales, in site order: one `admin_list_categories` call. */
 export async function listCategoryRows(locale: Locale): Promise<CategoryRecord[]> {
   const listed = await runCategoryCapability(locale, "admin_list_categories", { locale: "en" });
   if (!listed.ok) throw new Error(listed.error);
 
-  const keys = (listed.result as { categories: Category[] }).categories.map((category) => category.translationKey);
-  const rows = await Promise.all(keys.map(async (translationKey) => {
-    const loaded = await runCategoryCapability(locale, "admin_get_category", { translationKey });
-    if (!loaded.ok) throw new Error(loaded.error);
-    return (loaded.result as { category: CategoryRecord }).category;
-  }));
-  return rows.sort((first, second) => first.position - second.position);
+  return (listed.result as { categories: CategoryRecord[] }).categories
+    .map(({ translationKey, position, translations }) => ({ translationKey, position, translations }))
+    .sort((first, second) => first.position - second.position);
 }

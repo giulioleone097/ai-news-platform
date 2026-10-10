@@ -13,7 +13,7 @@ import {
   type Principal,
 } from "@atlasnews/contract";
 import { locales, type Locale } from "@atlasnews/core/locale";
-import { getEditorIdentity } from "@/lib/editor-auth";
+import { getEditorIdentity, isSignedIn } from "@/lib/editor-auth";
 import { invalidatePublicEditorialCache } from "@/lib/editorial-cache";
 import { getPublicEditorialRepositories, getStudioAdminEditorialRepository } from "@/server/composition";
 
@@ -28,8 +28,8 @@ export type CapabilityRunResult =
   | {
       ok: false;
       /**
-       * 400 invalid arguments or a refused rule, 401 nobody signed in, 403 signed in without the
-       * scope, 404 unknown capability, 409 the capability needs confirmation first, 503 storage
+       * 400 invalid arguments or a refused rule, 401 nobody signed in, 403 signed in without an
+       * editor profile or without the scope, 404 unknown capability, 409 the capability needs confirmation first, 503 storage
        * is not configured.
        */
       status: 400 | 401 | 403 | 404 | 409 | 503;
@@ -104,7 +104,11 @@ export async function runEditorCapability(
   options: CapabilityRunOptions = {},
 ): Promise<CapabilityRunResult> {
   const editor = await getEditorIdentity();
-  if (!editor) return fail(401, "Sign in to the Studio with an editor account.");
+  if (!editor) {
+    return (await isSignedIn())
+      ? fail(403, "This account is not an editor of the Studio.")
+      : fail(401, "Sign in to the Studio with an editor account.");
+  }
 
   const capability = pageCapabilities.get(name);
   if (!capability) return fail(404, `Unknown capability ${name}.`);

@@ -10,7 +10,6 @@ import {
   editorialUnavailable,
   editorLocaleSchema,
   patchNote,
-  record,
 } from "./editorial";
 import { batchOutput, categorySlugSchema, perLocale } from "./shared";
 
@@ -61,13 +60,26 @@ const deleteRule = "A category that articles still use cannot be deleted; move i
 
 const base = { surfaces: ["mcp", "page"], unavailableMessage: editorialUnavailable } as const;
 
+const categoryListItem = z.object({
+  id: z.string(),
+  translationKey: z.string(),
+  locale: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  position: z.number().int(),
+  translations: categoryRecord.shape.translations,
+});
+
 export const adminListCategories = defineSpec({
   ...base,
   name: "admin_list_categories",
   title: "List newsroom categories",
-  description: "List valid editorial categories for one locale, in site order.",
+  description:
+    "List valid editorial categories in site order. Each item is the category in the requested locale "
+    + "(slug, name, description) with its position and both of its locales under `translations`, so no second call is needed.",
   input: z.object({ locale: editorLocaleSchema }),
-  output: z.object({ categories: z.array(record) }),
+  output: z.object({ categories: z.array(categoryListItem) }),
   annotations: readOnly,
   scopes: ["newsroom.read"],
 });
