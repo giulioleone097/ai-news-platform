@@ -36,7 +36,7 @@ if (parsedSupabaseUrl) {
 }
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@atlasnews/core", "@atlasnews/adapters"],
+  transpilePackages: ["@atlasnews/core", "@atlasnews/contract", "@atlasnews/adapters"],
   poweredByHeader: false,
   reactStrictMode: true,
   experimental: {
