@@ -1,4 +1,5 @@
 import {
+  ProtocolError,
   ResourceNotFoundError,
   ResourceTemplate,
   type McpServer,
@@ -33,6 +34,19 @@ export function articleResourceLink(article: Article) {
 }
 
 /**
+ * Anonymous callers read these resources, so a failure of the repository (PostgREST text names tables,
+ * columns and constraints) must not become the error message they receive.
+ */
+async function withoutRepositoryDetails<T>(read: () => Promise<T>) {
+  try {
+    return await read();
+  } catch (error) {
+    if (error instanceof ResourceNotFoundError) throw error;
+    throw new ProtocolError(-32603, "Articles are temporarily unavailable.");
+  }
+}
+
+/**
  * Exposes published articles as MCP resources, so composer mentions and other
  * resource links resolve to the article text instead of a bare URL.
  */
@@ -44,12 +58,12 @@ export function registerArticleResources(
   server.registerResource(
     "atlasnews-article",
     new ResourceTemplate(articleResourceTemplate, {
-      list: async () => {
+      list: () => withoutRepositoryDetails(async () => {
         const pages = await Promise.all(
           locales.map((locale) => reader.listPublished({ locale, limit: 10 })),
         );
         return { resources: pages.flatMap((page) => page.items.map(articleResource)) };
-      },
+      }),
     }),
     {
       title: "AtlasNews article",
@@ -62,7 +76,7 @@ export function registerArticleResources(
       if (!isLocale(locale) || typeof slug !== "string" || !slugPattern.test(slug)) {
         throw new ResourceNotFoundError(uri.href);
       }
-      const article = await reader.findBySlug(slug, locale);
+      const article = await withoutRepositoryDetails(() => reader.findBySlug(slug, locale));
       if (!article || article.status !== "published") throw new ResourceNotFoundError(uri.href);
       return {
         contents: [

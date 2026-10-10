@@ -12,6 +12,7 @@ import {
   type AccessTokenVerifier,
   type AuthenticatedPrincipal,
 } from "./auth";
+import { SubscribeRateLimiter } from "./events/subscribe-rate-limit";
 import { createAtlasNewsServer } from "./server";
 
 const baseHeaders = {
@@ -130,6 +131,20 @@ function scopesRequiredByCall(headers: Headers, body: Uint8Array<ArrayBuffer>): 
   return [...new Set(names.flatMap((name) => (typeof name === "string" ? scopesByTool.get(name) ?? [] : [])))];
 }
 
+/** Whether the body calls `events/subscribe` (a batch is read message by message). */
+function callsEventSubscribe(headers: Headers, body: Uint8Array<ArrayBuffer>) {
+  if (headers.get("mcp-method") === "events/subscribe") return true;
+  try {
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(body));
+    return (Array.isArray(parsed) ? parsed : [parsed])
+      .some((message) => (message as { method?: unknown } | null)?.method === "events/subscribe");
+  } catch {
+    return false;
+  }
+}
+
+const sharedSubscribeLimiter = new SubscribeRateLimiter();
+
 export function mcpOptionsResponse(request?: Request) {
   const allowedOrigins = getAllowedMcpOrigins();
   const origin = request?.headers.get("origin");
@@ -151,6 +166,8 @@ export interface McpEndpointDependencies {
   createPorts(principal: AuthenticatedPrincipal): CapabilityPorts;
   apps?: McpAppsOptions;
   events?: McpEventsService | null;
+  /** Throttle for `events/subscribe`; one limiter per process unless a test passes its own. */
+  subscribeLimiter?: SubscribeRateLimiter;
 }
 
 /**
@@ -205,6 +222,15 @@ export async function handleMcpRequest(request: Request, deps: McpEndpointDepend
   if (principal.kind === "anonymous") {
     const required = scopesRequiredByCall(request.headers, body);
     if (required.length) return unauthorizedResponse(request, required);
+  }
+
+  if (callsEventSubscribe(request.headers, body)) {
+    const retryAfter = (deps.subscribeLimiter ?? sharedSubscribeLimiter).take(request.headers);
+    if (retryAfter !== null) {
+      const response = jsonRpcError(429, -32029, "Too many subscription requests. Try again shortly.", request, cors);
+      response.headers.set("Retry-After", String(retryAfter));
+      return response;
+    }
   }
 
   let ports: CapabilityPorts;

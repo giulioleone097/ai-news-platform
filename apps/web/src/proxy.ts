@@ -50,7 +50,20 @@ function isAuthSensitivePath(pathname: string) {
     && (section === "studio" || section === "login" || section === "auth");
 }
 
+/**
+ * Pages that must never be framed get `X-Frame-Options: DENY`; next.config.ts adds `frame-ancestors 'none'`
+ * for the same paths and the general SAMEORIGIN rule, which this overrides.
+ */
+function withFramingPolicy(response: NextResponse, pathname: string) {
+  if (isAuthSensitivePath(pathname)) response.headers.set("X-Frame-Options", "DENY");
+  return response;
+}
+
 export async function proxy(request: NextRequest) {
+  return withFramingPolicy(await route(request), request.nextUrl.pathname);
+}
+
+async function route(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const rewritePath = agentRewritePath(pathname);

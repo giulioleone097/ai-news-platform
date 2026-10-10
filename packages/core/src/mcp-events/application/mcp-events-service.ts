@@ -13,12 +13,26 @@ import type { EventSubscription } from "../domain/subscription";
 import { deriveSubscriptionId } from "./canonical-json";
 import type { CallbackVerifier } from "./callback-verifier";
 import { parseCallbackUrl } from "./callback-url";
+import { registrableDomain } from "./registrable-domain";
 import { decodeSigningSecret } from "./signing-secret";
 import { grantSubscriptionTtl } from "./subscription-ttl";
 
 export const maximumSubscriptionsPerHost = 25;
+/** Across all subdomains of one registrable domain: wildcard DNS makes hostnames free. */
+export const maximumSubscriptionsPerDomain = 100;
+/**
+ * Across everyone. The cron worker serves 100 subscriptions a minute, so this is also how long a
+ * subscription can wait for its turn (1000 live subscriptions: ten minutes).
+ */
+export const maximumLiveSubscriptions = 1000;
 export const verificationCacheMs = 24 * 60 * 60 * 1000;
 export const secretRotationWindowMs = 60 * 60 * 1000;
+
+export interface McpEventsLimits {
+  perHost: number;
+  perDomain: number;
+  total: number;
+}
 
 export interface SubscribeInput {
   name: string;
@@ -69,7 +83,16 @@ export class DefaultMcpEventsService implements McpEventsService {
     private readonly repository: McpEventsRepository,
     private readonly verifier: CallbackVerifier,
     private readonly clock: () => Date = () => new Date(),
-  ) {}
+    limits: Partial<McpEventsLimits> = {},
+  ) {
+    this.limits = {
+      perHost: limits.perHost ?? maximumSubscriptionsPerHost,
+      perDomain: limits.perDomain ?? maximumSubscriptionsPerDomain,
+      total: limits.total ?? maximumLiveSubscriptions,
+    };
+  }
+
+  private readonly limits: McpEventsLimits;
 
   async list() {
     return { events: listMcpEventDefinitions() };
@@ -95,17 +118,12 @@ export class DefaultMcpEventsService implements McpEventsService {
     const existing = await this.repository.find(id);
     const wasLive = existing !== null && existing.status === "active"
       && Date.parse(existing.expiresAt) > now.getTime();
-    if (!wasLive) {
-      const live = await this.repository.countLiveForHost(url.hostname, id, now);
-      if (live >= maximumSubscriptionsPerHost) {
-        throw invalidParams(
-          `Too many active subscriptions for ${url.hostname}.`,
-          "subscription_limit",
-        );
-      }
-    }
+    if (!wasLive) await this.requireCapacity(url.hostname, id, now);
 
-    const verifiedAt = await this.verifiedAt({ url: url.href, id, secret, now });
+    // A new secret on a live subscription is always proven again by the callback, never taken from the
+    // verification cache: the cache would otherwise let a previously used secret be put back unchecked.
+    const rotating = wasLive && existing !== null && existing.secret !== secret;
+    const verifiedAt = await this.verifiedAt({ url: url.href, id, secret, now, cached: !rotating });
     const expiresAt = new Date(now.getTime() + grantSubscriptionTtl(input.ttlMs)).toISOString();
     await this.repository.save(this.merge({ existing, wasLive, id, name, args, url, secret, expiresAt, verifiedAt, now }));
     return { id, refreshBefore: expiresAt, cursor: null, truncated: false };
@@ -123,13 +141,29 @@ export class DefaultMcpEventsService implements McpEventsService {
     return {};
   }
 
-  private async verifiedAt(input: { url: string; id: string; secret: string; now: Date }) {
-    const cached = await this.repository.findVerifiedAt({
-      principal: mcpEventPrincipal,
-      url: input.url,
-      secret: input.secret,
-      since: new Date(input.now.getTime() - verificationCacheMs),
-    });
+  private async requireCapacity(hostname: string, id: string, now: Date) {
+    const full = (message: string) => invalidParams(message, "subscription_limit");
+    if (await this.repository.countLive(now) >= this.limits.total) {
+      throw full("The server has reached its limit of active subscriptions.");
+    }
+    if (await this.repository.countLiveForHost(hostname, id, now) >= this.limits.perHost) {
+      throw full(`Too many active subscriptions for ${hostname}.`);
+    }
+    const domain = registrableDomain(hostname);
+    if (await this.repository.countLiveForDomain(domain, id, now) >= this.limits.perDomain) {
+      throw full(`Too many active subscriptions for ${domain}.`);
+    }
+  }
+
+  private async verifiedAt(input: { url: string; id: string; secret: string; now: Date; cached: boolean }) {
+    const cached = input.cached
+      ? await this.repository.findVerifiedAt({
+        principal: mcpEventPrincipal,
+        url: input.url,
+        secret: input.secret,
+        since: new Date(input.now.getTime() - verificationCacheMs),
+      })
+      : null;
     if (cached) return cached;
     await this.verifier.verify({ url: input.url, subscriptionId: input.id, secret: input.secret });
     return input.now.toISOString();

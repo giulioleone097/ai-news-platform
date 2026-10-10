@@ -23,6 +23,19 @@
   margin-top: 0;
 }
 
+/* The host is the part of the request the application cannot choose freely, so it is the loudest line. */
+.consent-redirect {
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.consent-redirect strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1.35rem;
+  font-weight: 750;
+}
+
 .consent-details {
   display: grid;
   gap: 0.9rem;

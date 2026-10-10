@@ -56,7 +56,7 @@ Build time (frozen into the bundles; changing one needs a new deployment):
 
 If the Sites build cannot see variables set in the Site settings, put the three public values and the mode in `apps/web/.env.production` (verified: the vinext build reads it and the guard sees it). The URL and the anon key are public by design, but `.gitignore` excludes `.env*`, so un-ignore the file on purpose.
 
-Runtime (Site settings): `ATLASNEWS_CONTENT_MODE=supabase`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the server reads them at run time; verified in `workerd`), `SUPABASE_SERVICE_ROLE_KEY`, `ATLASNEWS_COMMENT_GUEST_SECRET`, `ATLASNEWS_REVALIDATE_SECRET`, `ATLASNEWS_MCP_ADMIN_API_KEY`, `ATLASNEWS_MCP_ADMIN_AUTHOR_ID`, `MCP_ALLOWED_ORIGINS`, `NEXT_PUBLIC_MCP_URL`, and the optional newsletter, WhatsApp, LinkedIn and X values. Names, meaning and which are required are in [`.env.example`](../.env.example) and [DEPLOYMENT.md](DEPLOYMENT.md). `GET /api/health` lists what is still missing and returns 503 until the deployment is ready.
+Runtime (Site settings): `ATLASNEWS_CLIENT_IP_HEADER=cf-connecting-ip` (keys the per-network comment and newsletter limits; empty switches them off, see [DEPLOYMENT.md](DEPLOYMENT.md#client-address-and-rate-limits)), `ATLASNEWS_OAUTH_REDIRECT_HOSTS` (optional, the consent page's redirect allowlist), `ATLASNEWS_CONTENT_MODE=supabase`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the server reads them at run time; verified in `workerd`), `SUPABASE_SERVICE_ROLE_KEY`, `ATLASNEWS_COMMENT_GUEST_SECRET`, `ATLASNEWS_REVALIDATE_SECRET`, `ATLASNEWS_MCP_ADMIN_API_KEY`, `ATLASNEWS_MCP_ADMIN_AUTHOR_ID`, `MCP_ALLOWED_ORIGINS`, `NEXT_PUBLIC_MCP_URL`, and the optional newsletter, WhatsApp, LinkedIn and X values. Names, meaning and which are required are in [`.env.example`](../.env.example) and [DEPLOYMENT.md](DEPLOYMENT.md). `GET /api/health` lists what is still missing and returns 503 until the deployment is ready.
 
 ### Build guard
 
@@ -104,7 +104,9 @@ Measured locally on the demo build, phone viewport (390 px, device pixel ratio 3
 - `<meta>` tags are rendered without the self-closing slash.
 - ISR is per isolate (above); on `next start` it is per process.
 - Visible text is identical on the 11 pages compared (`/en`, `/it`, latest, article, status, entities, entity, search, login, `/oauth/consent`, 404).
-- `dist/server/vinext-server.json` holds a build-generated `prerenderSecret`. It is an artifact value, not a repository secret.
+- `dist/server/vinext-server.json` holds a build-generated `prerenderSecret`. It is an artifact value, not a repository secret. It is not served (404 under `dist/client` paths), and the `/__vinext/prerender/*` endpoints answer 404 without the secret and with a wrong one (checked in `workerd`).
+- Response headers. `next.config.ts` `headers()` reaches the Sites artifact as it does `next start` (checked in `workerd`): `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options: SAMEORIGIN`. For `/oauth/*`, `/{locale}/studio/*`, `/{locale}/login` and `/{locale}/auth/*` the config adds `Content-Security-Policy: frame-ancestors 'none'` and `src/proxy.ts` (which both builds run) sets `X-Frame-Options: DENY`. Two config rules with the same header for one path are resolved differently (Next: the later rule wins; vinext: the first), so the sensitive rule adds a different header instead of overriding, and vinext does not honour a negative lookahead in a `source`: do not exclude paths that way. `Cache-Control` of dynamic pages (`no-store, must-revalidate`) is vinext's.
+- The demo Studio is off on the artifact: `NODE_ENV` is folded to `production` at build time, so `isDemoStudioEnabled()` is true only with `ATLASNEWS_ENABLE_DEMO_STUDIO=true`. An unauthenticated `GET /en/studio` answers 307 to `/en/login`. The guard no longer treats an unset `NODE_ENV` as development either.
 
 ## Not verified without a real deployment
 

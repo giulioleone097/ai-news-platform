@@ -37,7 +37,10 @@ Names come from [.env.example](../.env.example), [DEPLOYMENT.md](DEPLOYMENT.md) 
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only. Enables editor sign-in and the admin tools. |
 | `ATLASNEWS_MCP_ADMIN_API_KEY`, `ATLASNEWS_MCP_ADMIN_AUTHOR_ID` | Optional CI and CLI credential (32+ characters) and its author. |
 | `ATLASNEWS_MCP_OAUTH_ISSUER`, `ATLASNEWS_MCP_OAUTH_AUDIENCE` | Optional overrides for sign-in. |
-| `NEXT_PUBLIC_MCP_URL` | Public origin of this server, no path. Set it on any host behind a proxy or CDN; otherwise the request origin is used. |
+| `NEXT_PUBLIC_MCP_URL` | Public origin of this server, no path. Required for editor sign-in (without it only the API key works); set it to the exact origin hosts were given. |
+| `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` | Optional comma-separated OAuth client ids to accept. Empty accepts every client of the Supabase project (not recommended in production). |
+| `ATLASNEWS_CLIENT_IP_HEADER` | Optional name of the one header your proxy overwrites with the client's IP address. It keys the `events/subscribe` rate limit; empty means one shared window. See [DEPLOYMENT.md](DEPLOYMENT.md#client-address-and-rate-limits). |
+| `ATLASNEWS_MCP_EVENTS_MAX_PER_HOST`, `ATLASNEWS_MCP_EVENTS_MAX_PER_DOMAIN`, `ATLASNEWS_MCP_EVENTS_MAX_SUBSCRIPTIONS`, `ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE` | Optional MCP Events limits (25, 100, 1000, 30). The rate counter is in memory, per container. |
 | `NEXT_PUBLIC_SITE_URL` | Canonical origin of the reader site. Used for revalidation. |
 | `ATLASNEWS_REVALIDATE_SECRET` | Same value as on `apps/web` (32+ characters). |
 | `MCP_ALLOWED_ORIGINS` | Optional comma-separated browser origins. Empty means wildcard CORS for the public endpoint. |

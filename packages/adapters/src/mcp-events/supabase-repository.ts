@@ -139,6 +139,29 @@ export class SupabaseMcpEventsRepository implements McpEventsRepository {
     return count ?? 0;
   }
 
+  async countLiveForDomain(domain: string, excludingId: string, now: Date) {
+    // Hostnames are validated URL hostnames (letters, digits, dots, hyphens), safe inside a filter.
+    const { count, error } = await this.client
+      .from(subscriptions)
+      .select("id", { count: "exact", head: true })
+      .or(`callback_host.eq.${domain},callback_host.like.*.${domain}`)
+      .eq("status", "active")
+      .gt("expires_at", now.toISOString())
+      .neq("id", excludingId);
+    ensure(error);
+    return count ?? 0;
+  }
+
+  async countLive(now: Date) {
+    const { count, error } = await this.client
+      .from(subscriptions)
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active")
+      .gt("expires_at", now.toISOString());
+    ensure(error);
+    return count ?? 0;
+  }
+
   async findVerifiedAt(input: { principal: string; url: string; secret: string; since: Date }) {
     const { data, error } = await this.client
       .from(subscriptions)
@@ -159,7 +182,8 @@ export class SupabaseMcpEventsRepository implements McpEventsRepository {
       .select("*")
       .eq("status", "active")
       .gt("expires_at", now.toISOString())
-      .order("created_at", { ascending: true })
+      .order("checkpoint", { ascending: true })
+      .order("id", { ascending: true })
       .limit(limit);
     ensure(error);
     return (data ?? []).map(mapSubscription);
