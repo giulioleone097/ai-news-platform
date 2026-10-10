@@ -32,6 +32,8 @@ export function article(overrides: Partial<PublishedArticle> = {}): PublishedArt
     categorySlug: "models",
     categoryName: "Models",
     publishedAt: "2026-10-10T12:00:00.000Z",
+    claimStatus: "confirmed",
+    entitySlugs: ["openai", "gpt-6"],
     ...overrides,
   };
 }

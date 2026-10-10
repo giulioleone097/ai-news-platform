@@ -100,6 +100,27 @@ describe("MCP Events over createMcpHandler", () => {
       inputSchema: { additionalProperties: false },
       payloadSchema: { additionalProperties: false },
     });
+    expect(Object.keys(payload.result.events[0].inputSchema.properties))
+      .toEqual(["locale", "category", "entity", "claim_status"]);
+    expect(payload.result.events[0].payloadSchema.required).toEqual(
+      expect.arrayContaining(["claim_status", "entity_slugs"]),
+    );
+  });
+
+  it("subscribes with the entity and claim_status filters and rejects invalid values", async () => {
+    const filtered = await call("events/subscribe", subscribeParams({
+      arguments: { entity: "openai", claim_status: "rumour" },
+    }));
+    expect(filtered.error).toBeUndefined();
+    expect(filtered.result.id).toBe(deriveSubscriptionId({
+      principal: "public",
+      url: callbackUrl,
+      name: "article.published",
+      arguments: { claim_status: "rumour", entity: "openai" },
+    }));
+
+    const invalid = await call("events/subscribe", subscribeParams({ arguments: { claim_status: "maybe" } }));
+    expect(invalid.error.code).toBe(-32602);
   });
 
   it("subscribes, verifies the callback and is idempotent on refresh", async () => {

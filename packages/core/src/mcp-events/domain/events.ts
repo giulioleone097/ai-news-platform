@@ -1,7 +1,7 @@
 import * as z from "zod/v4";
 
 import { locales } from "../../locale";
-import { slugPattern } from "../../editorial/domain/article";
+import { claimStatuses, slugPattern } from "../../editorial/domain/article";
 
 /** Events cover published (public) data only, so every subscriber is the same principal. */
 export const mcpEventPrincipal = "public";
@@ -29,6 +29,22 @@ export const articlePublishedArgumentsSchema = z
       .describe(
         "Only notify for articles in this locale-specific category slug, as returned by list_categories. Omit to receive every category.",
       ),
+    entity: z
+      .string()
+      .trim()
+      .min(1)
+      .max(80)
+      .regex(slugPattern)
+      .optional()
+      .describe(
+        "Only notify for articles that link this entity (company, model or product), by entity slug. Omit to receive every entity.",
+      ),
+    claim_status: z
+      .enum(claimStatuses)
+      .optional()
+      .describe(
+        "Only notify for articles with this claim status (confirmed, rollout, test, rumour or analysis). Omit to receive every status.",
+      ),
   })
   .strict();
 
@@ -46,6 +62,8 @@ export const articlePublishedDataSchema = z
     category_name: nonEmpty.describe("Localized category name."),
     url: nonEmpty.describe("Absolute canonical URL of the article."),
     published_at: nonEmpty.describe("ISO 8601 publication timestamp."),
+    claim_status: z.enum(claimStatuses).describe("How firmly the story stands: confirmed, rollout, test, rumour or analysis."),
+    entity_slugs: z.array(nonEmpty).describe("Slugs of the entities the story links, primary entity first."),
   })
   .strict();
 
@@ -70,7 +88,7 @@ export function listMcpEventDefinitions(): McpEventDefinition[] {
     {
       name: "article.published",
       description:
-        "A new article was published on NEURA AI News. Fires once per published article and locale; optionally filtered by locale and category slug.",
+        "A new article was published on NEURA AI News. Fires once per published article and locale; optionally filtered by locale, category slug, entity slug and claim status.",
       delivery: ["webhook"],
       inputSchema: jsonSchema(articlePublishedArgumentsSchema, "input"),
       payloadSchema: jsonSchema(articlePublishedDataSchema, "output"),
@@ -96,9 +114,14 @@ export interface PublishedArticle {
   categorySlug: string;
   categoryName: string;
   publishedAt: string;
+  claimStatus: ArticlePublishedData["claim_status"];
+  /** Slugs of the linked entities, primary first. */
+  entitySlugs: string[];
 }
 
 export function matchesArticleFilter(filter: ArticlePublishedArguments, article: PublishedArticle) {
   return (!filter.locale || filter.locale === article.locale)
-    && (!filter.category || filter.category === article.categorySlug);
+    && (!filter.category || filter.category === article.categorySlug)
+    && (!filter.entity || article.entitySlugs.includes(filter.entity))
+    && (!filter.claim_status || filter.claim_status === article.claimStatus);
 }

@@ -30,6 +30,8 @@ export class EditorialPublishedArticleSource implements PublishedArticleSource {
           categorySlug: article.category.slug,
           categoryName: article.category.name,
           publishedAt: new Date(article.publishedAt).toISOString(),
+          claimStatus: article.claimStatus,
+          entitySlugs: article.entities.map((entity) => entity.slug),
         });
       }
       if (!result.nextCursor) break;

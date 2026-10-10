@@ -37,6 +37,8 @@ export function toWebhookEvent(
       category_name: article.categoryName,
       url: new URL(`/${article.locale}/articles/${article.slug}`, siteUrl).toString(),
       published_at: article.publishedAt,
+      claim_status: article.claimStatus,
+      entity_slugs: article.entitySlugs,
     },
     cursor: null,
   };

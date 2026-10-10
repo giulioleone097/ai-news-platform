@@ -23,10 +23,17 @@ describe("deterministic identifiers", () => {
     expect(deriveSubscriptionId({ ...identity, arguments: { category: "models", locale: "en" } })).toBe(id);
   });
 
+  it("keeps the ids of subscriptions created before the entity and claim_status filters", () => {
+    expect(deriveSubscriptionId(identity))
+      .toBe("sub_be74bd3db236c380cf9a6e54492d8bdef2a7e53fed33293274d815fef3c9e895");
+  });
+
   it("changes the id when any identity part changes", () => {
     const id = deriveSubscriptionId(identity);
     expect(deriveSubscriptionId({ ...identity, url: "https://other.example.com/cb" })).not.toBe(id);
     expect(deriveSubscriptionId({ ...identity, arguments: { locale: "it" } })).not.toBe(id);
+    expect(deriveSubscriptionId({ ...identity, arguments: { ...identity.arguments, entity: "openai" } })).not.toBe(id);
+    expect(deriveSubscriptionId({ ...identity, arguments: { ...identity.arguments, claim_status: "rumour" } })).not.toBe(id);
     expect(deriveSubscriptionId({ ...identity, principal: "someone" })).not.toBe(id);
   });
 

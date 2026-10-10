@@ -50,7 +50,12 @@ describe("events/list", () => {
       inputSchema: {
         type: "object",
         additionalProperties: false,
-        properties: { locale: { enum: ["en", "it"] }, category: { type: "string", maxLength: 80 } },
+        properties: {
+          locale: { enum: ["en", "it"] },
+          category: { type: "string", maxLength: 80 },
+          entity: { type: "string", maxLength: 80 },
+          claim_status: { enum: ["confirmed", "rollout", "test", "rumour", "analysis"] },
+        },
       },
       payloadSchema: {
         type: "object",
@@ -58,6 +63,7 @@ describe("events/list", () => {
         required: [
           "article_slug", "locale", "title", "excerpt",
           "category_slug", "category_name", "url", "published_at",
+          "claim_status", "entity_slugs",
         ],
       },
     });
@@ -168,6 +174,8 @@ describe("events/subscribe", () => {
     ["unknown argument", { arguments: { author: "x" } }],
     ["bad locale", { arguments: { locale: "fr" } }],
     ["bad category slug", { arguments: { category: "Not A Slug" } }],
+    ["bad entity slug", { arguments: { entity: "Not A Slug" } }],
+    ["unknown claim status", { arguments: { claim_status: "maybe" } }],
     ["non-webhook mode", { delivery: delivery({ mode: "poll" }) }],
     ["secret without prefix", { delivery: delivery({ secret: "MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw" }) }],
     ["short secret", { delivery: delivery({ secret: `whsec_${Buffer.alloc(8).toString("base64")}` }) }],

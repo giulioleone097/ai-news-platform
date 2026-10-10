@@ -82,6 +82,8 @@ describe("EventEnqueuer", () => {
         category_name: "Models",
         url: "https://neura.example.com/en/articles/model-ships",
         published_at: "2026-10-10T12:00:30.000Z",
+        claim_status: "confirmed",
+        entity_slugs: ["openai", "gpt-6"],
       },
       cursor: null,
     });
@@ -110,6 +112,39 @@ describe("EventEnqueuer", () => {
       "it.example.com": ["it-models"],
       "policy.example.com": ["en-policy"],
       "models.example.com": ["en-models"],
+    });
+  });
+
+  it("filters by entity slug and claim status, alone or combined, without disturbing the older filters", async () => {
+    await subscribe({}, "https://all.example.com/cb");
+    await subscribe({ entity: "anthropic" }, "https://entity.example.com/cb");
+    await subscribe({ claim_status: "rumour" }, "https://status.example.com/cb");
+    await subscribe({ entity: "openai", claim_status: "confirmed" }, "https://both.example.com/cb");
+    await subscribe({ locale: "en", category: "models", entity: "gpt-6" }, "https://legacy.example.com/cb");
+    advance(minute);
+    source.articles = [
+      article({ id: "openai-confirmed", publishedAt: "2026-10-10T12:00:10.000Z" }),
+      article({
+        id: "anthropic-rumour",
+        claimStatus: "rumour",
+        entitySlugs: ["anthropic"],
+        publishedAt: "2026-10-10T12:00:20.000Z",
+      }),
+      article({ id: "no-entities", claimStatus: "analysis", entitySlugs: [], publishedAt: "2026-10-10T12:00:30.000Z" }),
+    ];
+
+    await enqueuer.run();
+    const byHost = new Map<string, string[]>();
+    for (const row of repository.deliveries) {
+      const host = repository.subscriptions.get(row.subscriptionId)!.host;
+      byHost.set(host, [...(byHost.get(host) ?? []), row.articleId].sort());
+    }
+    expect(Object.fromEntries(byHost)).toEqual({
+      "all.example.com": ["anthropic-rumour", "no-entities", "openai-confirmed"],
+      "entity.example.com": ["anthropic-rumour"],
+      "status.example.com": ["anthropic-rumour"],
+      "both.example.com": ["openai-confirmed"],
+      "legacy.example.com": ["openai-confirmed"],
     });
   });
 
