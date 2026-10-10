@@ -26,7 +26,7 @@ const delivery: NewsletterOutboxDelivery = {
   locale: "en",
   subject: "AI briefing",
   preheader: "What changed",
-  fromName: "NEURA",
+  fromName: "AtlasNews",
   fromEmail: "briefing@example.com",
   replyTo: null,
   contentMarkdown: "## This week\n\nA sufficiently complete campaign body.",

@@ -9,15 +9,18 @@ npm ci
 npm run check
 ```
 
-Start the production server in explicit disposable demo-review mode, then verify the complete HTTP and MCP lifecycle from a second terminal:
+Build the reader site, start it and the MCP server in explicit disposable demo-review mode, then verify the complete HTTP and MCP lifecycle from a third terminal. The site and the MCP server are separate processes that share no memory, so the shared revalidation secret is what lets an MCP write reach the site.
 
 ```bash
-NEURA_CONTENT_MODE=demo \
-NEURA_ENABLE_DEMO_STUDIO=true \
-NEURA_MCP_ADMIN_API_KEY=<disposable-local-key> \
-npm start
+npm run build:next -w apps/web
+ATLASNEWS_CONTENT_MODE=demo ATLASNEWS_ENABLE_DEMO_STUDIO=true \
+ATLASNEWS_REVALIDATE_SECRET=<disposable-32-char-secret> npm start
 
-NEURA_MCP_ADMIN_API_KEY=<disposable-local-key> npm run smoke:runtime
+ATLASNEWS_CONTENT_MODE=demo \
+ATLASNEWS_MCP_ADMIN_API_KEY=<disposable-local-key> \
+ATLASNEWS_REVALIDATE_SECRET=<disposable-32-char-secret> npm run start -w apps/mcp
+
+ATLASNEWS_MCP_ADMIN_API_KEY=<disposable-local-key> npm run smoke:runtime
 ```
 
 Additionally verify the local Supabase migration chain when schema or persistence behavior changes:
@@ -27,7 +30,7 @@ npm run supabase:start
 npm run supabase:reset
 ```
 
-The CI build intentionally runs without Supabase credentials, proving the zero-config public demo remains viable while production Studio fails closed. A green CI build does not replace Preview smoke checks against Supabase.
+The CI build intentionally runs without Supabase credentials, proving the zero-config public demo remains viable while production Studio fails closed. A green CI build does not replace staging smoke checks against Supabase, and the ChatGPT Sites artifact has only been run locally in `workerd` ([SITES.md](SITES.md#not-verified-without-a-real-deployment)).
 
 ## Performance budgets
 
@@ -53,11 +56,11 @@ Measure a cold navigation and a warm navigation for `/en`, `/it`, one category, 
 
 - Public UI is Server Component first; client components are limited to interaction.
 - Home feeds revalidate after 60 seconds; article records after 300 seconds.
-- Studio publication actions use `updateTag` for read-your-own-writes; admin MCP uses immediate tagged expiration and both invalidate localized pages, API, RSS and sitemap.
+- Studio publication actions use `updateTag` for read-your-own-writes. Writes through the MCP server call `POST /api/revalidate` on the site, which expires the same tags; on Sites each isolate keeps its own cache, so another isolate shows a change after at most its own revalidate window ([SITES.md](SITES.md#what-does-not-run-on-sites)).
 - The bundled LCP hero ships as pre-sized responsive WebP assets; dynamic editorial covers use `next/image`, responsive `sizes`, dimensions, and a long optimized-image cache TTL.
 - Fonts are bundled locally; production rendering does not wait on a third-party font origin.
-- Supabase and Vercel functions should share the nearest practical region.
-- MCP is stateless and has a 10-second hard function ceiling.
+- Keep the Supabase project in the region nearest to the `apps/mcp` and `apps/jobs` containers.
+- MCP is stateless; its calls should finish well under 10 seconds.
 - Search and feed queries use locale/status/category indexes and cursor pagination.
 - Latest, category, and search archives render six rows in the initial HTML, then prefetch compact list rows through `/api/articles` as the sentinel approaches the viewport. A visible load-more control remains as an accessible fallback.
 - Article HTML remains static; the comment client and its first API request are split into a separate chunk and activated only near the viewport.
@@ -68,7 +71,7 @@ Never mark a regression acceptable because the second navigation is fast; cold-p
 
 ## Observability without required third parties
 
-Use Vercel deployment logs and function logs for application failures, Supabase database/Auth logs for persistence and RLS failures, provider dashboards for bounded delivery receipts, and browser Performance/Core Web Vitals for user experience. External analytics and error tracking remain optional; configured Resend/social providers are production capabilities and are reported by `/api/health`.
+Use the Sites deployment logs for the reader site and the container logs for `apps/mcp` and `apps/jobs` for application failures, Supabase database/Auth logs for persistence, RLS and OAuth sign-in failures, provider dashboards for bounded delivery receipts, and browser Performance/Core Web Vitals for user experience. External analytics and error tracking remain optional; configured Resend/social providers are production capabilities and are reported by `/api/health`.
 
 Do not log:
 
@@ -119,7 +122,7 @@ Useful operational dimensions are route, locale, deployment ID, repository mode 
 
 1. Identify the affected deployment, locale, route/tool, and first observed time.
 2. Determine whether the app is in demo or Supabase mode.
-3. Check Vercel function logs, then Supabase logs/RLS only if the request reached persistence.
+3. Check the logs of the host that served the request (Sites, `apps/mcp` or `apps/jobs`), then Supabase logs/RLS only if the request reached persistence.
 4. Reproduce with the smallest public request; do not use a production editor session unless required.
 5. Roll back application-only failures immediately. For database failures, preserve data and prefer a forward corrective migration.
 
@@ -127,7 +130,7 @@ Useful operational dimensions are route, locale, deployment ID, repository mode 
 
 ### Production shows demo content
 
-Both Supabase environment values must be non-empty in the Vercel environment that built the deployment. Confirm Preview/Production scope, redeploy, and verify real content. Never print key values.
+Both Supabase environment values must be non-empty where the deployment was built and where it runs ([SITES.md](SITES.md#environment-variables)). Confirm the scope, redeploy, and verify real content. Never print key values.
 
 ### Metadata or share URLs use localhost
 
@@ -151,11 +154,15 @@ Search is locale-scoped. Confirm the translated row exists, uses the requested l
 
 ### MCP browser call is blocked by CORS
 
-Add the exact caller origin (scheme, host, and port) to `MCP_ALLOWED_ORIGINS`, comma-separated, then redeploy. CLI/agent clients that omit `Origin` should continue to work. `GET /mcp` returning 405 is expected; use POST.
+Add the exact caller origin (scheme, host, and port) to `MCP_ALLOWED_ORIGINS`, comma-separated, then redeploy. CLI/agent clients that omit `Origin` should continue to work. `GET /mcp` returning 405 is expected; use POST. Browsers cannot call the editor tools cross-origin by design.
+
+### An editor cannot sign in to the MCP server
+
+Work through [MCP.md](MCP.md#verify-a-deployment) in order: Supabase discovery and JWKS, the `resource` in `/.well-known/oauth-protected-resource` (it must equal the URL the host was given, so set `NEXT_PUBLIC_MCP_URL` behind a proxy), the 401 challenge, and the editor's `public.profiles` row. A valid token for someone without an editor profile only reaches the anonymous tools.
 
 ### MCP call times out
 
-Check database region alignment, query indexes, Vercel cold-start logs, and result limit. Do not raise the 10-second ceiling before locating the slow boundary.
+Check database region alignment, query indexes, container start-up and the result limit. Locate the slow boundary before changing any timeout.
 
 ### `npm ci` fails
 
@@ -178,9 +185,9 @@ Run `npx --no-install supabase migration list` and inspect local/remote versions
 
 ### Application
 
-1. Select the last known-good Vercel deployment built with the intended environment variables.
-2. Promote/redeploy it to Production.
-3. Verify `/en`, `/it`, one article, newsletter, editor authorization, and MCP.
+1. Reader site: redeploy the last known-good saved version of the Site built with the intended environment variables (Sites keeps the saved versions; the build-time values are frozen in each).
+2. `apps/mcp` and `apps/jobs`: start the previous image tag with the intended environment.
+3. Verify `/en`, `/it`, one article, newsletter, editor authorization, and MCP sign-in.
 
 Application rollback does not undo database migrations.
 
@@ -194,11 +201,11 @@ Application rollback does not undo database migrations.
 
 ### Worker schedule
 
-The schedule is database state, not application state, so an application rollback leaves it running. To stop it: `select cron.unschedule('atlasnews-jobs-dispatch');` (pausing instead: `cron.alter_job(..., active := false)`, see [Deployment](DEPLOYMENT.md#schedule-the-workers)). To remove it completely, also run `select cron.unschedule('atlasnews-job-run-details-cleanup');` and `delete from vault.secrets where name in ('jobs_base_url', 'jobs_cron_secret');`; the function `private.dispatch_jobs()` is then inert. To bring the schedule back, run the two `cron.schedule(...)` statements from the migration. Falling back to Vercel crons means restoring `apps/jobs/vercel.json` from Git history (`git log --diff-filter=D -- apps/jobs/vercel.json`) in a Vercel project rooted at `apps/jobs`, after unscheduling the database job so two schedulers never run at once (they would be safe, but wasteful).
+The schedule is database state, not application state, so an application rollback leaves it running. To stop it: `select cron.unschedule('atlasnews-jobs-dispatch');` (pausing instead: `cron.alter_job(..., active := false)`, see [Deployment](DEPLOYMENT.md#schedule-the-workers)). To remove it completely, also run `select cron.unschedule('atlasnews-job-run-details-cleanup');` and `delete from vault.secrets where name in ('jobs_base_url', 'jobs_cron_secret');`; the function `private.dispatch_jobs()` is then inert. To bring the schedule back, run the two `cron.schedule(...)` statements from the migration.
 
 ### Environment
 
-Restore the previous Vercel environment values and redeploy; changing a public value without rebuilding does not change an existing client bundle.
+Restore the previous environment values and redeploy; changing a public value without rebuilding does not change an existing client bundle.
 
 ### Content
 
@@ -206,4 +213,4 @@ Move a bad publication back to draft/review or publish a corrected localized rev
 
 ## Post-rollback proof
 
-Record the deployment ID, Git commit, database migration version, restored environment scope, smoke-check results, and any known data gap. A Vercel “Ready” state alone is not rollback proof.
+Record the deployed Site version, image tags, Git commit, database migration version, restored environment scope, smoke-check results, and any known data gap. A host's “deployed” state alone is not rollback proof.

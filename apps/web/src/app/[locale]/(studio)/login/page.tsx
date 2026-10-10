@@ -96,7 +96,7 @@ export default async function LoginPage({
 
       <aside className="auth-visual" aria-hidden="true">
         <div className="auth-visual__grid" />
-        <p>NEURA / EDITORIAL INTELLIGENCE</p>
+        <p>AtlasNews / EDITORIAL INTELLIGENCE</p>
         <span>01 — 26</span>
       </aside>
     </main>

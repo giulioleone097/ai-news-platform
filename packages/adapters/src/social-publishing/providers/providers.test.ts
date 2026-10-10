@@ -29,7 +29,7 @@ describe("real social provider adapters", () => {
 
     await expect(adapter.publish({
       text: "A production AI briefing",
-      articleUrl: "https://neura.example/en/articles/briefing",
+      articleUrl: "https://atlasnews.example/en/articles/briefing",
     }, { idempotencyKey: "social:linkedin:publication-123" })).resolves.toEqual({
       messageId: "urn:li:share:6844785523593134080",
       url: "https://www.linkedin.com/feed/update/urn:li:share:6844785523593134080/",
@@ -46,7 +46,7 @@ describe("real social provider adapters", () => {
     });
     expect(JSON.parse(String(transport.calls[0].init?.body))).toMatchObject({
       author: "urn:li:organization:5515715",
-      commentary: "A production AI briefing\n\nhttps://neura.example/en/articles/briefing",
+      commentary: "A production AI briefing\n\nhttps://atlasnews.example/en/articles/briefing",
       visibility: "PUBLIC",
       lifecycleState: "PUBLISHED",
       distribution: { feedDistribution: "MAIN_FEED" },

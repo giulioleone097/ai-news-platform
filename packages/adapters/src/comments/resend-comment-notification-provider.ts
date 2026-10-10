@@ -53,7 +53,7 @@ export class ResendCommentNotificationProvider implements CommentNotificationPro
 
     const localized = event.locale === "it";
     const subject = event.kind === "verification"
-      ? localized ? "Conferma le notifiche dei commenti NEURA" : "Confirm NEURA comment notifications"
+      ? localized ? "Conferma le notifiche dei commenti AtlasNews" : "Confirm AtlasNews comment notifications"
       : event.kind === "reply"
         ? localized ? "Una nuova risposta al tuo commento" : "A new reply to your comment"
         : localized ? "Aggiornamento sul tuo commento" : "An update about your comment";
@@ -71,10 +71,10 @@ export class ResendCommentNotificationProvider implements CommentNotificationPro
       : localized
         ? "Puoi gestire o disattivare queste notifiche in qualsiasi momento."
         : "You can manage or disable these notifications at any time.";
-    const html = `<!doctype html><html lang="${event.locale}"><body style="margin:0;background:#f5f3ee;color:#191918;font-family:Arial,sans-serif"><div style="max-width:640px;margin:auto;padding:40px 24px"><p style="font-size:13px;letter-spacing:.12em;text-transform:uppercase">NEURA · COMMUNITY</p><h1 style="font-size:32px;line-height:1.1">${escapeHtml(headline)}</h1><p style="font-size:17px;line-height:1.6">${escapeHtml(detail)}</p><p style="margin:32px 0"><a href="${escapeHtml(actionUrl.toString())}" style="background:#191918;color:#fff;padding:14px 20px;border-radius:8px;text-decoration:none;font-weight:700">${escapeHtml(actionLabel)}</a></p><p style="font-size:13px"><a href="${escapeHtml(unsubscribeUrl.toString())}">${localized ? "Disattiva notifiche" : "Unsubscribe from notifications"}</a></p></div></body></html>`;
+    const html = `<!doctype html><html lang="${event.locale}"><body style="margin:0;background:#f5f3ee;color:#191918;font-family:Arial,sans-serif"><div style="max-width:640px;margin:auto;padding:40px 24px"><p style="font-size:13px;letter-spacing:.12em;text-transform:uppercase">AtlasNews · COMMUNITY</p><h1 style="font-size:32px;line-height:1.1">${escapeHtml(headline)}</h1><p style="font-size:17px;line-height:1.6">${escapeHtml(detail)}</p><p style="margin:32px 0"><a href="${escapeHtml(actionUrl.toString())}" style="background:#191918;color:#fff;padding:14px 20px;border-radius:8px;text-decoration:none;font-weight:700">${escapeHtml(actionLabel)}</a></p><p style="font-size:13px"><a href="${escapeHtml(unsubscribeUrl.toString())}">${localized ? "Disattiva notifiche" : "Unsubscribe from notifications"}</a></p></div></body></html>`;
 
     return this.provider.send({
-      fromName: "NEURA",
+      fromName: "AtlasNews",
       fromEmail: this.config.fromEmail,
       to: event.recipientEmail,
       subject,

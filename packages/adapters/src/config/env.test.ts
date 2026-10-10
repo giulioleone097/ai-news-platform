@@ -22,8 +22,8 @@ function disableSupabase() {
 describe("Studio environment boundary", () => {
   it("keeps the zero-config Studio available during local development", () => {
     vi.stubEnv("NODE_ENV", "development");
-    vi.stubEnv("NEURA_ENABLE_DEMO_STUDIO", "");
-    vi.stubEnv("NEURA_CONTENT_MODE", "demo");
+    vi.stubEnv("ATLASNEWS_ENABLE_DEMO_STUDIO", "");
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "demo");
     disableSupabase();
 
     expect(isDemoStudioEnabled()).toBe(true);
@@ -32,8 +32,8 @@ describe("Studio environment boundary", () => {
 
   it("fails closed in production without Supabase", () => {
     vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("NEURA_ENABLE_DEMO_STUDIO", "");
-    vi.stubEnv("NEURA_CONTENT_MODE", "demo");
+    vi.stubEnv("ATLASNEWS_ENABLE_DEMO_STUDIO", "");
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "demo");
     disableSupabase();
 
     expect(isDemoStudioEnabled()).toBe(false);
@@ -42,8 +42,8 @@ describe("Studio environment boundary", () => {
 
   it("requires an exact production opt-in for the demo Studio", () => {
     vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("NEURA_ENABLE_DEMO_STUDIO", "true");
-    vi.stubEnv("NEURA_CONTENT_MODE", "demo");
+    vi.stubEnv("ATLASNEWS_ENABLE_DEMO_STUDIO", "true");
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "demo");
     disableSupabase();
 
     expect(isDemoStudioEnabled()).toBe(true);
@@ -51,7 +51,7 @@ describe("Studio environment boundary", () => {
   });
 
   it("keeps an explicit Supabase mode fail-closed when credentials are incomplete", () => {
-    vi.stubEnv("NEURA_CONTENT_MODE", "supabase");
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "supabase");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
 
@@ -61,7 +61,7 @@ describe("Studio environment boundary", () => {
 
   it("reports a non-persistent localhost production as not ready", () => {
     vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("NEURA_CONTENT_MODE", "demo");
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "demo");
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "http://localhost:3000");
     disableSupabase();
 
@@ -78,7 +78,7 @@ describe("Studio environment boundary", () => {
 
   it("rejects malformed and insecure Supabase production origins", () => {
     vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("NEURA_CONTENT_MODE", "supabase");
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "supabase");
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://news.example.com");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "public-key");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "not-a-url");
@@ -96,15 +96,15 @@ describe("Studio environment boundary", () => {
 
   it("reports real outbound capabilities only when every secret is complete", () => {
     vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("NEURA_CONTENT_MODE", "supabase");
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "supabase");
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://news.example.com");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "public-key");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "s".repeat(40));
-    vi.stubEnv("NEURA_MCP_ADMIN_AUTHOR_ID", "9f25cab8-80d6-4f34-b7d0-6dad0524a860");
-    vi.stubEnv("NEURA_MCP_ADMIN_API_KEY", "m".repeat(40));
+    vi.stubEnv("ATLASNEWS_MCP_ADMIN_AUTHOR_ID", "9f25cab8-80d6-4f34-b7d0-6dad0524a860");
+    vi.stubEnv("ATLASNEWS_MCP_ADMIN_API_KEY", "m".repeat(40));
     vi.stubEnv("CRON_SECRET", "c".repeat(32));
-    vi.stubEnv("NEURA_COMMENT_GUEST_SECRET", "g".repeat(40));
+    vi.stubEnv("ATLASNEWS_COMMENT_GUEST_SECRET", "g".repeat(40));
     vi.stubEnv("RESEND_API_KEY", `re_${"a".repeat(24)}`);
     vi.stubEnv("RESEND_WEBHOOK_SECRET", `whsec_${"w".repeat(24)}`);
     vi.stubEnv("NEWSLETTER_FROM_EMAIL", "briefing@news.example.com");
@@ -153,8 +153,8 @@ describe("Studio environment boundary", () => {
       scopes: ["email"],
     });
 
-    vi.stubEnv("NEURA_MCP_OAUTH_ISSUER", "https://auth.news.example.com/auth/v1/");
-    vi.stubEnv("NEURA_MCP_OAUTH_AUDIENCE", "https://mcp.news.example.com/mcp");
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_ISSUER", "https://auth.news.example.com/auth/v1/");
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_AUDIENCE", "https://mcp.news.example.com/mcp");
     expect(getMcpOAuthEnvironment()).toMatchObject({
       issuer: "https://auth.news.example.com/auth/v1",
       audience: "https://mcp.news.example.com/mcp",

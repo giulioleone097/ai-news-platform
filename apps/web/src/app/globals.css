@@ -1,24 +1,23 @@
 :root {
-  --paper: var(--neura-color-paper);
-  --paper-raised: var(--neura-color-paper-raised);
-  --ink: var(--neura-color-ink);
-  --muted: var(--neura-color-muted);
-  --rule: var(--neura-color-rule);
-  --rule-strong: var(--neura-color-rule-strong);
-  --coral: var(--neura-color-coral);
-  --coral-dark: var(--neura-color-coral-dark);
-  --success: var(--neura-color-success);
-  --warning: var(--neura-color-warning);
-  --info: var(--neura-color-info);
+  --paper: var(--atlasnews-color-paper);
+  --paper-raised: var(--atlasnews-color-paper-raised);
+  --ink: var(--atlasnews-color-ink);
+  --muted: var(--atlasnews-color-muted);
+  --rule: var(--atlasnews-color-rule);
+  --rule-strong: var(--atlasnews-color-rule-strong);
+  --coral: var(--atlasnews-color-coral);
+  --coral-dark: var(--atlasnews-color-coral-dark);
+  --success: var(--atlasnews-color-success);
+  --warning: var(--atlasnews-color-warning);
+  --info: var(--atlasnews-color-info);
   --font-display: "Inter Variable", Inter, sans-serif;
-  --font-brand: "Barlow Condensed", "Arial Narrow", sans-serif;
   --font-reading: "Source Serif 4 Variable", Georgia, serif;
   --font-ui: "Inter Variable", Inter, sans-serif;
-  --gutter: clamp(var(--neura-spacing-gutter-mobile), 4vw, var(--neura-spacing-gutter-desktop));
+  --gutter: clamp(var(--atlasnews-spacing-gutter-mobile), 4vw, var(--atlasnews-spacing-gutter-desktop));
   --shell: 96rem;
   --header-height: 5.75rem;
-  --radius: var(--neura-rounded-md);
-  --radius-media: var(--neura-rounded-media);
+  --radius: var(--atlasnews-rounded-md);
+  --radius-media: var(--atlasnews-rounded-media);
   --transition: 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
@@ -527,7 +526,7 @@ svg {
 
 .site-footer {
   color: white;
-  background: var(--neura-color-ink);
+  background: var(--atlasnews-color-ink);
 }
 
 .site-footer__inner {
@@ -875,7 +874,7 @@ svg {
   place-items: center;
   color: white;
   border-radius: 50%;
-  background: var(--neura-color-ink);
+  background: var(--atlasnews-color-ink);
   font-size: 0.66rem;
 }
 
@@ -1559,7 +1558,7 @@ svg {
   margin-left: 0.2rem;
   padding-inline: 0.9rem;
   border: 1px solid var(--rule);
-  border-radius: var(--neura-rounded-sm);
+  border-radius: var(--atlasnews-rounded-sm);
   background: var(--paper-raised);
 }
 
@@ -1576,7 +1575,7 @@ svg {
 }
 
 .button {
-  border-radius: var(--neura-rounded-sm);
+  border-radius: var(--atlasnews-rounded-sm);
 }
 
 .button:active,
@@ -1640,7 +1639,7 @@ svg {
 
 .newsletter input,
 .newsletter button {
-  border-radius: var(--neura-rounded-sm);
+  border-radius: var(--atlasnews-rounded-sm);
 }
 
 .newsletter input {
@@ -1708,7 +1707,7 @@ svg {
 
 .archive-search button {
   margin: 0.35rem;
-  border-radius: var(--neura-rounded-sm);
+  border-radius: var(--atlasnews-rounded-sm);
 }
 
 .category-filter {
@@ -1720,7 +1719,7 @@ svg {
 .category-filter a {
   min-height: 2.75rem;
   border: 1px solid transparent;
-  border-radius: var(--neura-rounded-sm);
+  border-radius: var(--atlasnews-rounded-sm);
 }
 
 .category-filter a.is-active {
@@ -1829,7 +1828,7 @@ svg {
   border-radius: var(--radius);
   background: linear-gradient(100deg, var(--paper-raised) 20%, color-mix(in srgb, var(--rule) 62%, var(--paper-raised)) 45%, var(--paper-raised) 70%);
   background-size: 220% 100%;
-  animation: neura-skeleton 1.3s ease-in-out infinite;
+  animation: atlasnews-skeleton 1.3s ease-in-out infinite;
 }
 
 .site-loading__heading,
@@ -1861,7 +1860,7 @@ svg {
   margin-top: 1rem;
 }
 
-@keyframes neura-skeleton {
+@keyframes atlasnews-skeleton {
   to { background-position-x: -220%; }
 }
 
@@ -1899,7 +1898,7 @@ svg {
   flex: none;
   align-items: center;
   padding-inline: 0.8125rem;
-  border-radius: var(--neura-rounded-full);
+  border-radius: var(--atlasnews-rounded-full);
   font-size: 0.8125rem;
   font-weight: 650;
   isolation: isolate;
@@ -1911,7 +1910,7 @@ svg {
   z-index: -1;
   inset: 0.3125rem 0;
   border: 1px solid var(--rule);
-  border-radius: var(--neura-rounded-full);
+  border-radius: var(--atlasnews-rounded-full);
   content: "";
   background: var(--paper-raised);
   transition: border-color var(--transition);
@@ -1937,7 +1936,7 @@ svg {
 .claim-chip {
   display: inline-block;
   padding: 0.125rem 0.4375rem;
-  border-radius: var(--neura-rounded-sm);
+  border-radius: var(--atlasnews-rounded-sm);
   font-size: 0.6875rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -1947,28 +1946,28 @@ svg {
 }
 
 .claim-chip--confirmed {
-  color: var(--neura-color-claim-confirmed-ink);
-  background: var(--neura-color-claim-confirmed);
+  color: var(--atlasnews-color-claim-confirmed-ink);
+  background: var(--atlasnews-color-claim-confirmed);
 }
 
 .claim-chip--rollout {
-  color: var(--neura-color-claim-rollout-ink);
-  background: var(--neura-color-claim-rollout);
+  color: var(--atlasnews-color-claim-rollout-ink);
+  background: var(--atlasnews-color-claim-rollout);
 }
 
 .claim-chip--test {
-  color: var(--neura-color-claim-test-ink);
-  background: var(--neura-color-claim-test);
+  color: var(--atlasnews-color-claim-test-ink);
+  background: var(--atlasnews-color-claim-test);
 }
 
 .claim-chip--rumour {
-  color: var(--neura-color-claim-rumour-ink);
-  background: var(--neura-color-claim-rumour);
+  color: var(--atlasnews-color-claim-rumour-ink);
+  background: var(--atlasnews-color-claim-rumour);
 }
 
 .claim-chip--analysis {
-  color: var(--neura-color-claim-analysis-ink);
-  background: var(--neura-color-claim-analysis);
+  color: var(--atlasnews-color-claim-analysis-ink);
+  background: var(--atlasnews-color-claim-analysis);
 }
 
 .feed-layout {
@@ -2095,7 +2094,7 @@ svg {
 }
 
 .feed-row__title a:focus-visible::after {
-  border-radius: var(--neura-rounded-sm);
+  border-radius: var(--atlasnews-rounded-sm);
   outline: 0.1875rem solid var(--coral);
   outline-offset: -0.1875rem;
 }
@@ -2132,7 +2131,7 @@ svg {
   align-self: start;
   margin-left: 0.25rem;
   overflow: hidden;
-  border-radius: var(--neura-rounded-sm);
+  border-radius: var(--atlasnews-rounded-sm);
   background: var(--rule);
 }
 
@@ -2267,7 +2266,7 @@ svg {
   gap: 0.25rem;
   padding: 1rem;
   border: 1px solid var(--rule);
-  border-radius: var(--neura-rounded-md);
+  border-radius: var(--atlasnews-rounded-md);
   background: var(--paper-raised);
 }
 
@@ -2279,7 +2278,7 @@ svg {
 .entity-card h3 a::after {
   position: absolute;
   inset: 0;
-  border-radius: var(--neura-rounded-md);
+  border-radius: var(--atlasnews-rounded-md);
   content: "";
 }
 
@@ -2406,7 +2405,7 @@ a.timeline__title:hover {
   gap: 0.5rem;
   padding: 0.875rem 1rem;
   border: 1px solid var(--rule);
-  border-radius: var(--neura-rounded-md);
+  border-radius: var(--atlasnews-rounded-md);
   background: var(--paper-raised);
 }
 

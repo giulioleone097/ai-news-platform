@@ -56,7 +56,7 @@ describe("MCP Apps and OpenAI extensions", () => {
     expect(capabilities.extensions["openai/mentions"]).toEqual({ searchTool: "search_mentions" });
     expect(capabilities.experimental["openai/mentions"]).toEqual({ searchTool: "search_mentions" });
     expect(capabilities.resources).toBeDefined();
-    expect(payload.result._meta["io.modelcontextprotocol/serverInfo"].icons[0].src).toMatch(/neura-icon\.svg$/);
+    expect(payload.result._meta["io.modelcontextprotocol/serverInfo"].icons[0].src).toMatch(/atlasnews-icon\.svg$/);
   });
 
   it("serves a self-contained MCP App with display modes and a scoped CSP", async () => {

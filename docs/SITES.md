@@ -52,15 +52,15 @@ Build time (frozen into the bundles; changing one needs a new deployment):
 | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | canonical origin: metadata, sitemap, feeds, `/api/health`. Measured: a runtime value does not override the built one |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | inlined into the browser bundle (login, Studio) |
-| `NEURA_CONTENT_MODE=supabase` | read by the [build guard](#build-guard) |
+| `ATLASNEWS_CONTENT_MODE=supabase` | read by the [build guard](#build-guard) |
 
 If the Sites build cannot see variables set in the Site settings, put the three public values and the mode in `apps/web/.env.production` (verified: the vinext build reads it and the guard sees it). The URL and the anon key are public by design, but `.gitignore` excludes `.env*`, so un-ignore the file on purpose.
 
-Runtime (Site settings): `NEURA_CONTENT_MODE=supabase`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the server reads them at run time; verified in `workerd`), `SUPABASE_SERVICE_ROLE_KEY`, `NEURA_COMMENT_GUEST_SECRET`, `NEURA_REVALIDATE_SECRET`, `NEURA_MCP_ADMIN_API_KEY`, `NEURA_MCP_ADMIN_AUTHOR_ID`, `MCP_ALLOWED_ORIGINS`, `NEXT_PUBLIC_MCP_URL`, and the optional newsletter, WhatsApp, LinkedIn and X values. Names, meaning and which are required are in [`.env.example`](../.env.example) and [DEPLOYMENT.md](DEPLOYMENT.md). `GET /api/health` lists what is still missing and returns 503 until the deployment is ready.
+Runtime (Site settings): `ATLASNEWS_CONTENT_MODE=supabase`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the server reads them at run time; verified in `workerd`), `SUPABASE_SERVICE_ROLE_KEY`, `ATLASNEWS_COMMENT_GUEST_SECRET`, `ATLASNEWS_REVALIDATE_SECRET`, `ATLASNEWS_MCP_ADMIN_API_KEY`, `ATLASNEWS_MCP_ADMIN_AUTHOR_ID`, `MCP_ALLOWED_ORIGINS`, `NEXT_PUBLIC_MCP_URL`, and the optional newsletter, WhatsApp, LinkedIn and X values. Names, meaning and which are required are in [`.env.example`](../.env.example) and [DEPLOYMENT.md](DEPLOYMENT.md). `GET /api/health` lists what is still missing and returns 503 until the deployment is ready.
 
 ### Build guard
 
-`next.config.ts` runs in both builds (verified: a failing guard stops `vinext build` and `next build`). For a production build it applies when `NEXT_PUBLIC_SITE_URL` is a public HTTPS origin or `NEXT_PUBLIC_SUPABASE_URL` is a hosted HTTPS origin. Then it requires `NEURA_CONTENT_MODE=supabase`, a valid Supabase URL and key, a non-local HTTPS Supabase origin and a non-local HTTPS canonical origin, so a public build cannot ship demo data or localhost metadata. Demo builds (CI, local review) and local-Supabase builds are not affected. A build with no variables at all is a demo build and passes; `/api/health` returning 503 `not-ready` is what catches a deployment that forgot its environment.
+`next.config.ts` runs in both builds (verified: a failing guard stops `vinext build` and `next build`). For a production build it applies when `NEXT_PUBLIC_SITE_URL` is a public HTTPS origin or `NEXT_PUBLIC_SUPABASE_URL` is a hosted HTTPS origin. Then it requires `ATLASNEWS_CONTENT_MODE=supabase`, a valid Supabase URL and key, a non-local HTTPS Supabase origin and a non-local HTTPS canonical origin, so a public build cannot ship demo data or localhost metadata. Demo builds (CI, local review) and local-Supabase builds are not affected. A build with no variables at all is a demo build and passes; `/api/health` returning 503 `not-ready` is what catches a deployment that forgot its environment.
 
 ## What the owner does in ChatGPT
 
@@ -70,7 +70,7 @@ Only the owner can publish the first version, change the audience, the URL, secr
 2. In ChatGPT (Work, or Codex in the desktop app), open the repository and ask: `@Sites deploy the project in apps/web as it is, with npm run build; do not change the code`. The plugin registers the Site (private, unpublished), writes the returned `project_id` into `apps/web/.openai/hosting.json`, runs `npm run build`, packages `dist/`, and saves and deploys a version. Commit the `project_id` change.
 3. Open `chatgpt.com/sites`, pick the Site, More actions, Settings. Set the runtime variables above. If build-time variables are supported there, set the build-time ones too, with `NEXT_PUBLIC_SITE_URL` set to the Site URL (or the custom domain, see 5).
 4. Ask Sites to rebuild and redeploy the saved version. Check `https://<site>/api/health` returns 200 with `"status":"ready"`, then open `/en`, `/it`, an article and `/en/feed.xml`.
-5. Custom domain: Settings, Add domain, enter the apex or subdomain you own, and create the DNS records Sites shows. Sites does not register domains and the option is not available in Enterprise workspaces at launch. Then set `NEXT_PUBLIC_SITE_URL` to the new origin, redeploy (it is built in), and update the Supabase Auth site URL and redirect URLs, `MCP_ALLOWED_ORIGINS`, and the `plugins/neura-ai-news/.mcp.json` origins that point at the old host.
+5. Custom domain: Settings, Add domain, enter the apex or subdomain you own, and create the DNS records Sites shows. Sites does not register domains and the option is not available in Enterprise workspaces at launch. Then set `NEXT_PUBLIC_SITE_URL` to the new origin, redeploy (it is built in), and update the Supabase Auth site URL and redirect URLs, `MCP_ALLOWED_ORIGINS`, and anything else that names the old host (the MCP server's `NEXT_PUBLIC_SITE_URL`, which `apps/mcp` uses for links and revalidation).
 6. Audience: new Sites are private. To publish, change the audience to anyone on the internet (an Enterprise workspace admin must allow that). Enterprise network policies must allow the Supabase hostname (`*.supabase.co` or your custom domain); raw TCP is blocked in every policy.
 
 Local equivalent of step 2, with the plugin's own scripts (build, then package; no deploy): from `apps/web`, `npm run build`, then `bash ~/.codex/plugins/cache/openai-curated-remote/sites/1.0.0/skills/sites/scripts/package-site.sh "$PWD" /tmp/atlasnews-sites.tar.gz`.
@@ -79,10 +79,10 @@ Local equivalent of step 2, with the plugin's own scripts (build, then package; 
 
 ```sh
 cd apps/web
-NEURA_CONTENT_MODE=demo NEXT_PUBLIC_SITE_URL=http://127.0.0.1:4410 npm run build
+ATLASNEWS_CONTENT_MODE=demo NEXT_PUBLIC_SITE_URL=http://127.0.0.1:4410 npm run build
 WRANGLER_SEND_METRICS=false ../../node_modules/.bin/wrangler dev --config dist/server/wrangler.json \
   --local --ip 127.0.0.1 --port 4410 --inspector-port 0 \
-  --var NEURA_CONTENT_MODE:demo --var NEXT_PUBLIC_SITE_URL:http://127.0.0.1:4410
+  --var ATLASNEWS_CONTENT_MODE:demo --var NEXT_PUBLIC_SITE_URL:http://127.0.0.1:4410
 ```
 
 `wrangler dev --local` needs no account. `dist/` is self-contained: it also ran from a copy outside the repository. Do not rebuild `dist/` while a server runs from it; the server then reads chunks of the new build and fails with missing-module errors or 404s on `_next/static`. `vinext start` serves the same `dist/` on Node and is fine for a quick look.

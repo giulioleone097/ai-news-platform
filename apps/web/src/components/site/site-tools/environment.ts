@@ -1,22 +1,18 @@
 import type { ClaimStatus } from "@atlasnews/core/editorial/domain/article";
+import { parseBookmarks, readBookmarksSnapshot, saveBookmarks } from "../bookmarks";
 import { ToolFailure, type OpenArticle, type SiteToolsEnvironment } from "./tools";
 
-const bookmarkKey = "neura:saved";
-const bookmarkEvent = "neura:saved";
 const navigationTimeoutMs = 10_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** The same store as `BookmarkButton`: a JSON array of story ids in `localStorage`. */
+/** The same store as `BookmarkButton`. */
 function addBookmark(id: string) {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(bookmarkKey) || "[]");
-    const saved = Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    const saved = parseBookmarks(readBookmarksSnapshot());
     if (saved.includes(id)) return { added: false, count: saved.length };
-    saved.push(id);
-    localStorage.setItem(bookmarkKey, JSON.stringify(saved));
-    window.dispatchEvent(new Event(bookmarkEvent));
-    return { added: true, count: saved.length };
+    saveBookmarks([...saved, id]);
+    return { added: true, count: saved.length + 1 };
   } catch {
     throw new ToolFailure("Bookmarks are not available in this browser.");
   }

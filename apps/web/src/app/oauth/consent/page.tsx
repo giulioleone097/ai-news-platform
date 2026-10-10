@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = normalizeLocale((await headers()).get("accept-language"));
-  return { title: consentCopy[locale].title, robots: { index: false, follow: false } };
+  return { title: `${consentCopy[locale].title} - AtlasNews`, robots: { index: false, follow: false } };
 }
 
 function redirectHost(redirectUri: string) {

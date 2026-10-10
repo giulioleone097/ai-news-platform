@@ -1,11 +1,11 @@
-const baseUrl = process.env.NEURA_RUNTIME_BASE_URL || "http://127.0.0.1:3000";
-const mcpUrl = process.env.NEURA_RUNTIME_MCP_URL || "http://127.0.0.1:8787";
-const adminKey = process.env.NEURA_MCP_ADMIN_API_KEY;
+const baseUrl = process.env.ATLASNEWS_RUNTIME_BASE_URL || "http://127.0.0.1:3000";
+const mcpUrl = process.env.ATLASNEWS_RUNTIME_MCP_URL || "http://127.0.0.1:8787";
+const adminKey = process.env.ATLASNEWS_MCP_ADMIN_API_KEY;
 // Optional: the shared secret of POST /api/revalidate, set on the site and on the MCP process.
-const revalidateSecret = process.env.NEURA_REVALIDATE_SECRET;
+const revalidateSecret = process.env.ATLASNEWS_REVALIDATE_SECRET;
 const protocolVersion = "2026-07-28";
 
-if (!adminKey) throw new Error("NEURA_MCP_ADMIN_API_KEY is required for the runtime smoke test.");
+if (!adminKey) throw new Error("ATLASNEWS_MCP_ADMIN_API_KEY is required for the runtime smoke test.");
 
 const clientMeta = {
   "io.modelcontextprotocol/protocolVersion": protocolVersion,
@@ -55,7 +55,7 @@ async function callAdmin(name, args) {
 const root = await get("/", 308);
 assert(new URL(root.headers.get("location"), baseUrl).pathname === "/en", "Root locale redirect failed.");
 const home = await get("/en", 200);
-assert(/NEURA|AtlasNews/.test(await home.text()), "English home body is incomplete.");
+assert(/AtlasNews/.test(await home.text()), "English home body is incomplete.");
 await get("/it", 200);
 await get("/en/articles/ai-agents-enter-every-work", 404);
 await get("/en/articles/ai-agents-enter-everyday-work", 200);

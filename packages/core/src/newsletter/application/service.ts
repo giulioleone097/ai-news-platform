@@ -246,8 +246,8 @@ export class NewsletterDeliveryService {
     confirmationUrlObject.searchParams.set("locale", request.locale);
     const confirmationUrl = confirmationUrlObject.toString();
     const subject = request.locale === "it"
-      ? "Conferma la tua iscrizione a NEURA"
-      : "Confirm your NEURA subscription";
+      ? "Conferma la tua iscrizione a AtlasNews"
+      : "Confirm your AtlasNews subscription";
     try {
       const result = await this.provider.sendConfirmation({
         fromEmail: this.config.fromEmail,

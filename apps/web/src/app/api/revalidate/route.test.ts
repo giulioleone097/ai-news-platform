@@ -18,13 +18,13 @@ function call(authorization?: string, body: unknown = { locale: "en", slugs: ["a
 
 beforeEach(() => {
   mocks.invalidate.mockClear();
-  vi.stubEnv("NEURA_REVALIDATE_SECRET", secret);
+  vi.stubEnv("ATLASNEWS_REVALIDATE_SECRET", secret);
 });
 afterEach(() => vi.unstubAllEnvs());
 
 describe("POST /api/revalidate", () => {
   it("fails closed when no secret is configured", async () => {
-    vi.stubEnv("NEURA_REVALIDATE_SECRET", "");
+    vi.stubEnv("ATLASNEWS_REVALIDATE_SECRET", "");
     expect((await call(`Bearer ${secret}`)).status).toBe(503);
     expect(mocks.invalidate).not.toHaveBeenCalled();
   });

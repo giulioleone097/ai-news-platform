@@ -28,7 +28,7 @@ describe("resolveCommentActor", () => {
   it("keeps the signed guest ownership fallback after authentication", async () => {
     mocks.getUser.mockResolvedValueOnce({ data: { user: { id: userId } } });
     const token = createGuestToken(guestSecret, Date.now(), guestId);
-    const request = new NextRequest("https://neura.test/api/comments", {
+    const request = new NextRequest("https://atlasnews.test/api/comments", {
       headers: { cookie: `${commentGuestCookieName}=${token.value}` },
     });
 

@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { Bookmark } from "lucide-react";
 import type { Messages } from "@/i18n";
+import { parseBookmarks, readBookmarksSnapshot, saveBookmarks, subscribeBookmarks } from "./bookmarks";
 
 export function BookmarkButton({
   articleId,
@@ -13,35 +14,12 @@ export function BookmarkButton({
   copy: Messages["bookmark"];
   compact?: boolean;
 }) {
-  const snapshot = useSyncExternalStore(
-    (onChange) => {
-      window.addEventListener("storage", onChange);
-      window.addEventListener("neura:saved", onChange);
-      return () => {
-        window.removeEventListener("storage", onChange);
-        window.removeEventListener("neura:saved", onChange);
-      };
-    },
-    () => localStorage.getItem("neura:saved") || "[]",
-    () => "[]",
-  );
-  let savedArticles: string[] = [];
-  try {
-    const parsed = JSON.parse(snapshot) as unknown;
-    savedArticles = Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === "string")
-      : [];
-  } catch {
-    savedArticles = [];
-  }
+  const snapshot = useSyncExternalStore(subscribeBookmarks, readBookmarksSnapshot, () => "[]");
+  const savedArticles = parseBookmarks(snapshot);
   const saved = savedArticles.includes(articleId);
 
   function toggle() {
-    const nextSavedArticles = new Set(savedArticles);
-    if (saved) nextSavedArticles.delete(articleId);
-    else nextSavedArticles.add(articleId);
-    localStorage.setItem("neura:saved", JSON.stringify([...nextSavedArticles]));
-    window.dispatchEvent(new Event("neura:saved"));
+    saveBookmarks(saved ? savedArticles.filter((id) => id !== articleId) : [...savedArticles, articleId]);
   }
 
   return (

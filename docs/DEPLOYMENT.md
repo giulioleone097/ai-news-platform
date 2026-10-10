@@ -1,6 +1,6 @@
 # Deployment
 
-This runbook prepares NEURA for Vercel and Supabase without creating or mutating a remote project automatically.
+This runbook prepares AtlasNews for its three hosts without creating or mutating a remote project automatically: the reader site on ChatGPT Sites ([SITES.md](SITES.md)), the MCP server and the workers as containers ([HOSTING.md](HOSTING.md)), and Supabase.
 
 ## Deployment modes
 
@@ -8,7 +8,7 @@ This runbook prepares NEURA for Vercel and Supabase without creating or mutating
 | --- | --- | --- |
 | Demo | Process-local memory | Zero-config development; public CI and visual review |
 | Local Supabase | Docker-backed Supabase CLI stack | Migration, RLS, Auth, and integration verification |
-| Preview | Dedicated non-production Supabase project | Vercel branch/PR validation |
+| Preview | Dedicated non-production Supabase project | A separate Site and separate containers for staging review |
 | Production | Dedicated production Supabase project | Live editorial platform |
 
 Never point a Preview deployment at the production database.
@@ -17,15 +17,17 @@ Never point a Preview deployment at the production database.
 
 | Variable | Demo/CI | Local Supabase | Preview | Production | Exposure |
 | --- | --- | --- | --- | --- | --- |
-| `NEURA_CONTENT_MODE` | `demo` | `supabase` | `supabase` | `supabase` | Server/build composition |
+| `ATLASNEWS_CONTENT_MODE` | `demo` | `supabase` | `supabase` | `supabase` | Server/build composition |
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | `http://localhost:3000` | Exact protected preview origin or canonical production origin | Canonical HTTPS origin | Public, build-time |
 | `NEXT_PUBLIC_SUPABASE_URL` | Empty | CLI API URL | Preview project URL | Production project URL | Public |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Empty | CLI anon key | Preview anon/publishable key | Production anon/publishable key | Public |
-| `SUPABASE_SERVICE_ROLE_KEY` | Empty | Local service-role key for operational testing | Preview project service-role key | Production project service-role key | Server-only, comments, workers and admin MCP |
-| `NEURA_MCP_ADMIN_AUTHOR_ID` | Empty | Existing `public.authors` UUID | Existing preview author UUID | Existing production author UUID | Server-only, admin MCP only |
-| `NEURA_MCP_ADMIN_API_KEY` | Empty | High-entropy local key | Unique preview key | Unique production key | Server-only |
+| `SUPABASE_SERVICE_ROLE_KEY` | Empty | Local service-role key for operational testing | Preview project service-role key | Production project service-role key | Server-only: comments, workers and the newsroom MCP tools |
+| `ATLASNEWS_MCP_ADMIN_AUTHOR_ID` | Empty | Existing `public.authors` UUID | Existing preview author UUID | Existing production author UUID | Server-only, `apps/mcp`; author of API-key writes only |
+| `ATLASNEWS_MCP_ADMIN_API_KEY` | Empty | High-entropy local key | Unique preview key | Unique production key, or empty | Server-only, `apps/mcp`; optional CI and CLI credential. Editors sign in with OAuth instead |
+| `ATLASNEWS_MCP_OAUTH_ISSUER` / `ATLASNEWS_MCP_OAUTH_AUDIENCE` | Empty | Empty | Empty unless needed | Only for a Supabase custom domain or a custom access-token audience | Server-only, `apps/mcp`; see [MCP.md](MCP.md#sign-in-with-supabase-auth) |
+| `ATLASNEWS_REVALIDATE_SECRET` | Empty | Independent random value | Independent preview value | Independent production value | Server-only; the same value on `apps/web` and `apps/mcp` |
 | `CRON_SECRET` | Empty | Disposable local key | Unique preview key | Unique production key | Server-only (`apps/jobs`); the same value is stored in the project's Vault as `jobs_cron_secret` |
-| `NEURA_COMMENT_GUEST_SECRET` | Empty | Independent random value | Independent preview value | Independent production value | Server-only, signed guest/comment capabilities |
+| `ATLASNEWS_COMMENT_GUEST_SECRET` | Empty | Independent random value | Independent preview value | Independent production value | Server-only, signed guest/comment capabilities |
 | `RESEND_API_KEY` | Empty | Resend test key | Preview provider key | Production provider key | Server-only |
 | `RESEND_WEBHOOK_SECRET` | Empty | Signed test webhook secret | Preview endpoint secret | Production endpoint secret | Server-only |
 | `NEWSLETTER_FROM_EMAIL` | Empty | Verified test sender | Verified preview sender | Verified production sender | Server-only |
@@ -35,17 +37,17 @@ Never point a Preview deployment at the production database.
 | `X_USER_ACCESS_TOKEN` | Empty | Optional write-scoped token | Preview write-scoped token | Production write-scoped token | Server-only |
 | `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_API_VERSION` | Empty | Optional test-number values | Preview values | Production values | Server-only |
 | `WHATSAPP_WEBHOOK_SECRET` / `WHATSAPP_VERIFY_TOKEN` | Empty | Independent test values | Preview values | Production values | Server-only |
-| `NEURA_ENABLE_DEMO_STUDIO` | Empty | Empty | Empty unless the preview is intentionally ephemeral | Empty | Server-only |
+| `ATLASNEWS_ENABLE_DEMO_STUDIO` | Empty | Empty | Empty unless the preview is intentionally ephemeral | Empty | Server-only |
 | `NEXT_PUBLIC_LINKEDIN_URL` | Empty | Empty or official profile | Preview-safe official profile | Official LinkedIn profile URL | Public, build-time |
 | `NEXT_PUBLIC_X_URL` | Empty | Empty or official profile | Preview-safe official profile | Official X profile URL | Public, build-time |
 | `NEXT_PUBLIC_MCP_URL` | Empty (defaults to `http://localhost:8787`) | Local `apps/mcp` origin | Preview `apps/mcp` origin | Production `apps/mcp` origin | Public, build-time |
 | `MCP_ALLOWED_ORIGINS` | `http://localhost:3000` or empty | Local caller origins | Approved preview callers | Comma-separated production callers; empty for public wildcard | Server-only |
 
-`NEURA_CONTENT_MODE` selects the adapter explicitly. Supabase mode requires both the public URL and anon key and fails visibly if either is missing. The service-role key is mandatory for production workers, comment mutations and admin MCP; never expose it through `NEXT_PUBLIC_*`. Production readiness reports every incomplete operational capability instead of silently simulating it.
+`ATLASNEWS_CONTENT_MODE` selects the adapter explicitly. Supabase mode requires both the public URL and anon key and fails visibly if either is missing. The service-role key is mandatory for production workers, comment mutations and the signed-in newsroom MCP tools; never expose it through `NEXT_PUBLIC_*`. Production readiness reports every incomplete operational capability instead of silently simulating it.
 
-The committed Next.js configuration rejects a Vercel build unless content mode is `supabase`, both public Supabase values exist, and `NEXT_PUBLIC_SITE_URL` is a non-local HTTPS origin. This prevents a green deployment that silently serves demo data or localhost metadata.
+The committed Next.js configuration rejects a production build aimed at a public origin or a hosted Supabase project unless content mode is `supabase`, both public Supabase values exist, and `NEXT_PUBLIC_SITE_URL` is a non-local HTTPS origin ([SITES.md](SITES.md#build-guard)). This prevents a green deployment that silently serves demo data or localhost metadata.
 
-In explicit demo mode, public routes serve the read-only memory dataset. Studio is available automatically in local development, but fails closed in a production build. Set `NEURA_ENABLE_DEMO_STUDIO=true` only for an intentional disposable review deployment; never use it as a Production substitute for Supabase Auth, Storage and RLS.
+In explicit demo mode, public routes serve the read-only memory dataset. Studio is available automatically in local development, but fails closed in a production build. Set `ATLASNEWS_ENABLE_DEMO_STUDIO=true` only for an intentional disposable review deployment; never use it as a Production substitute for Supabase Auth, Storage and RLS.
 
 `NEXT_PUBLIC_*` values are frozen into client bundles during `next build`. Changing one requires a new deployment.
 
@@ -72,14 +74,15 @@ npm run supabase:status
 
 ```dotenv
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEURA_CONTENT_MODE=supabase
+ATLASNEWS_CONTENT_MODE=supabase
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<local-anon-key>
 MCP_ALLOWED_ORIGINS=http://localhost:3000
-# Optional authenticated admin MCP configuration:
+# Optional: editor sign-in and the newsroom tools of apps/mcp (export these in its shell):
 SUPABASE_SERVICE_ROLE_KEY=<local-service-role-key>
-NEURA_MCP_ADMIN_AUTHOR_ID=<existing-local-user-uuid>
-NEURA_MCP_ADMIN_API_KEY=<openssl-rand-hex-32-output>
+# Optional CI and CLI credential for apps/mcp, attributed to this author:
+ATLASNEWS_MCP_ADMIN_AUTHOR_ID=<existing-local-user-uuid>
+ATLASNEWS_MCP_ADMIN_API_KEY=<openssl-rand-hex-32-output>
 ```
 
 Stop the local stack without deleting data:
@@ -90,7 +93,7 @@ npx --no-install supabase stop
 
 ## Prepare remote Supabase
 
-Create Preview and Production projects manually in the Supabase Dashboard. For the current Vercel `fra1` function region, select the closest available European database region. If the database is elsewhere, change the Vercel function region to minimize application-to-database latency.
+Create Preview and Production projects manually in the Supabase Dashboard. Select the database region closest to the hosts of `apps/mcp` and `apps/jobs`; the Sites runtime region is chosen by the platform.
 
 Authenticate and link one environment at a time:
 
@@ -164,24 +167,19 @@ where u.id = '<AUTH_USER_UUID>'::uuid;
 
 Use `editor` for routine staff and reserve `admin` by operating convention. Both roles currently satisfy the same RLS editor predicate; a future permission split requires a migration and authorization tests. Remove access by deleting the `public.profiles` row; do not share Auth accounts. Public sign-up is disabled in the committed local Auth configuration and should remain disabled for an invite-only production studio.
 
-## Configure Vercel
+## Deploy the three apps
 
-Import the GitHub repository and use these project settings:
+| App | Host | Guide |
+| --- | --- | --- |
+| `apps/web` (reader site, Studio, OAuth consent page, comments, articles and health API, provider webhooks) | ChatGPT Sites | [SITES.md](SITES.md): build, environment variables, owner steps, what is not verified |
+| `apps/mcp` (`POST /mcp`, `/info`, OAuth resource metadata) | Container | [HOSTING.md](HOSTING.md) |
+| `apps/jobs` (`/internal/*` workers) | Container | [HOSTING.md](HOSTING.md) |
 
-| Setting | Value |
-| --- | --- |
-| Framework Preset | Next.js |
-| Root Directory | `apps/web` (the repository root is the npm workspace root; install with `npm ci` from there) |
-| Install Command | `npm ci` (also committed in `apps/web/vercel.json`) |
-| Build Command | `npm run build` (also committed in `apps/web/vercel.json`) |
-| Node.js | 24.x |
-| Function region | `fra1`, unless the selected Supabase region requires a closer Vercel region |
+`apps/mcp` and `apps/jobs` read their configuration from the process environment, not from `.env` files. Set `NEXT_PUBLIC_MCP_URL` on `apps/web` and `apps/mcp` to the public origin of the MCP server, and point MCP clients at `https://<mcp-host>/mcp`; once a plugin is published that origin must not change. `/mcp` calls should finish well under 10 seconds.
 
-Add environment variables separately for Preview and Production. Keep Preview deployments protected, especially when they expose unpublished studio content. Attach the canonical domain, update `NEXT_PUBLIC_SITE_URL` to its HTTPS origin, and redeploy so metadata and share URLs use it.
+Supabase Auth also serves the MCP sign-in. In the dashboard enable **Authentication, OAuth Server**, set the authorization path to `/oauth/consent` and the Site URL to the origin of `apps/web`; locally `[auth.oauth_server]` in `supabase/config.toml` already does this. [MCP.md](MCP.md#sign-in-with-supabase-auth) lists the hosts, registration and how to verify a deployment.
 
-`apps/web` serves only the reader site, Studio, the comments/articles/health API and the provider webhooks. The MCP server (`apps/mcp`, `npm run start -w apps/mcp`, default port 8787) and the workers (`apps/jobs`, `npm run start -w apps/jobs`, default port 8788) are separate deployables that run under plain Node through `tsx`; they read their configuration from the process environment, not from `.env` files. Set `NEXT_PUBLIC_MCP_URL` on `apps/web` so the footer links to the MCP server's `/info`, and point MCP clients at `https://<mcp-host>/mcp`. `/mcp` calls should finish well under 10 seconds.
-
-The worker schedule is not owned by Vercel; see [Schedule the workers](#schedule-the-workers). Register these provider callbacks at their exact production origins:
+Register these provider callbacks at their exact production origins:
 
 ```text
 POST https://<canonical-host>/api/webhooks/newsletter
@@ -238,7 +236,7 @@ Stop the schedule without losing the settings: `select cron.alter_job((select jo
 1. `npm ci && npm run check` at the release commit.
 2. Supabase backup/readiness check.
 3. `supabase db push --dry-run`, then `supabase db push`.
-4. Vercel deployment with environment-specific variables; `apps/mcp` and `apps/jobs` deployed with theirs.
+4. Deploy `apps/web` to Sites and `apps/mcp` and `apps/jobs` as containers, each with its environment-specific variables.
 5. Vault secrets for the worker schedule ([Schedule the workers](#schedule-the-workers)).
 6. Post-deploy smoke checks below.
 7. Publish editorial content only after the platform checks pass.
@@ -268,7 +266,7 @@ Then verify in a browser:
 - a comment is persisted as pending, moderation publishes it, report/audit are visible only to editors, and notification links mutate only after POST confirmation;
 - social share links encode the canonical article URL; Studio social enqueue never sends inline and its outbox later records the provider receipt;
 - localized RSS contains only published rows for its requested language;
-- MCP `server/discover`, `list_articles` and `list_comments` return only public data; a legacy initialize probe remains compatible.
-- admin MCP rejects missing and incorrect Bearer keys; with the correct key, list editorial, moderation, campaign and social tools. Use previews/disposable drafts and do not process external outboxes during a smoke test.
+- MCP `server/discover`, `list_articles` and `list_comments` return only public data when anonymous; a legacy initialize probe remains compatible.
+- the MCP sign-in works as in [MCP.md](MCP.md#verify-a-deployment): a scoped tool without a token answers 401 with a Bearer challenge, an invalid token answers 401, and a signed-in editor can list the newsroom tools' data. Use previews/disposable drafts and do not process external outboxes during a smoke test.
 
 See [OPERATIONS.md](OPERATIONS.md) for rollback and incident procedures.

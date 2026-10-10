@@ -12,7 +12,7 @@ describe("ResendNewsletterProvider", () => {
     );
     const provider = new ResendNewsletterProvider({ apiKey: "re_test", fetch: fetchMock });
     await expect(provider.send({
-      fromName: "NEURA",
+      fromName: "AtlasNews",
       fromEmail: "briefing@example.com",
       to: "reader@example.com",
       replyTo: "editor@example.com",

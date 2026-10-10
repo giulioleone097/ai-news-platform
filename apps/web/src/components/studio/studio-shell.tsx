@@ -22,7 +22,7 @@ export function StudioShell({
     <div className="studio-shell">
       <aside className="studio-sidebar">
         <Link className="studio-brand" href={`/${locale}/studio`}>
-          <span>NEURA</span>
+          <span>AtlasNews</span>
           <small>STUDIO</small>
         </Link>
 

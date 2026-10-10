@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Article } from "@atlasnews/core/editorial/domain/article";
-import { getMessages } from "@/i18n";
 import { buildJsonFeed } from "./json-feed";
 import { buildNewsSitemap } from "./news-sitemap";
 import { renderEntityMarkdown } from "./entity-markdown";
 import { buildRssFeed } from "./rss";
 import { storyUrl } from "./site";
-
-const labels = getMessages("en").story;
 
 function story(overrides: Partial<Article> = {}): Article {
   return {
@@ -161,7 +158,7 @@ describe("entity Markdown", () => {
         { slug: "second", title: "Second", claimStatus: "confirmed", publishedAt: "2026-10-01T08:00:00.000Z" },
       ],
       { page: "https://news.test/en/entities/gpt", story: (slug) => `https://news.test/en/articles/${slug}` },
-      labels,
+      "en",
     );
 
     expect(markdown).toContain("# GPT\n\n- URL: https://news.test/en/entities/gpt\n- Kind: Model\n- Parent: OpenAI\n- Official URL: https://openai.com\n- Stories: 2");

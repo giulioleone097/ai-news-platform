@@ -1,5 +1,5 @@
 {
-  "name": "neura",
+  "name": "atlasnews",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -23,6 +23,7 @@
     "design:tokens:write": "node scripts/design-tokens.mjs --write",
     "design:tokens:check": "node scripts/design-tokens.mjs",
     "plugin:check": "node scripts/validate-plugin.mjs",
+    "plugin:release": "node scripts/validate-plugin.mjs --release",
     "perf:budget": "node scripts/performance-budget.mjs",
     "smoke:runtime": "node scripts/runtime-smoke.mjs",
     "supabase:start": "npx --no-install supabase start",

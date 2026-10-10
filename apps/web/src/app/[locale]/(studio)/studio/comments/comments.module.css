@@ -9,7 +9,7 @@
 .moderation input {
   min-block-size: 2.75rem;
   border: 1px solid var(--rule);
-  border-radius: var(--neura-rounded-sm);
+  border-radius: var(--atlasnews-rounded-sm);
   background: var(--paper-raised);
   color: var(--ink);
   padding-inline: 0.85rem;

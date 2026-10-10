@@ -116,7 +116,7 @@ export class ResendNewsletterProvider implements NewsletterDeliveryProvider {
     idempotencyKey: string;
   }) {
     return this.post({
-      from: `NEURA <${message.fromEmail}>`,
+      from: `AtlasNews <${message.fromEmail}>`,
       to: [message.to],
       subject: message.subject,
       html: message.html,

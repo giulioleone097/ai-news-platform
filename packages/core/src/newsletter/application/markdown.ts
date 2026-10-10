@@ -173,7 +173,7 @@ export function renderNewsletterEmailDocument(input: {
 <body style="margin:0;background:#f1efe8;color:#151515;font-family:Arial,sans-serif">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${preheader}</div>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1efe8"><tr><td align="center" style="padding:24px 12px">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#ffffff;border:1px solid #dedbd3"><tr><td style="padding:32px 28px 12px;font-size:24px;font-weight:800;letter-spacing:-0.03em">NEURA</td></tr><tr><td style="padding:12px 28px 32px">${body}</td></tr><tr><td style="border-top:1px solid #dedbd3;padding:22px 28px;color:#69696f;font-size:12px;line-height:1.5"><a href="${unsubscribeUrl}" style="color:#69696f;text-decoration:underline">${unsubscribeLabel}</a></td></tr></table>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#ffffff;border:1px solid #dedbd3"><tr><td style="padding:32px 28px 12px;font-size:24px;font-weight:800;letter-spacing:-0.03em">AtlasNews</td></tr><tr><td style="padding:12px 28px 32px">${body}</td></tr><tr><td style="border-top:1px solid #dedbd3;padding:22px 28px;color:#69696f;font-size:12px;line-height:1.5"><a href="${unsubscribeUrl}" style="color:#69696f;text-decoration:underline">${unsubscribeLabel}</a></td></tr></table>
 </td></tr></table>
 </body></html>`;
 }
@@ -185,17 +185,17 @@ export function renderConfirmationEmailDocument(input: {
   const confirmationUrl = escapeHtml(input.confirmationUrl);
   const copy = input.locale === "it"
     ? {
-        title: "Conferma la tua iscrizione a NEURA",
-        body: "Hai richiesto di ricevere il briefing NEURA. Conferma l’indirizzo email per completare l’iscrizione.",
+        title: "Conferma la tua iscrizione a AtlasNews",
+        body: "Hai richiesto di ricevere il briefing AtlasNews. Conferma l’indirizzo email per completare l’iscrizione.",
         action: "Conferma iscrizione",
         ignore: "Se non hai effettuato la richiesta, ignora questa email.",
       }
     : {
-        title: "Confirm your NEURA subscription",
-        body: "You asked to receive the NEURA briefing. Confirm your email address to complete the subscription.",
+        title: "Confirm your AtlasNews subscription",
+        body: "You asked to receive the AtlasNews briefing. Confirm your email address to complete the subscription.",
         action: "Confirm subscription",
         ignore: "If you did not make this request, ignore this email.",
       };
 
-  return `<!doctype html><html lang="${input.locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(copy.title)}</title></head><body style="margin:0;background:#f1efe8;font-family:Arial,sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:32px 12px"><table role="presentation" width="100%" style="max-width:620px;background:#fff;border:1px solid #dedbd3"><tr><td style="padding:32px"><div style="font-size:24px;font-weight:800">NEURA</div><h1 style="font-size:28px;line-height:1.15;margin:32px 0 16px">${escapeHtml(copy.title)}</h1><p style="color:#303033;font-size:17px;line-height:1.6">${escapeHtml(copy.body)}</p><p style="margin:28px 0"><a href="${confirmationUrl}" style="display:inline-block;background:#151515;color:#fff;padding:14px 20px;text-decoration:none;font-weight:700">${escapeHtml(copy.action)}</a></p><p style="color:#69696f;font-size:13px;line-height:1.5">${escapeHtml(copy.ignore)}</p></td></tr></table></td></tr></table></body></html>`;
+  return `<!doctype html><html lang="${input.locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(copy.title)}</title></head><body style="margin:0;background:#f1efe8;font-family:Arial,sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:32px 12px"><table role="presentation" width="100%" style="max-width:620px;background:#fff;border:1px solid #dedbd3"><tr><td style="padding:32px"><div style="font-size:24px;font-weight:800">AtlasNews</div><h1 style="font-size:28px;line-height:1.15;margin:32px 0 16px">${escapeHtml(copy.title)}</h1><p style="color:#303033;font-size:17px;line-height:1.6">${escapeHtml(copy.body)}</p><p style="margin:28px 0"><a href="${confirmationUrl}" style="display:inline-block;background:#151515;color:#fff;padding:14px 20px;text-decoration:none;font-weight:700">${escapeHtml(copy.action)}</a></p><p style="color:#69696f;font-size:13px;line-height:1.5">${escapeHtml(copy.ignore)}</p></td></tr></table></td></tr></table></body></html>`;
 }

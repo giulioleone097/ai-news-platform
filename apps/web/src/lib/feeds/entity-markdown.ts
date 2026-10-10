@@ -1,5 +1,6 @@
 import type { EntityDetail, EntityTimelineItem } from "@atlasnews/core/editorial/domain/entity";
-import type { StoryMarkdownLabels } from "@atlasnews/core/editorial/application/story-markdown";
+import { storyLabels } from "@atlasnews/core/editorial/application/story-labels";
+import type { Locale } from "@/i18n";
 
 function inline(value: string) {
   return value.replace(/\s+/gu, " ").trim();
@@ -15,8 +16,9 @@ export function renderEntityMarkdown(
   entity: EntityDetail,
   timeline: EntityTimelineItem[],
   urls: EntityMarkdownUrls,
-  labels: StoryMarkdownLabels,
+  locale: Locale,
 ) {
+  const labels = storyLabels[locale];
   const metadata = [
     `- URL: ${urls.page}`,
     `- Kind: ${labels.entityKind[entity.kind]}`,

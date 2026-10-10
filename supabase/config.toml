@@ -1,4 +1,4 @@
-project_id = "neura-ai-news"
+project_id = "atlasnews"
 
 [api]
 enabled = true

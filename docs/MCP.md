@@ -63,7 +63,7 @@ The caller is resolved once per request from the `Authorization` header:
 Token checking sits behind the `AccessTokenVerifier` port (`apps/mcp/src/auth.ts`). Two verifiers are tried in this order:
 
 1. **Supabase OAuth access tokens** (`apps/mcp/src/auth/`), when sign-in is configured (see [Sign-in](#sign-in-with-supabase-auth)). The signature is checked against the project's JWKS (cached ten minutes; an unknown `kid` reloads it, at most every 30 seconds, so a rotated key is picked up), then issuer, audience, expiry and not-before. Only ES256 and RS256 are accepted; `alg: none` and HS256 are refused. The token must carry a `client_id` claim, which only the OAuth server sets, so an ordinary Studio session token cannot be replayed here. The subject must have a `public.profiles` row with role `editor` or `admin` (read with the service-role key, answers cached 30 seconds); it then gets every newsroom scope, and its `author_id` is carried on the principal. A valid token for anyone else is accepted as a caller with no newsroom scope, so scoped tools answer with the sign-in error.
-2. **The shared API key** `NEURA_MCP_ADMIN_API_KEY` (at least 32 characters, constant-time comparison), for the CI smoke and the self-hosted CLI. It maps to one editor with every scope.
+2. **The shared API key** `ATLASNEWS_MCP_ADMIN_API_KEY` (at least 32 characters, constant-time comparison), for the CI smoke and the self-hosted CLI. It maps to one editor with every scope.
 
 If the key set or the profile table cannot be reached the request fails with HTTP 500, not 401, so a host does not discard a good token during an outage.
 
@@ -138,14 +138,14 @@ Anyone can register a client when dynamic registration is on, and the editor's c
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | `apps/mcp`, `apps/web` | Sign-in is on when all three are set (the service role key, at least 32 characters, reads the editor profile). The issuer is `<url>/auth/v1` and the key set `<issuer>/.well-known/jwks.json`. Unset means no OAuth: only the API key |
 | `NEXT_PUBLIC_MCP_URL` | `apps/mcp`, `apps/web` | Public origin of the MCP server (`https://mcp.news.example.com`). Set it behind a proxy: the `resource` in the metadata and the challenge must be the exact URL hosts were given, and the request URL seen by Node is not. `apps/web` links to it from the footer |
-| `NEURA_MCP_OAUTH_ISSUER` | `apps/mcp` | Optional. Issuer when it differs from `<url>/auth/v1`, such as a Supabase custom domain |
-| `NEURA_MCP_OAUTH_AUDIENCE` | `apps/mcp` | Optional. Required `aud`. Unset accepts `authenticated`. Set it to the MCP URL once a custom access token hook sets that audience (below) |
-| `NEURA_MCP_ADMIN_API_KEY`, `NEURA_MCP_ADMIN_AUTHOR_ID` | `apps/mcp` | The API key path. Its writes are attributed to `NEURA_MCP_ADMIN_AUTHOR_ID`; a signed-in editor's are attributed to their own `author_id` |
-| `NEURA_REVALIDATE_SECRET` | `apps/mcp`, `apps/web` | Shared secret (at least 32 characters, the same value on both) for cache invalidation after a write, see [Cache invalidation](#cache-invalidation) |
+| `ATLASNEWS_MCP_OAUTH_ISSUER` | `apps/mcp` | Optional. Issuer when it differs from `<url>/auth/v1`, such as a Supabase custom domain |
+| `ATLASNEWS_MCP_OAUTH_AUDIENCE` | `apps/mcp` | Optional. Required `aud`. Unset accepts `authenticated`. Set it to the MCP URL once a custom access token hook sets that audience (below) |
+| `ATLASNEWS_MCP_ADMIN_API_KEY`, `ATLASNEWS_MCP_ADMIN_AUTHOR_ID` | `apps/mcp` | The API key path. Its writes are attributed to `ATLASNEWS_MCP_ADMIN_AUTHOR_ID`; a signed-in editor's are attributed to their own `author_id` |
+| `ATLASNEWS_REVALIDATE_SECRET` | `apps/mcp`, `apps/web` | Shared secret (at least 32 characters, the same value on both) for cache invalidation after a write, see [Cache invalidation](#cache-invalidation) |
 
 The sign-in variables are listed in `.env.example`, with the app that reads each.
 
-Because `aud` is `authenticated` and the `resource` is not bound to it, a token that Supabase issued to another client of the same project is accepted here if its subject is an editor. The `client_id` requirement keeps ordinary session tokens out, but only a custom access token hook closes the gap: for tokens that carry `client_id`, return `aud` set to the MCP URL, then set `NEURA_MCP_OAUTH_AUDIENCE` to the same value.
+Because `aud` is `authenticated` and the `resource` is not bound to it, a token that Supabase issued to another client of the same project is accepted here if its subject is an editor. The `client_id` requirement keeps ordinary session tokens out, but only a custom access token hook closes the gap: for tokens that carry `client_id`, return `aud` set to the MCP URL, then set `ATLASNEWS_MCP_OAUTH_AUDIENCE` to the same value.
 
 ### Verify a deployment
 
@@ -183,7 +183,7 @@ Editor tools (`oauth2`), all names unchanged from the former `/mcp/admin` server
 | `newsroom.write` | `admin_create_article`, `admin_update_article`, `admin_update_distribution`, `admin_update_newsletter_subscription`, `admin_upload_media`, `admin_moderate_comment`, `admin_newsletter_save_campaign_draft`, `admin_newsletter_cancel_campaign`, `admin_social_enqueue`, `admin_social_requeue`, `admin_social_cancel`, `admin_social_retry` |
 | `newsroom.publish` | `admin_publish_article`, `admin_delete_article`, `admin_delete_media`, `admin_comment_process_notifications`, `admin_newsletter_send_campaign`, `admin_newsletter_schedule_campaign`, `admin_newsletter_request_subscription`, `admin_newsletter_erase_subscription`, `admin_newsletter_process_outbox`, `admin_social_process_outbox` |
 
-Production persistence for the editor tools additionally requires `SUPABASE_SERVICE_ROLE_KEY`, and `NEURA_MCP_ADMIN_AUTHOR_ID` for the API key (a signed-in editor is attributed to their own `author_id`, taken from the principal by `createRuntimePorts` and passed to the editorial repository and the newsletter services). In demo mode (no Supabase, outside production) the editorial tools work on the in-memory repository; comment moderation, newsletter and social tools answer with a generic "not configured" tool error. Generate the API key with `openssl rand -hex 32` and rotate it on both ends together.
+Production persistence for the editor tools additionally requires `SUPABASE_SERVICE_ROLE_KEY`, and `ATLASNEWS_MCP_ADMIN_AUTHOR_ID` for the API key (a signed-in editor is attributed to their own `author_id`, taken from the principal by `createRuntimePorts` and passed to the editorial repository and the newsletter services). In demo mode (no Supabase, outside production) the editorial tools work on the in-memory repository; comment moderation, newsletter and social tools answer with a generic "not configured" tool error. Generate the API key with `openssl rand -hex 32` and rotate it on both ends together.
 
 Supported locales are `en` and `it`; English is the default.
 
@@ -206,7 +206,7 @@ The `confirm` argument is optional in the advertised schema (it used to be a req
 
 ## Cache invalidation
 
-The MCP process cannot purge the reader site's Next cache directly. After an editorial write it calls `POST {NEXT_PUBLIC_SITE_URL}/api/revalidate` with `Authorization: Bearer $NEURA_REVALIDATE_SECRET` and `{ "locale": "en", "slugs": ["…"] }`. The route compares the secret in constant time and answers 503 to everyone when `NEURA_REVALIDATE_SECRET` (at least 32 characters) is unset on the site. Set the same value on both processes. Without it on the MCP process the call is skipped, and a failed call never fails the edit; the site then refreshes on its own revalidate windows. The two processes share articles only through Supabase, so the demo in-memory store of one is not visible to the other.
+The MCP process cannot purge the reader site's Next cache directly. After an editorial write it calls `POST {NEXT_PUBLIC_SITE_URL}/api/revalidate` with `Authorization: Bearer $ATLASNEWS_REVALIDATE_SECRET` and `{ "locale": "en", "slugs": ["…"] }`. The route compares the secret in constant time and answers 503 to everyone when `ATLASNEWS_REVALIDATE_SECRET` (at least 32 characters) is unset on the site. Set the same value on both processes. Without it on the MCP process the call is skipped, and a failed call never fails the edit; the site then refreshes on its own revalidate windows. The two processes share articles only through Supabase, so the demo in-memory store of one is not visible to the other.
 
 ## Client configuration
 

@@ -33,7 +33,7 @@ function htmlPage(input: {
   const action = input.action
     ? `<form method="post" action="${escapeHtml(input.action)}"><button type="submit">${escapeHtml(input.actionLabel ?? "Continue")}</button></form>`
     : "";
-  const html = `<!doctype html><html lang="${input.lang ?? "en"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.title)}</title><style>body{margin:0;background:#f1efe8;color:#151515;font:16px/1.55 system-ui,sans-serif}main{width:min(100% - 2rem,38rem);margin:12vh auto;background:#fff;border:1px solid #d8d5cd;padding:clamp(1.5rem,6vw,3rem)}h1{font-size:clamp(2rem,8vw,3.5rem);line-height:.95;letter-spacing:-.045em}p{color:#55545a}button{min-height:48px;border:0;background:#151515;color:#fff;padding:.8rem 1.1rem;font:inherit;font-weight:750;cursor:pointer}button:focus-visible{outline:3px solid #e45c42;outline-offset:3px}</style></head><body><main><strong>NEURA</strong><h1>${escapeHtml(input.title)}</h1><p>${escapeHtml(input.body)}</p>${action}</main></body></html>`;
+  const html = `<!doctype html><html lang="${input.lang ?? "en"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.title)}</title><style>body{margin:0;background:#f1efe8;color:#151515;font:16px/1.55 system-ui,sans-serif}main{width:min(100% - 2rem,38rem);margin:12vh auto;background:#fff;border:1px solid #d8d5cd;padding:clamp(1.5rem,6vw,3rem)}h1{font-size:clamp(2rem,8vw,3.5rem);line-height:.95;letter-spacing:-.045em}p{color:#55545a}button{min-height:48px;border:0;background:#151515;color:#fff;padding:.8rem 1.1rem;font:inherit;font-weight:750;cursor:pointer}button:focus-visible{outline:3px solid #e45c42;outline-offset:3px}</style></head><body><main><strong>AtlasNews</strong><h1>${escapeHtml(input.title)}</h1><p>${escapeHtml(input.body)}</p>${action}</main></body></html>`;
   return new Response(html, {
     status: 200,
     headers: {
@@ -139,12 +139,12 @@ export function newsletterConfirmationPage(request: Request, locale: "en" | "it"
   const copy = locale === "it"
     ? {
         title: "Conferma iscrizione",
-        body: "Conferma che vuoi ricevere il briefing NEURA. Il token verrà usato una sola volta.",
+        body: "Conferma che vuoi ricevere il briefing AtlasNews. Il token verrà usato una sola volta.",
         action: "Conferma",
       }
     : {
         title: "Confirm subscription",
-        body: "Confirm that you want to receive the NEURA briefing. The token will be used once.",
+        body: "Confirm that you want to receive the AtlasNews briefing. The token will be used once.",
         action: "Confirm",
       };
   return htmlPage({
@@ -163,10 +163,10 @@ export async function handleNewsletterConfirmation(
   const confirmed = await service.confirmSubscription(token);
   const copy = locale === "it"
     ? confirmed
-      ? { title: "Iscrizione confermata", body: "Riceverai il prossimo briefing NEURA." }
+      ? { title: "Iscrizione confermata", body: "Riceverai il prossimo briefing AtlasNews." }
       : { title: "Link non valido", body: "Il link è scaduto o è già stato utilizzato." }
     : confirmed
-      ? { title: "Subscription confirmed", body: "You will receive the next NEURA briefing." }
+      ? { title: "Subscription confirmed", body: "You will receive the next AtlasNews briefing." }
       : { title: "Invalid link", body: "This link expired or has already been used." };
   return htmlPage({ ...copy, lang: locale });
 }
@@ -175,12 +175,12 @@ export function newsletterUnsubscribePage(request: Request, locale: "en" | "it")
   const copy = locale === "it"
     ? {
         title: "Annulla iscrizione",
-        body: "Conferma per non ricevere più il briefing NEURA.",
+        body: "Conferma per non ricevere più il briefing AtlasNews.",
         action: "Annulla iscrizione",
       }
     : {
         title: "Unsubscribe",
-        body: "Confirm that you no longer want to receive the NEURA briefing.",
+        body: "Confirm that you no longer want to receive the AtlasNews briefing.",
         action: "Unsubscribe",
       };
   return htmlPage({
@@ -199,10 +199,10 @@ export async function handleNewsletterUnsubscribe(
   const unsubscribed = await service.unsubscribe(token);
   const copy = locale === "it"
     ? unsubscribed
-      ? { title: "Iscrizione annullata", body: "Non riceverai più il briefing NEURA." }
+      ? { title: "Iscrizione annullata", body: "Non riceverai più il briefing AtlasNews." }
       : { title: "Richiesta non valida", body: "Il link non è valido o l’iscrizione non esiste più." }
     : unsubscribed
-      ? { title: "Unsubscribed", body: "You will no longer receive the NEURA briefing." }
+      ? { title: "Unsubscribed", body: "You will no longer receive the AtlasNews briefing." }
       : { title: "Invalid request", body: "This link is invalid or the subscription no longer exists." };
   return htmlPage({ ...copy, lang: locale });
 }

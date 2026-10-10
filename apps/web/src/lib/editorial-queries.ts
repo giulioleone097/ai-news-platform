@@ -12,7 +12,7 @@ export const getCachedHomeFeed = unstable_cache(
     const { articles } = getPublicEditorialRepositories();
     return getHomeFeed(articles, locale);
   },
-  ["neura-home-feed-v3"],
+  ["atlasnews-home-feed-v3"],
   { revalidate: 60, tags: [articlesCacheTag] },
 );
 
@@ -22,7 +22,7 @@ export const getCachedArticle = unstable_cache(
     const article = await articles.findBySlug(slug, locale);
     return article?.status === "published" ? article : null;
   },
-  ["neura-article-v2"],
+  ["atlasnews-article-v2"],
   { revalidate: 300, tags: [articlesCacheTag] },
 );
 
@@ -32,7 +32,7 @@ export const getCachedEntities = unstable_cache(
     const { entities } = getPublicEditorialRepositories();
     return rankEntities(await entities.listEntities(locale));
   },
-  ["neura-entities-v1"],
+  ["atlasnews-entities-v1"],
   { revalidate: 60, tags: [articlesCacheTag] },
 );
 
@@ -44,7 +44,7 @@ export const getCachedEntityPage = unstable_cache(
     if (!entity) return null;
     return { entity, timeline: await entities.listEntityTimeline(slug, locale) };
   },
-  ["neura-entity-page-v1"],
+  ["atlasnews-entity-page-v1"],
   { revalidate: 60, tags: [articlesCacheTag] },
 );
 

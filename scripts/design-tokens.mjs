@@ -9,7 +9,7 @@ const target = new URL("../apps/web/src/app/design.tokens.css", import.meta.url)
 const write = process.argv.includes("--write");
 const generated = spawnSync(
   "designmd",
-  ["export", "DESIGN.md", "--format", "css-vars", "--prefix", "neura"],
+  ["export", "DESIGN.md", "--format", "css-vars", "--prefix", "atlasnews"],
   { cwd: root, encoding: "utf8" },
 );
 

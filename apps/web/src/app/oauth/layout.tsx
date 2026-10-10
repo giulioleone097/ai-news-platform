@@ -15,14 +15,6 @@ const inter = localFont({
   weight: "100 900",
 });
 
-const brand = localFont({
-  src: "../fonts/barlow-condensed-neura.woff2",
-  display: "swap",
-  fallback: ["Arial Narrow", "sans-serif"],
-  style: "normal",
-  weight: "700",
-});
-
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function OAuthLayout({ children }: { children: React.ReactNode }) {
@@ -31,7 +23,6 @@ export default async function OAuthLayout({ children }: { children: React.ReactN
     <html
       lang={locale}
       style={{
-        "--font-brand": brand.style.fontFamily,
         "--font-ui": inter.style.fontFamily,
       } as React.CSSProperties}
     >

@@ -13,7 +13,7 @@ export function createWebCacheInvalidator(
 ): EditorialCacheInvalidator {
   const { fetchImpl = fetch } = options;
   return async (invalidation) => {
-    const secret = (options.secret ?? process.env.NEURA_REVALIDATE_SECRET)?.trim();
+    const secret = (options.secret ?? process.env.ATLASNEWS_REVALIDATE_SECRET)?.trim();
     if (!secret) return;
     try {
       const response = await fetchImpl(new URL("/api/revalidate", options.origin ?? getPublicSiteUrl()), {

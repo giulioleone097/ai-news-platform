@@ -12,7 +12,7 @@ import {
   verifyGuestToken,
 } from "@atlasnews/adapters/comments/identity-token";
 
-export const commentGuestCookieName = "neura_comment_guest";
+export const commentGuestCookieName = "atlasnews_comment_guest";
 
 export type ResolvedCommentActor = {
   actor: CommentActor;

@@ -50,7 +50,7 @@ export async function GET(
   return new Response(stream, {
     headers: {
       "Cache-Control": "private, no-store",
-      "Content-Disposition": `attachment; filename="neura-${locale}-audience.csv"`,
+      "Content-Disposition": `attachment; filename="atlasnews-${locale}-audience.csv"`,
       "Content-Type": "text/csv; charset=utf-8",
     },
   });

@@ -230,7 +230,7 @@ export function NewsletterCampaignForm({
                 <input
                   aria-describedby={error("fromName") ? errorId("fromName") : undefined}
                   aria-invalid={Boolean(error("fromName")) || undefined}
-                  defaultValue={campaign?.fromName ?? "NEURA"}
+                  defaultValue={campaign?.fromName ?? "AtlasNews"}
                   maxLength={120}
                   name="fromName"
                   required

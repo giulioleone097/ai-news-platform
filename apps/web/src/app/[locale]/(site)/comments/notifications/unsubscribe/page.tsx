@@ -18,7 +18,7 @@ const copy = {
     success: "Comment notifications are now disabled.",
     invalid: "This unsubscribe link is invalid or has expired.",
     confirm: "Disable notifications",
-    home: "Return to NEURA",
+    home: "Return to AtlasNews",
   },
   it: {
     title: "Disattiva le notifiche dei commenti",
@@ -26,7 +26,7 @@ const copy = {
     success: "Le notifiche dei commenti sono state disattivate.",
     invalid: "Questo link di disiscrizione non è valido o è scaduto.",
     confirm: "Disattiva notifiche",
-    home: "Torna su NEURA",
+    home: "Torna su AtlasNews",
   },
 } as const;
 

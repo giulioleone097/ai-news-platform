@@ -18,7 +18,7 @@ export const getEntityPage = unstable_cache(
     ]);
     return entity ? { entity, timeline } : null;
   },
-  ["neura-entity-page-v1"],
+  ["atlasnews-entity-page-v1"],
   { revalidate: 300, tags: [articlesCacheTag] },
 );
 

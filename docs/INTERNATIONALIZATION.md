@@ -1,6 +1,6 @@
 # Internationalization
 
-NEURA is English-first and explicitly localized. English is the default content language; Italian has equal route and content support.
+AtlasNews is English-first and explicitly localized. English is the default content language; Italian has equal route and content support.
 
 ## Routing contract
 
@@ -64,7 +64,7 @@ Set `NEXT_PUBLIC_SITE_URL` to the canonical HTTPS origin before build so absolut
 
 ## MCP
 
-All public MCP tools accept `locale`; it defaults to `en`. Tool output includes locale and locale-prefixed paths. A missing article in the requested locale returns a not-found tool error rather than falling back.
+Every read tool accepts `locale`; it defaults to `en`. Tool output includes locale and locale-prefixed paths. A missing article in the requested locale returns a not-found tool error rather than falling back. The words of a story (claim statuses, entity kinds, section titles) come from one table in `packages/core/src/editorial/application/story-labels.ts`, which the site, the Markdown export, the feeds and the MCP presenters all read.
 
 ## Add a locale
 

@@ -27,14 +27,14 @@ export function hasSupabaseEnvironment() {
 }
 
 export function getContentMode(): ContentMode {
-  const configured = process.env.NEURA_CONTENT_MODE?.trim().toLowerCase();
+  const configured = process.env.ATLASNEWS_CONTENT_MODE?.trim().toLowerCase();
   if (configured === "demo" || configured === "supabase") return configured;
   return hasSupabaseEnvironment() ? "supabase" : "demo";
 }
 
 export function isDemoStudioEnabled() {
   return process.env.NODE_ENV !== "production"
-    || process.env.NEURA_ENABLE_DEMO_STUDIO?.trim() === "true";
+    || process.env.ATLASNEWS_ENABLE_DEMO_STUDIO?.trim() === "true";
 }
 
 export function isStudioAvailable() {
@@ -45,9 +45,7 @@ export function isStudioAvailable() {
 
 export function getPublicSiteUrl() {
   const value = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
-  return parseHttpUrl(value || (vercelHost ? `https://${vercelHost}` : undefined))
-    ?? new URL("http://localhost:3000");
+  return parseHttpUrl(value) ?? new URL("http://localhost:3000");
 }
 
 export function getSupabaseEnvironment() {
@@ -69,17 +67,17 @@ export function getAllowedMcpOrigins() {
 }
 
 export function getMcpAdminApiKey() {
-  const value = process.env.NEURA_MCP_ADMIN_API_KEY?.trim();
+  const value = process.env.ATLASNEWS_MCP_ADMIN_API_KEY?.trim();
   return value && value.length >= 32 ? value : null;
 }
 
 /**
  * Service-role access acting as one author. A signed-in editor passes their own `author_id`;
- * the shared API key falls back to `NEURA_MCP_ADMIN_AUTHOR_ID`.
+ * the shared API key falls back to `ATLASNEWS_MCP_ADMIN_AUTHOR_ID`.
  */
 export function getSupabaseAdminEnvironment(actorAuthorId?: string) {
   const environment = getSupabaseServiceEnvironment();
-  const authorId = actorAuthorId?.trim() || process.env.NEURA_MCP_ADMIN_AUTHOR_ID?.trim();
+  const authorId = actorAuthorId?.trim() || process.env.ATLASNEWS_MCP_ADMIN_AUTHOR_ID?.trim();
 
   if (!environment || !authorId) return null;
   return { ...environment, authorId };
@@ -103,9 +101,9 @@ export function getMcpOAuthEnvironment() {
 
   const base = new URL(service.url);
   if (!base.pathname.endsWith("/")) base.pathname += "/";
-  const configuredIssuer = parseHttpUrl(process.env.NEURA_MCP_OAUTH_ISSUER);
+  const configuredIssuer = parseHttpUrl(process.env.ATLASNEWS_MCP_OAUTH_ISSUER);
   const issuer = (configuredIssuer ?? new URL("auth/v1", base)).toString().replace(/\/+$/, "");
-  const audience = serverValue("NEURA_MCP_OAUTH_AUDIENCE");
+  const audience = serverValue("ATLASNEWS_MCP_OAUTH_AUDIENCE");
 
   return {
     issuer,
@@ -129,7 +127,7 @@ export function getCronSecret() {
 }
 
 export function getCommentEnvironment() {
-  const guestSecret = serverValue("NEURA_COMMENT_GUEST_SECRET", 32);
+  const guestSecret = serverValue("ATLASNEWS_COMMENT_GUEST_SECRET", 32);
   const service = getSupabaseServiceEnvironment();
   return guestSecret && service ? { ...service, guestSecret } : null;
 }

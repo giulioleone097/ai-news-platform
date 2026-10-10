@@ -17,8 +17,8 @@ const hostedSupabase = parsedSupabaseUrl !== null && isSecureProductionOrigin(pa
 // localhost metadata. Demo builds (CI, local review) and local-Supabase builds are unaffected, and
 // /api/health stays the runtime check that the deployed environment is ready.
 if (process.env.NODE_ENV === "production" && (hostedSite || hostedSupabase)) {
-  if (process.env.NEURA_CONTENT_MODE?.trim() !== "supabase") {
-    throw new Error("Public builds require NEURA_CONTENT_MODE=supabase.");
+  if (process.env.ATLASNEWS_CONTENT_MODE?.trim() !== "supabase") {
+    throw new Error("Public builds require ATLASNEWS_CONTENT_MODE=supabase.");
   }
   if (!parsedSupabaseUrl || !configuredSupabaseKey) {
     throw new Error("Public builds require a valid Supabase URL and public key.");

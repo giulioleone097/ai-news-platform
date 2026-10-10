@@ -19,7 +19,7 @@ import { McpEventsWorker } from "@atlasnews/core/mcp-events/application/events-w
 import { DefaultMcpEventsService } from "@atlasnews/core/mcp-events/application/mcp-events-service";
 import { signWebhook } from "@atlasnews/core/mcp-events/application/webhook-signing";
 
-const siteUrl = "https://neura.example.com";
+const siteUrl = "https://atlasnews.example.com";
 const minute = 60 * 1000;
 let now: Date;
 let repository: MemoryMcpEventsRepository;
@@ -80,7 +80,7 @@ describe("EventEnqueuer", () => {
         excerpt: "Short summary.",
         category_slug: "models",
         category_name: "Models",
-        url: "https://neura.example.com/en/articles/model-ships",
+        url: "https://atlasnews.example.com/en/articles/model-ships",
         published_at: "2026-10-10T12:00:30.000Z",
         claim_status: "confirmed",
         entity_slugs: ["openai", "gpt-6"],

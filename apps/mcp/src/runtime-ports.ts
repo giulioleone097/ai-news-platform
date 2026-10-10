@@ -10,7 +10,7 @@ const invalidateCache = createWebCacheInvalidator();
 /**
  * Builds the ports from the configured adapters; heavy or optional ones load on first use.
  * Writes are attributed to the signed-in editor's author id; the API key, which names no editor,
- * keeps `NEURA_MCP_ADMIN_AUTHOR_ID`.
+ * keeps `ATLASNEWS_MCP_ADMIN_AUTHOR_ID`.
  */
 export function createRuntimePorts(principal?: AuthenticatedPrincipal): CapabilityPorts {
   const actorAuthorId = principal?.authorId;

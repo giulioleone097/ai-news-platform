@@ -24,10 +24,10 @@ function reply(status: number, body: Record<string, unknown>) {
 
 /**
  * Lets the standalone MCP process purge this app's Next cache after an editorial write.
- * Fails closed: without NEURA_REVALIDATE_SECRET the route answers 503 to everyone.
+ * Fails closed: without ATLASNEWS_REVALIDATE_SECRET the route answers 503 to everyone.
  */
 export async function POST(request: Request) {
-  const secret = process.env.NEURA_REVALIDATE_SECRET?.trim();
+  const secret = process.env.ATLASNEWS_REVALIDATE_SECRET?.trim();
   if (!secret || secret.length < 32) return reply(503, { error: "revalidation_not_configured" });
 
   const authorization = request.headers.get("authorization") ?? "";

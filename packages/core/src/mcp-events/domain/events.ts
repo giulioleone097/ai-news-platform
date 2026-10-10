@@ -88,7 +88,7 @@ export function listMcpEventDefinitions(): McpEventDefinition[] {
     {
       name: "article.published",
       description:
-        "A new article was published on NEURA AI News. Fires once per published article and locale; optionally filtered by locale, category slug, entity slug and claim status.",
+        "A new article was published on AtlasNews. Fires once per published article and locale; optionally filtered by locale, category slug, entity slug and claim status.",
       delivery: ["webhook"],
       inputSchema: jsonSchema(articlePublishedArgumentsSchema, "input"),
       payloadSchema: jsonSchema(articlePublishedDataSchema, "output"),

@@ -41,7 +41,7 @@ export function createAtlasNewsServer({
   events = createMcpEventsService(),
 }: AtlasNewsServerOptions) {
   const icon = {
-    src: new URL("/mcp/neura-icon.svg", apps.siteUrl).href,
+    src: new URL("/mcp/atlasnews-icon.svg", apps.siteUrl).href,
     mimeType: "image/svg+xml",
     sizes: ["any"],
   };

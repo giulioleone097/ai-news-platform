@@ -273,8 +273,8 @@ describe("the configured server", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey);
     vi.stubEnv("NEXT_PUBLIC_MCP_URL", "");
-    vi.stubEnv("NEURA_MCP_ADMIN_API_KEY", testApiKey);
-    vi.stubEnv("NEURA_CONTENT_MODE", "demo");
+    vi.stubEnv("ATLASNEWS_MCP_ADMIN_API_KEY", testApiKey);
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "demo");
     return double;
   }
 

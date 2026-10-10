@@ -21,7 +21,7 @@ function repository() {
 function signedRequest(payload: unknown, secret = config.appSecret) {
   const body = JSON.stringify(payload);
   const signature = createHmac("sha256", secret).update(body).digest("hex");
-  return new Request("https://neura.example/api/webhooks/social/whatsapp", {
+  return new Request("https://atlasnews.example/api/webhooks/social/whatsapp", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -34,13 +34,13 @@ function signedRequest(payload: unknown, secret = config.appSecret) {
 describe("WhatsApp webhook", () => {
   it("answers Meta verification only for the configured token", async () => {
     const success = handleWhatsAppWebhookVerification(new Request(
-      "https://neura.example/api/webhooks/social/whatsapp?hub.mode=subscribe&hub.verify_token=whatsapp-verify-token-123456&hub.challenge=123456",
+      "https://atlasnews.example/api/webhooks/social/whatsapp?hub.mode=subscribe&hub.verify_token=whatsapp-verify-token-123456&hub.challenge=123456",
     ), config);
     expect(success.status).toBe(200);
     await expect(success.text()).resolves.toBe("123456");
 
     const rejected = handleWhatsAppWebhookVerification(new Request(
-      "https://neura.example/api/webhooks/social/whatsapp?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=123456",
+      "https://atlasnews.example/api/webhooks/social/whatsapp?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=123456",
     ), config);
     expect(rejected.status).toBe(403);
   });
@@ -104,7 +104,7 @@ describe("WhatsApp webhook", () => {
   it("bounds webhook bodies before JSON parsing", async () => {
     const outbox = repository();
     const response = await handleWhatsAppWebhook(new Request(
-      "https://neura.example/api/webhooks/social/whatsapp",
+      "https://atlasnews.example/api/webhooks/social/whatsapp",
       {
         method: "POST",
         headers: { "content-length": "999999" },

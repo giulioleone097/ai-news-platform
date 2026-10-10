@@ -76,10 +76,10 @@ async function configure() {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", double.origin);
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
   vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey);
-  vi.stubEnv("NEURA_CONTENT_MODE", "supabase");
+  vi.stubEnv("ATLASNEWS_CONTENT_MODE", "supabase");
   vi.stubEnv("NEXT_PUBLIC_MCP_URL", "");
-  vi.stubEnv("NEURA_MCP_ADMIN_API_KEY", testApiKey);
-  vi.stubEnv("NEURA_MCP_ADMIN_AUTHOR_ID", apiKeyAuthorId);
+  vi.stubEnv("ATLASNEWS_MCP_ADMIN_API_KEY", testApiKey);
+  vi.stubEnv("ATLASNEWS_MCP_ADMIN_AUTHOR_ID", apiKeyAuthorId);
   return double;
 }
 
@@ -121,7 +121,7 @@ describe("who a write is attributed to", () => {
     expect(payload.result.structuredContent.article.id).toBe(savedArticleId);
   });
 
-  it("keeps attributing the API key to NEURA_MCP_ADMIN_AUTHOR_ID", async () => {
+  it("keeps attributing the API key to ATLASNEWS_MCP_ADMIN_AUTHOR_ID", async () => {
     const { savedBy } = await configure();
 
     const { response, payload } = await createArticle(`Bearer ${testApiKey}`);

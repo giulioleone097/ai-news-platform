@@ -73,7 +73,7 @@ export async function proxy(request: NextRequest) {
 
   const localeSegment = pathname.split("/")[1];
   const requestHeaders = new Headers(request.headers);
-  if (isLocale(localeSegment)) requestHeaders.set("x-neura-locale", localeSegment);
+  if (isLocale(localeSegment)) requestHeaders.set("x-atlasnews-locale", localeSegment);
 
   const nextResponse = () => NextResponse.next({
     request: { headers: requestHeaders },

@@ -15,18 +15,18 @@ const copy = {
   en: {
     title: "Confirm comment notifications",
     body: "Confirm that you want private email updates about this conversation. Nothing changes until you press confirm.",
-    success: "Notifications are confirmed. You can return to NEURA.",
+    success: "Notifications are confirmed. You can return to AtlasNews.",
     invalid: "This confirmation link is invalid or has expired.",
     confirm: "Confirm notifications",
-    home: "Return to NEURA",
+    home: "Return to AtlasNews",
   },
   it: {
     title: "Conferma le notifiche dei commenti",
     body: "Conferma di voler ricevere aggiornamenti email privati su questa conversazione. Nulla cambia finché non premi conferma.",
-    success: "Notifiche confermate. Puoi tornare su NEURA.",
+    success: "Notifiche confermate. Puoi tornare su AtlasNews.",
     invalid: "Questo link di conferma non è valido o è scaduto.",
     confirm: "Conferma notifiche",
-    home: "Torna su NEURA",
+    home: "Torna su AtlasNews",
   },
 } as const;
 

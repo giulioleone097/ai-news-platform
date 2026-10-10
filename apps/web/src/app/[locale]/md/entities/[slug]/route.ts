@@ -1,4 +1,4 @@
-import { getMessages, isLocale } from "@/i18n";
+import { isLocale } from "@/i18n";
 import { getEntityPage } from "@/lib/feeds/data";
 import { renderEntityMarkdown } from "@/lib/feeds/entity-markdown";
 import { feedResponse, notFoundResponse } from "@/lib/feeds/responses";
@@ -18,7 +18,7 @@ export async function GET(
     page.entity,
     page.timeline,
     { page: entityUrl(locale, slug), story: (storySlug) => storyUrl(locale, storySlug) },
-    getMessages(locale).story,
+    locale,
   );
   return feedResponse(markdown, "text/markdown");
 }

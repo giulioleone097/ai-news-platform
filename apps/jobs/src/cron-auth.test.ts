@@ -11,7 +11,7 @@ describe("authorizeCronRequest", () => {
       .toEqual({ ok: false, status: 503 });
   });
 
-  it("accepts only the exact Vercel bearer credential", () => {
+  it("accepts only the exact bearer credential", () => {
     vi.stubEnv("CRON_SECRET", "c".repeat(32));
     const authorized = new Request("https://news.example.com/api/internal", {
       headers: { authorization: `Bearer ${"c".repeat(32)}` },

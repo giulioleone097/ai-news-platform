@@ -10,7 +10,7 @@ An AI agent that looks at the reader site in a browser can use the site through 
 | `filter_feed` | Shows the home feed, an entity feed (`/entities/{slug}`) or a status feed (`/status/{status}`) and returns the stories. | page only |
 | `open_article` | Opens one story, then returns its path and title. | page only |
 | `read_open_article` | Returns the story on screen: title, URL, status, entities and the Markdown text (key points and sources included). An error when no story is open. | nothing |
-| `save_article` | Adds a story to the bookmarks of this browser (`localStorage` key `neura:saved`, the store of the bookmark button). | bookmarks |
+| `save_article` | Adds a story to the bookmarks of this browser (`localStorage` key `atlasnews:saved`, the store of the bookmark button). | bookmarks |
 
 Every tool answers with a JSON object. When it cannot do the work it answers `{ "error": "..." }` and does not throw, because a WebMCP host does not pass the message of a thrown error to the agent. Bad arguments are checked against the catalogue's schema first.
 
