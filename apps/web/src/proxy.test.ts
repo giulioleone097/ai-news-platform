@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { getRewrittenUrl, isRewrite } from "next/experimental/testing/server";
 
 const mocks = vi.hoisted(() => ({
   createServerClient: vi.fn(),
@@ -54,5 +55,33 @@ describe("proxy authentication refresh", () => {
     expect(response.status).toBe(200);
     expect(mocks.createServerClient).not.toHaveBeenCalled();
     expect(mocks.getClaims).not.toHaveBeenCalled();
+  });
+});
+
+describe("proxy agent-facing rewrites", () => {
+  beforeEach(() => {
+    mocks.createServerClient.mockReset();
+  });
+
+  it.each([
+    ["/en/articles/ai-agents-enter-everyday-work.md", "https://neura.test/en/md/articles/ai-agents-enter-everyday-work"],
+    ["/it/entities/openai.md", "https://neura.test/it/md/entities/openai"],
+    ["/en/entities/openai/feed.xml", "https://neura.test/en/entity-feed/openai"],
+  ])("rewrites %s to its route handler without Supabase work", async (path, destination) => {
+    const response = await proxy(new NextRequest(`https://neura.test${path}`));
+
+    expect(isRewrite(response)).toBe(true);
+    expect(getRewrittenUrl(response)).toBe(destination);
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "/en/articles/Not_A_Slug.md",
+    "/fr/articles/ai-agents.md",
+    "/en/entities/openai/feed.json",
+  ])("leaves %s on the normal route", async (path) => {
+    const response = await proxy(new NextRequest(`https://neura.test${path}`));
+
+    expect(isRewrite(response)).toBe(false);
   });
 });

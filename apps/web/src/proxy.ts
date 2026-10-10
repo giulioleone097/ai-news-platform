@@ -1,9 +1,34 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseEnvironment } from "@atlasnews/adapters/config/env";
-import { defaultLocale, isLocale } from "@/i18n";
+import { defaultLocale, isLocale, locales } from "@/i18n";
 
 const PUBLIC_FILE = /\.[a-z0-9]+$/i;
+
+const localePattern = locales.join("|");
+const agentRewrites: Array<{ pattern: RegExp; target: (match: RegExpMatchArray) => string }> = [
+  {
+    pattern: new RegExp(`^/(${localePattern})/articles/([a-z0-9-]+)\\.md$`),
+    target: ([, locale, slug]) => `/${locale}/md/articles/${slug}`,
+  },
+  {
+    pattern: new RegExp(`^/(${localePattern})/entities/([a-z0-9-]+)\\.md$`),
+    target: ([, locale, slug]) => `/${locale}/md/entities/${slug}`,
+  },
+  {
+    pattern: new RegExp(`^/(${localePattern})/entities/([a-z0-9-]+)/feed\\.xml$`),
+    target: ([, locale, slug]) => `/${locale}/entity-feed/${slug}`,
+  },
+];
+
+/** Agent-facing URLs (`.md`, entity feeds) served by route handlers under the same locale. */
+function agentRewritePath(pathname: string) {
+  for (const { pattern, target } of agentRewrites) {
+    const match = pathname.match(pattern);
+    if (match) return target(match);
+  }
+  return null;
+}
 
 function shouldLocalize(pathname: string) {
   return !pathname.startsWith("/api/")
@@ -20,6 +45,13 @@ function isAuthSensitivePath(pathname: string) {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  const rewritePath = agentRewritePath(pathname);
+  if (rewritePath) {
+    const destination = request.nextUrl.clone();
+    destination.pathname = rewritePath;
+    return NextResponse.rewrite(destination);
+  }
 
   if (shouldLocalize(pathname)) {
     const localeSegment = pathname.split("/")[1];

@@ -5,16 +5,18 @@ import {
   getPublicCategories,
   searchPublishedArticles,
 } from "@/lib/editorial-queries";
+import { getCoveredEntities } from "@/lib/feeds/data";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getPublicSiteUrl();
   const localizedData = await Promise.all(
     locales.map(async (locale) => {
-      const [page, categories] = await Promise.all([
+      const [page, categories, entities] = await Promise.all([
         searchPublishedArticles({ locale, limit: 100 }),
         getPublicCategories(locale),
+        getCoveredEntities(locale),
       ]);
-      return { locale, articles: page.items, categories };
+      return { locale, articles: page.items, categories, entities };
     }),
   );
 
@@ -29,9 +31,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const latestLanguages = withDefault(Object.fromEntries(
     locales.map((locale) => [locale, absolute(localizedPath("/latest", locale))]),
   ));
+  const entityLanguages = (slug: string) => withDefault(Object.fromEntries(
+    locales.map((locale) => [locale, absolute(localizedPath(`/entities/${slug}`, locale))]),
+  ));
 
   return [
-    ...localizedData.flatMap(({ locale, articles, categories }) => [
+    ...localizedData.flatMap(({ locale, articles, categories, entities }) => [
       {
         url: absolute(localizedPath("/", locale)),
         changeFrequency: "daily" as const,
@@ -63,6 +68,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           alternates: { languages },
         };
       }),
+      ...entities.map((entity) => ({
+        url: absolute(localizedPath(`/entities/${entity.slug}`, locale)),
+        changeFrequency: "daily" as const,
+        priority: 0.6,
+        alternates: { languages: entityLanguages(entity.slug) },
+      })),
       ...articles.map((article) => {
         const languages = withDefault(Object.fromEntries(
           localizedData.map((localized) => {
