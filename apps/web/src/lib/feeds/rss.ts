@@ -1,5 +1,5 @@
 import type { Article } from "@atlasnews/core/editorial/domain/article";
-import type { StoryMarkdownLabels } from "@atlasnews/core/editorial/application/story-markdown";
+import { storyLabels } from "@atlasnews/core/editorial/application/story-labels";
 import { renderSafeNewsletterMarkdown } from "@atlasnews/core/newsletter/application/markdown";
 import type { Locale } from "@/i18n";
 import { escapeXml } from "./xml";
@@ -13,7 +13,6 @@ export interface RssChannel {
   homeUrl: string;
   feedUrl: string;
   articles: Article[];
-  labels: StoryMarkdownLabels;
 }
 
 /**
@@ -25,8 +24,9 @@ function htmlBody(markdown: string) {
 }
 
 /** RSS 2.0 with the full body as HTML in content:encoded; unpublished stories are never written. */
-export function buildRssFeed({ title, description, locale, homeUrl, feedUrl, articles, labels }: RssChannel) {
+export function buildRssFeed({ title, description, locale, homeUrl, feedUrl, articles }: RssChannel) {
   const stories = publishedStories(articles);
+  const labels = storyLabels[locale];
   const items = stories.map((article) => {
     const url = storyUrl(article.locale, article.slug);
     const categories = [article.category.name, ...storyTags(article, labels)];

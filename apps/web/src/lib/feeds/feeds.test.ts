@@ -44,7 +44,6 @@ const channel = {
   locale: "en" as const,
   homeUrl: "https://news.test/en",
   feedUrl: "https://news.test/en/feed.xml",
-  labels,
 };
 
 const draft = story({

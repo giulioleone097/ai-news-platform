@@ -24,7 +24,6 @@ export async function GET(
     homeUrl: entityUrl(locale, slug),
     feedUrl: localizedSiteUrl(`/entities/${slug}/feed.xml`, locale),
     articles: stories.items,
-    labels: messages.story,
   });
   return feedResponse(xml, "application/rss+xml");
 }

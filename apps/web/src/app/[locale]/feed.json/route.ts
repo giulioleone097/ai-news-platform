@@ -20,7 +20,6 @@ export async function GET(
     homeUrl: localizedSiteUrl("/", locale),
     feedUrl: localizedSiteUrl("/feed.json", locale),
     articles: page.items,
-    labels: messages.story,
   });
   return feedResponse(json, "application/feed+json");
 }

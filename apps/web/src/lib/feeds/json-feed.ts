@@ -1,5 +1,5 @@
 import type { Article } from "@atlasnews/core/editorial/domain/article";
-import type { StoryMarkdownLabels } from "@atlasnews/core/editorial/application/story-markdown";
+import { storyLabels } from "@atlasnews/core/editorial/application/story-labels";
 import type { Locale } from "@/i18n";
 import { publishedStories, storyTags } from "./stories";
 import { storyUrl } from "./site";
@@ -11,11 +11,11 @@ export interface JsonFeedChannel {
   homeUrl: string;
   feedUrl: string;
   articles: Article[];
-  labels: StoryMarkdownLabels;
 }
 
 /** JSON Feed 1.1; content_text carries the Markdown body as the brief requires. */
-export function buildJsonFeed({ title, description, locale, homeUrl, feedUrl, articles, labels }: JsonFeedChannel) {
+export function buildJsonFeed({ title, description, locale, homeUrl, feedUrl, articles }: JsonFeedChannel) {
+  const labels = storyLabels[locale];
   return JSON.stringify({
     version: "https://jsonfeed.org/version/1.1",
     title,

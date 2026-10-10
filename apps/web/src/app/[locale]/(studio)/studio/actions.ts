@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { StudioActionState } from "@/components/studio/action-state";
@@ -23,7 +23,7 @@ import {
   distributionStatuses,
 } from "@atlasnews/core/editorial/domain/editorial-operations";
 import { getStudioEditorialRepositories } from "@/server/composition";
-import { articlesCacheTag } from "@/lib/editorial-cache";
+import { invalidatePublicEditorialCache } from "@/lib/editorial-cache";
 import { ArticleCommandService } from "@atlasnews/core/editorial/application/article-commands";
 
 const imageSourceSchema = z
@@ -130,19 +130,11 @@ function getFieldErrors(error: z.ZodError): Record<string, string[]> {
   return fieldErrors;
 }
 
+/** Public outputs are refreshed by the shared owner; the Studio pages that show the change are added here. */
 function revalidateEditorialPaths(locale: (typeof locales)[number], slug?: string) {
-  updateTag(articlesCacheTag);
-  revalidatePath(`/${locale}`);
-  revalidatePath(`/${locale}/latest`);
-  revalidatePath(`/${locale}/search`);
-  revalidatePath(`/${locale}/articles/[slug]`, "page");
-  revalidatePath(`/${locale}/categories/[slug]`, "page");
+  invalidatePublicEditorialCache({ locale, slugs: slug ? [slug] : [] });
   revalidatePath(`/${locale}/studio`);
   revalidatePath(`/${locale}/studio/articles`);
-  revalidatePath("/api/articles");
-  revalidatePath(`/${locale}/feed.xml`);
-  if (slug) revalidatePath(`/${locale}/articles/${slug}`);
-  revalidatePath("/sitemap.xml");
 }
 
 /** The story fields as the form posts them: blank key points and blank source rows are dropped. */
