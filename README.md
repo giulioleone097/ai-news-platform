@@ -100,6 +100,7 @@ Full instructions: [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Documentation
 
+- [Go-live checklist: what the owner still has to do](docs/GO_LIVE.md)
 - [Architecture and boundaries](docs/ARCHITECTURE.md)
 - [Deployment and environment setup](docs/DEPLOYMENT.md)
 - [Reader site on ChatGPT Sites](docs/SITES.md)
