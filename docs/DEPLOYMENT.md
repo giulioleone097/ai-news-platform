@@ -38,6 +38,7 @@ Never point a Preview deployment at the production database.
 | `NEURA_ENABLE_DEMO_STUDIO` | Empty | Empty | Empty unless the preview is intentionally ephemeral | Empty | Server-only |
 | `NEXT_PUBLIC_LINKEDIN_URL` | Empty | Empty or official profile | Preview-safe official profile | Official LinkedIn profile URL | Public, build-time |
 | `NEXT_PUBLIC_X_URL` | Empty | Empty or official profile | Preview-safe official profile | Official X profile URL | Public, build-time |
+| `NEXT_PUBLIC_MCP_URL` | Empty (defaults to `http://localhost:8787`) | Local `apps/mcp` origin | Preview `apps/mcp` origin | Production `apps/mcp` origin | Public, build-time |
 | `MCP_ALLOWED_ORIGINS` | `http://localhost:3000` or empty | Local caller origins | Approved preview callers | Comma-separated production callers; empty for public wildcard | Server-only |
 
 `NEURA_CONTENT_MODE` selects the adapter explicitly. Supabase mode requires both the public URL and anon key and fails visibly if either is missing. The service-role key is mandatory for production workers, comment mutations and admin MCP; never expose it through `NEXT_PUBLIC_*`. Production readiness reports every incomplete operational capability instead of silently simulating it.
@@ -170,17 +171,17 @@ Import the GitHub repository and use these project settings:
 | Setting | Value |
 | --- | --- |
 | Framework Preset | Next.js |
-| Root Directory | `.` |
-| Install Command | `npm ci` (also committed in `vercel.json`) |
-| Build Command | `npm run build` (also committed in `vercel.json`) |
+| Root Directory | `apps/web` (the repository root is the npm workspace root; install with `npm ci` from there) |
+| Install Command | `npm ci` (also committed in `apps/web/vercel.json`) |
+| Build Command | `npm run build` (also committed in `apps/web/vercel.json`) |
 | Node.js | 24.x |
 | Function region | `fra1`, unless the selected Supabase region requires a closer Vercel region |
 
 Add environment variables separately for Preview and Production. Keep Preview deployments protected, especially when they expose unpublished studio content. Attach the canonical domain, update `NEXT_PUBLIC_SITE_URL` to its HTTPS origin, and redeploy so metadata and share URLs use it.
 
-The MCP functions have a 10-second maximum duration. Their normal calls should remain far below that budget.
+`apps/web` serves only the reader site, Studio, the comments/articles/health API and the provider webhooks. The MCP server (`apps/mcp`, `npm run start -w apps/mcp`, default port 8787) and the workers (`apps/jobs`, `npm run start -w apps/jobs`, default port 8788) are separate deployables that run under plain Node through `tsx`; they read their configuration from the process environment, not from `.env` files. Set `NEXT_PUBLIC_MCP_URL` on `apps/web` so the footer links to the MCP server's `/info`, and point MCP clients at `https://<mcp-host>/mcp`. `/mcp` calls should finish well under 10 seconds.
 
-The committed Vercel configuration invokes the social, newsletter, comment-notification and MCP Events workers every minute. These functions have a 60-second ceiling, authenticate `Authorization: Bearer $CRON_SECRET`, lease rows with `SKIP LOCKED`, and are safe when Vercel delivers a cron more than once. Confirm that the selected Vercel plan supports per-minute crons. Register these provider callbacks at their exact production origins:
+The cron schedule is owned by `apps/jobs/vercel.json`: it invokes `/internal/social-outbox`, `/internal/newsletter-outbox`, `/internal/comment-notifications` and `/internal/mcp-events` every minute. Workers are expected to finish within 60 seconds, authenticate `Authorization: Bearer $CRON_SECRET`, lease rows with `SKIP LOCKED`, and are safe when Vercel delivers a cron more than once. Confirm that the selected Vercel plan supports per-minute crons. Register these provider callbacks at their exact production origins:
 
 ```text
 POST https://<canonical-host>/api/webhooks/newsletter
@@ -202,7 +203,7 @@ Resend must sign the raw payload with the configured webhook secret. WhatsApp mu
 
 ## Post-deploy smoke checks
 
-Replace `$SITE` with the canonical origin.
+Replace `$SITE` with the canonical origin of `apps/web` and `$MCP` with the origin of `apps/mcp`.
 
 ```bash
 curl --fail --silent --show-error --location "$SITE/en" >/dev/null
@@ -210,7 +211,7 @@ curl --fail --silent --show-error --location "$SITE/it" >/dev/null
 curl --fail --silent --show-error "$SITE/api/health" | grep '"status":"ready"'
 curl --fail --silent --show-error "$SITE/en/feed.xml" | grep '<language>en</language>'
 curl --fail --silent --show-error "$SITE/it/feed.xml" | grep '<language>it</language>'
-curl --fail --silent --show-error "$SITE/api/mcp/info" | grep 'neura-ai-news'
+curl --fail --silent --show-error "$MCP/info" | grep 'neura-ai-news'
 ```
 
 Then verify in a browser:

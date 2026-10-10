@@ -151,7 +151,7 @@ Search is locale-scoped. Confirm the translated row exists, uses the requested l
 
 ### MCP browser call is blocked by CORS
 
-Add the exact caller origin (scheme, host, and port) to `MCP_ALLOWED_ORIGINS`, comma-separated, then redeploy. CLI/agent clients that omit `Origin` should continue to work. `GET /api/mcp` returning 405 is expected; use POST.
+Add the exact caller origin (scheme, host, and port) to `MCP_ALLOWED_ORIGINS`, comma-separated, then redeploy. CLI/agent clients that omit `Origin` should continue to work. `GET /mcp` returning 405 is expected; use POST.
 
 ### MCP call times out
 

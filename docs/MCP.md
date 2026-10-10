@@ -1,17 +1,17 @@
 # Model Context Protocol
 
-NEURA exposes two stateless Streamable HTTP servers: a public read-only surface for published content and approved comments, plus a separate API-key-protected operations surface.
+NEURA exposes two stateless Streamable HTTP servers, both served by the standalone `apps/mcp` process (`npm run start -w apps/mcp`, port `PORT`, default `8787`): a public read-only surface for published content and approved comments, plus a separate API-key-protected operations surface.
 
 ## Endpoints
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
-| `/api/mcp/info` | `GET` | Human- and machine-readable server metadata |
-| `/api/mcp` | `POST` | MCP JSON-RPC over Streamable HTTP |
-| `/api/mcp` | `OPTIONS` | CORS preflight |
-| `/api/mcp/admin` | `POST` | Authenticated newsroom MCP JSON-RPC |
+| `/info` | `GET` | Human- and machine-readable server metadata |
+| `/mcp` | `POST` | MCP JSON-RPC over Streamable HTTP |
+| `/mcp` | `OPTIONS` | CORS preflight |
+| `/mcp/admin` | `POST` | Authenticated newsroom MCP JSON-RPC |
 
-`GET /api/mcp` intentionally returns 405. Use the info route for discovery and POST for protocol requests.
+`GET /mcp` intentionally returns 405. Use the info route for discovery and POST for protocol requests. Below, `$MCP` is the base URL of `apps/mcp` (`http://localhost:8787` locally).
 
 Current protocol version: `2026-07-28`, served by the stable MCP TypeScript server SDK v2. Ordinary modern responses are JSON and protocol streams can upgrade to SSE. Stateless 2025-era clients remain supported and may receive SSE.
 
@@ -32,7 +32,7 @@ The server is stateless and does not issue an MCP session ID. Every call is inde
 ## Discover
 
 ```bash
-curl --request POST "$SITE/api/mcp" \
+curl --request POST "$MCP/mcp" \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
   --header 'MCP-Protocol-Version: 2026-07-28' \
@@ -56,7 +56,7 @@ The result advertises `supportedVersions`, capabilities, and server identity. Mo
 ## List tools
 
 ```bash
-curl --request POST "$SITE/api/mcp" \
+curl --request POST "$MCP/mcp" \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
   --header 'MCP-Protocol-Version: 2026-07-28' \
@@ -93,7 +93,7 @@ Supported locales are `en` and `it`; English is the default. All tools are read-
 ### List articles
 
 ```bash
-curl --request POST "$SITE/api/mcp" \
+curl --request POST "$MCP/mcp" \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
   --header 'MCP-Protocol-Version: 2026-07-28' \
@@ -120,7 +120,7 @@ Pass the returned `nextCursor` unchanged as `cursor` for the next page. Do not d
 ### Search
 
 ```bash
-curl --request POST "$SITE/api/mcp" \
+curl --request POST "$MCP/mcp" \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
   --header 'MCP-Protocol-Version: 2026-07-28' \
@@ -132,7 +132,7 @@ curl --request POST "$SITE/api/mcp" \
 ### Get one article
 
 ```bash
-curl --request POST "$SITE/api/mcp" \
+curl --request POST "$MCP/mcp" \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
   --header 'MCP-Protocol-Version: 2026-07-28' \
@@ -150,7 +150,7 @@ For clients that accept remote HTTP servers, use the canonical HTTPS endpoint:
   "mcpServers": {
     "neura": {
       "type": "http",
-      "url": "https://news.example.com/api/mcp"
+      "url": "https://mcp.news.example.com/mcp"
     }
   }
 }
@@ -171,7 +171,7 @@ Do not add mutation tools to this public server. Editorial mutations live only o
 
 ## Authenticated newsroom server
 
-`POST /api/mcp/admin` requires `Authorization: Bearer <NEURA_MCP_ADMIN_API_KEY>`. It has no browser CORS surface and authenticates before parsing the body or resolving the service-role repository. Missing or incorrect credentials return `401`; missing server configuration returns `503`.
+`POST /mcp/admin` requires `Authorization: Bearer <NEURA_MCP_ADMIN_API_KEY>`. It has no browser CORS surface and authenticates before parsing the body or resolving the service-role repository. Missing or incorrect credentials return `401`; missing server configuration returns `503`.
 
 The server exposes these authenticated groups:
 

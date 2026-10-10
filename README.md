@@ -10,9 +10,9 @@ An English-first, internationalized AI news platform built with Next.js, Supabas
 - Double-opt-in newsletter, Markdown campaigns, recipient snapshots, scheduling, Resend delivery, signed webhooks, suppression, unsubscribe and erasure.
 - Real LinkedIn, X and WhatsApp publishing through leased, idempotent Supabase outboxes with retry/read-back.
 - Supabase Postgres and Storage with full-text search, row-level security, editorial roles, translations, consent registries and immutable media.
-- Public, stateless, read-only MCP server at `/api/mcp`; approved comments are included without exposing private moderation data.
+- Public, stateless, read-only MCP server at `/mcp` (standalone `apps/mcp`); approved comments are included without exposing private moderation data.
 - ChatGPT and Claude app surface on the public MCP: an MCP Apps newsroom UI, ChatGPT sidebar and side-panel entrypoints, deep links, composer @-mentions, a native-form briefing, article resources and MCP Events webhooks for newly published articles. See [OPENAI_EXTENSIONS.md](docs/OPENAI_EXTENSIONS.md).
-- API-key-protected admin MCP at `/api/mcp/admin` with editorial CRUD, comment moderation, campaigns, media and social outbox tools.
+- API-key-protected admin MCP at `/mcp/admin` with editorial CRUD, comment moderation, campaigns, media and social outbox tools.
 - Portable agent plugin manifests for Codex/OpenAI, Claude Code, and GitHub Copilot CLI.
 - Hexagonal boundaries: domain and application code do not depend on Next.js or Supabase.
 - Server Components, immediate write invalidation, optimized images, self-hosted fonts, native view transitions/loading states, and an enforced token-driven design system.
@@ -38,11 +38,20 @@ npm run dev
 
 Open <http://localhost:3000>. The root redirects permanently to `/en`; use `/it` for Italian. Demo editorial data lives in memory and resets when the process restarts. Comments, newsletter delivery and social publishing remain visibly unavailable until Supabase and their real providers are configured.
 
+The reader site and Studio are `apps/web`. The MCP server and the background workers are separate processes that run under plain Node and read their configuration from the process environment:
+
+```bash
+npm run start -w apps/mcp    # http://localhost:8787  (PORT overrides)
+npm run start -w apps/jobs   # http://localhost:8788  (PORT overrides)
+```
+
 To make local settings explicit:
 
 ```bash
-cp .env.example .env.local
+cp .env.example apps/web/.env.local
 ```
+
+`apps/mcp` and `apps/jobs` do not load `.env` files; export the same variables in their shell. The reader site links to the MCP server at `NEXT_PUBLIC_MCP_URL` (default `http://localhost:8787`).
 
 Use `NEURA_CONTENT_MODE=demo` locally and `NEURA_CONTENT_MODE=supabase` in every Preview/Production environment. Local development also enables the ephemeral demo Studio. Production Studio fails closed without Supabase unless `NEURA_ENABLE_DEMO_STUDIO=true` is set explicitly for an intentional, disposable review deployment. Demo production never confirms a non-persistent newsletter write.
 
@@ -59,13 +68,13 @@ The gate runs design-system validation, plugin validation, lint, TypeScript, tes
 Discovery metadata:
 
 ```bash
-curl http://localhost:3000/api/mcp/info
+curl http://localhost:8787/info
 ```
 
 Read the latest English articles:
 
 ```bash
-curl --request POST http://localhost:3000/api/mcp \
+curl --request POST http://localhost:8787/mcp \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
   --header 'MCP-Protocol-Version: 2026-07-28' \
@@ -82,8 +91,8 @@ See [MCP.md](docs/MCP.md) for public and admin tools, modern discovery, paginati
 2. Create separate Supabase projects for Preview/Staging and Production.
 3. Dry-run and apply the migration; do not automatically seed production.
 4. Bootstrap the first Auth editor through the Supabase Dashboard and a bounded SQL grant.
-5. Configure Resend, LinkedIn, X and WhatsApp credentials/webhooks, plus the Vercel cron secret.
-6. Import this repository into Vercel, set the documented environment variables, and deploy.
+5. Configure Resend, LinkedIn, X and WhatsApp credentials/webhooks, plus the cron secret that `apps/jobs` checks.
+6. Deploy `apps/web` (Vercel root directory `apps/web`) and run `apps/mcp` and `apps/jobs` where a Node process or fetch handler can be hosted, with the documented environment variables.
 7. Run the HTTP, localization, Supabase, comments, newsletter, social-outbox, MCP and MCP Events smoke checks.
 
 Full instructions: [DEPLOYMENT.md](docs/DEPLOYMENT.md).
@@ -111,21 +120,17 @@ Full instructions: [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 ## Repository map
 
 ```text
-src/app/                              Next.js delivery adapter
-src/components/                       UI components
-src/i18n/                             locale contract and message catalogs
-src/modules/editorial/domain/         entities, invariants, and ports
-src/modules/editorial/application/    use cases and cached queries
-src/modules/editorial/infrastructure/ memory and Supabase adapters
-src/modules/comments/                 threaded comments, moderation and notifications
-src/modules/newsletter-delivery/      campaigns, Resend and consent lifecycle
-src/modules/social-publishing/        provider adapters and social outbox
-src/modules/mcp/                       public and authenticated MCP adapters
-src/modules/mcp/apps/                  MCP Apps UI and OpenAI extensions (entrypoints, mentions, forms)
-src/modules/mcp-events/                MCP Events subscriptions, verification and webhook outbox
-plugins/neura-ai-news/                 portable agent plugin bundle
-supabase/migrations/                  versioned database schema and RLS
-supabase/seed.sql                     deterministic development content
+packages/core/                        @atlasnews/core: domain, use cases and ports (no Next.js, React or Supabase)
+  src/{editorial,comments,newsletter,social-publishing,mcp-events}/{domain,application}
+  src/locale.ts                       locale contract (locales, Locale, isLocale, localizedPath)
+packages/contract/                    @atlasnews/contract: public contract package (placeholder)
+packages/adapters/                    @atlasnews/adapters: Supabase, memory/seed, Resend, LinkedIn, X, WhatsApp, env, composition roots
+apps/web/                             Next.js reader site, Studio, comments/articles/health API, provider webhooks
+  src/i18n/                           UI message catalogs (the locale contract is re-exported from core)
+  src/server/                         web-only server code: comments, newsletter and WhatsApp HTTP, composition facade
+apps/mcp/                             standalone MCP server: POST /mcp, POST /mcp/admin, GET /info
+apps/jobs/                            standalone workers: /internal/{social-outbox,newsletter-outbox,comment-notifications,mcp-events}
+supabase/  plugins/  docs/  scripts/  DESIGN.md   shared at the repository root
 ```
 
 The canonical architecture description is [ARCHITECTURE.md](docs/ARCHITECTURE.md).

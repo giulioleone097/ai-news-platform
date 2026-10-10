@@ -6,29 +6,40 @@ NEURA uses a small hexagonal architecture: business rules point inward, delivery
 
 ```mermaid
 flowchart LR
-  Web["Next.js pages and actions"] --> App["Application use cases"]
-  MCP["MCP Streamable HTTP"] --> App
-  App --> Domain["Editorial domain and ports"]
+  Web["apps/web: Next.js pages and actions"] --> App["Application use cases"]
+  MCP["apps/mcp: MCP Streamable HTTP"] --> App
+  Jobs["apps/jobs: background workers"] --> App
+  App --> Domain["Domain and ports (packages/core)"]
   Memory["In-memory adapter"] --> Domain
   Supabase["Supabase adapter"] --> Domain
   Composition["Repository composition root"] --> Memory
   Composition --> Supabase
   Web --> Composition
   MCP --> Composition
+  Jobs --> Composition
 ```
 
 The domain must not import Next.js, React, Supabase, browser APIs, or transport types. Adapters implement domain ports; the composition root selects an adapter from validated environment state.
+
+The repository enforces this as an npm workspace dependency rule, checked by ESLint (`no-restricted-imports`):
+
+- `packages/core` (`@atlasnews/core`) imports nothing from `next`, `react`, `server-only`, `@supabase/*`, the adapters package, the contract package or any app.
+- `packages/contract` (`@atlasnews/contract`) may import `core` and `zod` only; it is empty until a later step fills it.
+- `packages/adapters` (`@atlasnews/adapters`) imports `core`, never an app or the framework.
+- `apps/web`, `apps/mcp` and `apps/jobs` import packages; no app imports another app.
+
+Packages are consumed as TypeScript source through `exports`; there is no build step. `apps/web` lists them in `transpilePackages`, `apps/mcp` and `apps/jobs` run under `tsx`, and Vitest resolves them through the workspace. The `server-only` guard lives in `apps/web` files only, because it throws outside a React server environment.
 
 ## Layers
 
 | Layer | Location | Responsibility |
 | --- | --- | --- |
-| Domain | `src/modules/editorial/domain` | Article/category types, publication states, slug and reading-time rules, repository ports |
-| Application | `src/modules/editorial/application` | Pure command/query orchestration and delivery-neutral cache invalidation port |
-| Inbound adapters | `src/app`, `src/modules/mcp` | HTML, Server Actions, JSON-RPC, localization, HTTP policy |
-| Outbound adapters | `src/modules/editorial/infrastructure` | In-memory demo and Supabase persistence |
-| Composition | `src/modules/editorial/infrastructure/container.ts` | Selects demo or Supabase without leaking adapter details |
-| Delivery composition | `src/lib/editorial-queries.ts`, `src/lib/editorial-cache.ts` | Connects Next.js cache primitives to application/domain ports |
+| Domain | `packages/core/src/<module>/domain`, `packages/core/src/locale.ts` | Article/category types, publication states, slug and reading-time rules, repository ports, locale contract |
+| Application | `packages/core/src/<module>/application` | Pure command/query orchestration and delivery-neutral cache invalidation port |
+| Inbound adapters | `apps/web/src/app`, `apps/web/src/server`, `apps/mcp/src`, `apps/jobs/src` | HTML, Server Actions, JSON-RPC, worker endpoints, localization, HTTP policy |
+| Outbound adapters | `packages/adapters/src` | In-memory demo and Supabase persistence, Resend/LinkedIn/X/WhatsApp providers, environment reading |
+| Composition | `packages/adapters/src/*/container.ts`, `runtime.ts` | Selects demo or Supabase without leaking adapter details |
+| Delivery composition | `apps/web/src/server/composition.ts`, `apps/web/src/lib/editorial-queries.ts`, `apps/web/src/lib/editorial-cache.ts` | Gives web code the composition roots and connects Next.js cache and cookie primitives to application/domain ports |
 | Database | `supabase/migrations` | Constraints, indexes, RLS, grants, triggers, full-text vectors |
 
 ## Main flows
@@ -47,18 +58,18 @@ The domain must not import Next.js, React, Supabase, browser APIs, or transport 
 2. Input is parsed at the delivery boundary and passed to the shared `ArticleCommandService` invariants.
 3. The action rechecks the Auth user and editor profile; page/proxy checks are not trusted as authorization.
 4. The repository writes through Supabase and RLS evaluates the mutation again.
-5. The `articles` data tag plus localized pages, archives, API, RSS and sitemap are invalidated immediately.
+5. The `articles` data tag plus localized pages, archives, API, RSS and sitemap are invalidated immediately. Writes made through `apps/mcp` run in another process, so the site picks them up when its cached feed (60 seconds) and article (300 seconds) windows expire.
 
 ### MCP read
 
-1. `/api/mcp` accepts Streamable HTTP JSON-RPC.
+1. `apps/mcp` serves `POST /mcp` with Streamable HTTP JSON-RPC.
 2. Zod schemas validate tool arguments at the transport boundary.
 3. Tools depend on the same read-only editorial port as the site.
 4. Only published records are serialized into explicit output schemas.
 
 ### MCP editorial write
 
-1. `/api/mcp/admin` verifies a high-entropy Bearer key before parsing or composing persistence.
+1. `POST /mcp/admin` on `apps/mcp` verifies a high-entropy Bearer key before parsing or composing persistence.
 2. Zod schemas validate article, distribution, consent-registry and media inputs.
 3. The server-only Supabase client uses a service-role key and a configured editor author ID; neither reaches the browser.
 4. Public MCP remains a different read-only adapter and cannot acquire mutation tools accidentally.
@@ -85,7 +96,7 @@ The domain must not import Next.js, React, Supabase, browser APIs, or transport 
 - **DRY:** site and MCP share editorial queries, cursor encoding, and serialization-ready domain objects.
 - **SOLID:** delivery depends on ports; adapters are substitutable; interfaces stay use-case sized.
 - **Fail visibly:** malformed input and unavailable data become bounded errors; no silent cross-locale content fallback.
-- **Least privilege:** the browser receives only the anon/publishable key; the service-role key is isolated to the authenticated admin MCP route, while Studio continues to rely on RLS and SQL grants.
+- **Least privilege:** the browser receives only the anon/publishable key; the service-role key is isolated to the authenticated admin MCP endpoint and the workers, while Studio continues to rely on RLS and SQL grants.
 
 ## Change checklist
 

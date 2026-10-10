@@ -1,0 +1,16 @@
+{
+  "name": "@atlasnews/contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@atlasnews/core": "*",
+    "zod": "^4.4.3"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

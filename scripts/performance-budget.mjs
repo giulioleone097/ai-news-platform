@@ -3,7 +3,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const root = process.cwd();
-const nextRoot = join(root, ".next");
+const webRoot = join(root, "apps", "web");
+const nextRoot = join(webRoot, ".next");
 const serverRoot = join(nextRoot, "server", "app");
 const publicBudget = 145 * 1024;
 const cssBudget = 35 * 1024;
@@ -16,7 +17,7 @@ function compressedBytes(path) {
 }
 
 function resolveAsset(url) {
-  return join(root, url.replace(/^\/_next\//, ".next/").split("?")[0]);
+  return join(webRoot, url.replace(/^\/_next\//, ".next/").split("?")[0]);
 }
 
 function routeAssets(htmlPath) {
@@ -71,7 +72,7 @@ const heroFiles = [
   "neura-agents-hero-1536.webp",
 ];
 for (const heroFile of heroFiles) {
-  const heroBytes = statSync(join(root, "public", "media", heroFile)).size;
+  const heroBytes = statSync(join(webRoot, "public", "media", heroFile)).size;
   console.log(`${heroFile}: ${heroBytes} B`);
   if (heroBytes > heroBudget) failures.push(`${heroFile} ${heroBytes} > ${heroBudget}`);
 }

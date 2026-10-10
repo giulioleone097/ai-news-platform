@@ -1,0 +1,330 @@
+"use client";
+
+import Link from "next/link";
+import { useActionState, useState } from "react";
+import { Check, ChevronLeft } from "lucide-react";
+import type { Locale, Messages } from "@/i18n";
+import { toUtcDateTimeInput } from "@/lib/editorial-datetime";
+import type { Article, Category } from "@atlasnews/core/editorial/domain/article";
+import type { MediaAsset } from "@atlasnews/core/editorial/domain/editorial-operations";
+import {
+  articleStatuses,
+  socialChannels,
+} from "@atlasnews/core/editorial/domain/article";
+import { saveArticleAction } from "@/app/[locale]/(studio)/studio/actions";
+import { idleStudioActionState } from "./action-state";
+import { DeleteArticleButton } from "./delete-article-button";
+import { MarkdownEditor } from "./markdown-editor";
+import { studioSupplementalCopy } from "./studio-copy";
+import { StudioSubmitButton } from "./studio-submit-button";
+
+export function ArticleForm({
+  article,
+  categories,
+  locale,
+  media,
+  messages,
+}: {
+  article?: Article;
+  categories: Record<Locale, Category[]>;
+  locale: Locale;
+  media: MediaAsset[];
+  messages: Messages;
+}) {
+  const [state, formAction] = useActionState(saveArticleAction, idleStudioActionState);
+  const [articleLocale, setArticleLocale] = useState<Locale>(article?.locale ?? locale);
+  const [categorySlug, setCategorySlug] = useState(
+    article?.category.slug ?? categories[articleLocale][0]?.slug ?? "",
+  );
+  const [status, setStatus] = useState(article?.status ?? "draft");
+  const [coverImage, setCoverImage] = useState(article?.coverImage ?? "/media/neura-agents-hero.webp");
+  const copy = studioSupplementalCopy[locale];
+
+  const fieldHasError = (name: string) => Boolean(state.fieldErrors?.[name]?.length);
+  const fieldErrorId = (name: string) => `article-${name}-error`;
+  const fieldAccessibility = (name: string) => ({
+    "aria-describedby": fieldHasError(name) ? fieldErrorId(name) : undefined,
+    "aria-invalid": fieldHasError(name) || undefined,
+  });
+  const fieldError = (name: string) =>
+    fieldHasError(name) ? (
+      <span className="studio-field__error" id={fieldErrorId(name)}>
+        {state.fieldErrors?.[name]?.[0]}
+      </span>
+    ) : null;
+
+  return (
+    <form className="studio-editor" action={formAction} noValidate>
+      {article ? <input name="id" type="hidden" value={article.id} /> : null}
+
+      <header className="studio-page-header studio-editor__header">
+        <div>
+          <Link className="studio-back-link" href={`/${locale}/studio/articles`}>
+            <ChevronLeft aria-hidden="true" size={16} />
+            {messages.studio.articles}
+          </Link>
+          <p className="studio-kicker">
+            {article ? messages.studio.editArticle : messages.studio.createArticle}
+          </p>
+          <h1>{article?.title ?? messages.studio.newArticle}</h1>
+        </div>
+        <div className="studio-editor__actions">
+          <Link className="studio-button studio-button--secondary" href={`/${locale}/studio/articles`}>
+            {messages.common.cancel}
+          </Link>
+          <StudioSubmitButton idleLabel={messages.common.save} pendingLabel={messages.studio.saving} />
+        </div>
+      </header>
+
+      {state.status === "error" && state.message ? (
+        <p className="studio-alert studio-alert--error" role="alert" aria-atomic="true">
+          {state.message}
+        </p>
+      ) : null}
+
+      <div className="studio-editor__grid">
+        <div className="studio-editor__main">
+          <section className="studio-panel" aria-labelledby="story-content-title">
+            <div className="studio-panel__heading">
+              <span>01</span>
+              <h2 id="story-content-title">{messages.studio.titleLabel}</h2>
+            </div>
+
+            <label className="studio-field studio-field--title">
+              <span>{messages.studio.titleLabel}</span>
+              <input
+                {...fieldAccessibility("title")}
+                defaultValue={article?.title}
+                maxLength={180}
+                minLength={8}
+                name="title"
+                required
+              />
+              {fieldError("title")}
+            </label>
+
+            <label className="studio-field">
+              <span>{messages.studio.slugLabel}</span>
+              <input
+                {...fieldAccessibility("slug")}
+                defaultValue={article?.slug}
+                maxLength={96}
+                name="slug"
+                pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                placeholder="generated-from-title"
+              />
+              {fieldError("slug")}
+            </label>
+
+            <label className="studio-field">
+              <span>{messages.studio.excerptLabel}</span>
+              <textarea
+                {...fieldAccessibility("excerpt")}
+                defaultValue={article?.excerpt}
+                maxLength={360}
+                minLength={20}
+                name="excerpt"
+                required
+                rows={4}
+              />
+              {fieldError("excerpt")}
+            </label>
+
+            <MarkdownEditor
+              copy={copy.markdown}
+              defaultValue={article?.content}
+              error={fieldError("content")}
+              errorId={fieldErrorId("content")}
+              help={copy.contentHelp}
+              invalid={fieldHasError("content")}
+              label={messages.studio.bodyLabel}
+            />
+          </section>
+
+          <section className="studio-panel" aria-labelledby="story-media-title">
+            <div className="studio-panel__heading">
+              <span>02</span>
+              <h2 id="story-media-title">{messages.studio.media}</h2>
+            </div>
+            <label className="studio-field">
+              <span>{messages.studio.coverImageLabel}</span>
+              <input
+                {...fieldAccessibility("coverImage")}
+                name="coverImage"
+                onChange={(event) => setCoverImage(event.target.value)}
+                placeholder="/media/cover.png"
+                type="text"
+                value={coverImage}
+              />
+              {fieldError("coverImage")}
+            </label>
+            {media.length ? (
+              <label className="studio-field">
+                <span>{copy.mediaTitle}</span>
+                <select
+                  aria-label={copy.mediaTitle}
+                  onChange={(event) => {
+                    if (event.target.value) setCoverImage(event.target.value);
+                  }}
+                  value={media.some((asset) => asset.url === coverImage) ? coverImage : ""}
+                >
+                  <option value="">{copy.assetUrl}</option>
+                  {media.map((asset) => <option key={asset.path} value={asset.url}>{asset.name}</option>)}
+                </select>
+              </label>
+            ) : null}
+            <label className="studio-field">
+              <span>{copy.coverAltLabel}</span>
+              <input
+                {...fieldAccessibility("coverAlt")}
+                defaultValue={article?.coverAlt}
+                maxLength={240}
+                minLength={3}
+                name="coverAlt"
+                required
+              />
+              {fieldError("coverAlt")}
+            </label>
+          </section>
+        </div>
+
+        <aside className="studio-editor__aside">
+          <section className="studio-panel" aria-labelledby="publishing-title">
+            <div className="studio-panel__heading">
+              <span>03</span>
+              <h2 id="publishing-title">{messages.studio.statusLabel}</h2>
+            </div>
+
+            <label className="studio-field">
+              <span>{copy.localeLabel}</span>
+              {article ? (
+                <>
+                  <input name="locale" type="hidden" value={article.locale} />
+                  <select
+                    {...fieldAccessibility("locale")}
+                    aria-label={copy.localeLabel}
+                    disabled
+                    value={article.locale}
+                  >
+                    <option value={article.locale}>{article.locale === "en" ? "English" : "Italiano"}</option>
+                  </select>
+                </>
+              ) : (
+                <select
+                  {...fieldAccessibility("locale")}
+                  name="locale"
+                  onChange={(event) => {
+                    const nextLocale = event.target.value as Locale;
+                    setArticleLocale(nextLocale);
+                    setCategorySlug(categories[nextLocale][0]?.slug ?? "");
+                  }}
+                  value={articleLocale}
+                >
+                  <option value="en">English</option>
+                  <option value="it">Italiano</option>
+                </select>
+              )}
+              {fieldError("locale")}
+            </label>
+
+            <label className="studio-field">
+              <span>{messages.studio.categoryLabel}</span>
+              <select
+                {...fieldAccessibility("categorySlug")}
+                name="categorySlug"
+                onChange={(event) => setCategorySlug(event.target.value)}
+                required
+                value={categorySlug}
+              >
+                {categories[articleLocale].map((category) => (
+                  <option key={category.id} value={category.slug}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              {fieldError("categorySlug")}
+            </label>
+
+            <label className="studio-field">
+              <span>{messages.studio.statusLabel}</span>
+              <select
+                {...fieldAccessibility("status")}
+                name="status"
+                onChange={(event) => setStatus(event.target.value as Article["status"])}
+                value={status}
+              >
+                {articleStatuses.map((articleStatus) => (
+                  <option key={articleStatus} value={articleStatus}>
+                    {articleStatus === "draft"
+                      ? messages.studio.statusDraft
+                      : articleStatus === "published"
+                        ? messages.studio.statusPublished
+                        : articleStatus === "scheduled"
+                          ? messages.studio.statusScheduled
+                          : locale === "it"
+                            ? "In revisione"
+                            : "In review"}
+                  </option>
+                ))}
+              </select>
+              {fieldError("status")}
+            </label>
+
+            {status === "scheduled" ? (
+              <label className="studio-field">
+                <span>{messages.studio.publishAtLabel} (UTC)</span>
+                <input
+                  {...fieldAccessibility("scheduledFor")}
+                  defaultValue={toUtcDateTimeInput(article?.scheduledFor ?? null)}
+                  name="scheduledFor"
+                  required
+                  type="datetime-local"
+                />
+                {fieldError("scheduledFor")}
+              </label>
+            ) : (
+              <input name="scheduledFor" type="hidden" value="" />
+            )}
+
+            <label className="studio-check">
+              <input defaultChecked={article?.featured} name="featured" type="checkbox" />
+              <span aria-hidden="true">
+                <Check size={14} />
+              </span>
+              {copy.featuredLabel}
+            </label>
+          </section>
+
+          <fieldset className="studio-panel studio-distribution-fieldset">
+            <legend>{messages.studio.distribution}</legend>
+            <p>{copy.distributionHelp}</p>
+            {socialChannels.map((channel) => (
+              <label className="studio-check" key={channel}>
+                <input
+                  {...fieldAccessibility("distribution")}
+                  defaultChecked={article?.distribution.includes(channel)}
+                  name="distribution"
+                  type="checkbox"
+                  value={channel}
+                />
+                <span aria-hidden="true">
+                  <Check size={14} />
+                </span>
+                {channel === "newsletter" ? messages.studio.newsletter : channel}
+              </label>
+            ))}
+            {fieldError("distribution")}
+          </fieldset>
+
+          {article ? (
+            <section className="studio-panel studio-danger-zone">
+              <h2>{messages.studio.deleteArticle}</h2>
+              <p>{messages.studio.deleteConfirmation}</p>
+              <DeleteArticleButton locale={locale} messages={messages} />
+            </section>
+          ) : null}
+        </aside>
+      </div>
+    </form>
+  );
+}

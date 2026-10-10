@@ -1,0 +1,22 @@
+import type { MetadataRoute } from "next";
+import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: [
+          "/en/studio",
+          "/it/studio",
+          "/en/login",
+          "/it/login",
+          "/en/auth",
+          "/it/auth",
+        ],
+      },
+    ],
+    sitemap: new URL("/sitemap.xml", getPublicSiteUrl()).toString(),
+  };
+}

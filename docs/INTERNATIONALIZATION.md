@@ -28,8 +28,8 @@ The locale switcher resolves translated peers through shared translation identit
 Message catalogs live in:
 
 ```text
-src/i18n/messages/en.ts
-src/i18n/messages/it.ts
+apps/web/src/i18n/messages/en.ts
+apps/web/src/i18n/messages/it.ts
 ```
 
 English defines the message shape. Each additional catalog must satisfy the same TypeScript contract, keeping navigation, validation, empty states, studio copy, and accessibility labels complete.
@@ -70,7 +70,7 @@ All public MCP tools accept `locale`; it defaults to `en`. Tool output includes 
 
 Adding a locale is a code-and-content change, not configuration-only:
 
-1. Add the locale to `src/i18n/index.ts` and provide a complete message catalog.
+1. Add the locale to `packages/core/src/locale.ts` and provide a complete message catalog in `apps/web/src/i18n/messages`.
 2. Add locale-aware date/time formatting and UI tests.
 3. Add translated categories with the existing `translation_key` values.
 4. Add translated articles with locale-specific slugs and alt text.

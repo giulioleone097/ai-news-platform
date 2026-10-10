@@ -1,4 +1,5 @@
 const baseUrl = process.env.NEURA_RUNTIME_BASE_URL || "http://127.0.0.1:3000";
+const mcpUrl = process.env.NEURA_RUNTIME_MCP_URL || "http://127.0.0.1:8787";
 const adminKey = process.env.NEURA_MCP_ADMIN_API_KEY;
 const protocolVersion = "2026-07-28";
 
@@ -22,7 +23,7 @@ async function get(path, expectedStatus) {
 
 async function rpc(path, method, params = {}, authenticated = false) {
   const name = params?.name || "";
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${mcpUrl}${path}`, {
     method: "POST",
     headers: {
       Accept: "application/json, text/event-stream",
@@ -43,7 +44,7 @@ async function rpc(path, method, params = {}, authenticated = false) {
 }
 
 async function callAdmin(name, args) {
-  const result = await rpc("/api/mcp/admin", "tools/call", { name, arguments: args }, true);
+  const result = await rpc("/mcp/admin", "tools/call", { name, arguments: args }, true);
   assert(result.response.status === 200, `${name}: HTTP ${result.response.status}`);
   assert(result.payload?.result?.isError !== true, `${name}: ${JSON.stringify(result.payload)}`);
   return result.payload.result.structuredContent;
@@ -76,7 +77,7 @@ const health = await get("/api/health", 503);
 const healthBody = await health.json();
 assert(healthBody.contentMode === "demo" && healthBody.status === "not-ready", "Demo readiness is not explicit.");
 
-const publicList = await rpc("/api/mcp", "tools/list");
+const publicList = await rpc("/mcp", "tools/list");
 assert(publicList.response.status === 200, "Public MCP tools/list failed.");
 assert(publicList.payload.result.tools.length === 5, "Public MCP must expose exactly five tools.");
 assert(
@@ -88,9 +89,9 @@ assert(
   "Public MCP is missing approved comment reads.",
 );
 
-const denied = await rpc("/api/mcp/admin", "tools/list");
+const denied = await rpc("/mcp/admin", "tools/list");
 assert(denied.response.status === 401, "Admin MCP accepted a request without its API key.");
-const adminList = await rpc("/api/mcp/admin", "tools/list", {}, true);
+const adminList = await rpc("/mcp/admin", "tools/list", {}, true);
 assert(adminList.response.status === 200, "Admin MCP tools/list failed.");
 assert(adminList.payload.result.tools.length === 37, "Admin MCP must expose exactly 37 tools.");
 const adminToolNames = new Set(adminList.payload.result.tools.map((tool) => tool.name));
