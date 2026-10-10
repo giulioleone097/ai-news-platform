@@ -1,4 +1,3 @@
-import { scopes, type Scope } from "@atlasnews/contract";
 
 export interface EditorProfile {
   /** The `public.authors` row that articles written by this editor are attributed to. */
@@ -9,15 +8,6 @@ export interface EditorProfile {
 /** Looks up the newsroom profile of a Supabase Auth user; null when the user has none. */
 export interface EditorDirectory {
   find(userId: string): Promise<EditorProfile | null>;
-}
-
-/**
- * The one place that turns a profile role into newsroom scopes. Supabase Auth cannot grant custom
- * scopes, so the role decides. Editors and admins have the same editorial rights (`is_admin()` in
- * the schema guards only profile management); any other role gets nothing.
- */
-export function scopesForRole(role: string | undefined): readonly Scope[] {
-  return role === "editor" || role === "admin" ? scopes : [];
 }
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

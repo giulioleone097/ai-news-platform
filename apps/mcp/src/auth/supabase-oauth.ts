@@ -1,6 +1,8 @@
 import type { AccessTokenVerifier } from "../auth";
 import { createAccessTokenVerifier, type AccessTokenVerifierOptions } from "./access-token";
-import { scopesForRole, type EditorDirectory } from "./editors";
+import { scopesForRole } from "@atlasnews/contract";
+
+import type { EditorDirectory } from "./editors";
 
 /**
  * The bearer verifier for tokens that Supabase Auth issued to a client such as ChatGPT or Claude.

@@ -78,6 +78,24 @@ export async function getStudioEditorialRepositories(
   };
 }
 
+/**
+ * The Studio's session-bound repository with every editorial port, including the category and entity
+ * write ports and the batch writes that `EditorialRepositories` does not carry. RLS applies.
+ */
+export async function getStudioAdminEditorialRepository(
+  createClient: () => Promise<SupabaseClient | null>,
+): Promise<AdminEditorialRepository> {
+  if (getContentMode() === "demo") {
+    if (!isDemoStudioEnabled()) throw new Error("Studio persistence is not configured.");
+    return memoryRepository;
+  }
+  const client = await createClient();
+  if (!client) {
+    throw new Error("ATLASNEWS_CONTENT_MODE=supabase requires both public Supabase credentials.");
+  }
+  return new SupabaseEditorialRepository(client, { audience: "editorial" });
+}
+
 /** `actorAuthorId` is the signed-in editor's author; without it the configured admin author is used. */
 export function getAdminEditorialRepository(actorAuthorId?: string): AdminEditorialRepository {
   const admin = createAdminSupabaseClient(actorAuthorId);

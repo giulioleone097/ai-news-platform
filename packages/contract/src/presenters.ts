@@ -1,6 +1,5 @@
 import type {
   Article,
-  ArticleDraftInput,
   Category,
   EntityRef,
 } from "@atlasnews/core/editorial/domain/article";
@@ -86,28 +85,5 @@ export function newsroomArticle(article: Article) {
     keyPoints: [...article.keyPoints],
     sources: article.sources.map((source) => ({ ...source })),
     entities: article.entities.map(toEntityRef),
-  };
-}
-
-export function toDraft(article: Article): ArticleDraftInput {
-  return {
-    id: article.id,
-    translationKey: article.translationKey,
-    locale: article.locale,
-    title: article.title,
-    slug: article.slug,
-    excerpt: article.excerpt,
-    content: article.content,
-    categorySlug: article.category.slug,
-    status: article.status,
-    featured: article.featured,
-    coverImage: article.coverImage,
-    coverAlt: article.coverAlt,
-    scheduledFor: article.scheduledFor,
-    distribution: article.distribution,
-    claimStatus: article.claimStatus,
-    keyPoints: [...article.keyPoints],
-    sources: article.sources.map((source) => ({ ...source })),
-    entities: article.entities.map(({ slug, isPrimary }) => ({ slug, isPrimary })),
   };
 }

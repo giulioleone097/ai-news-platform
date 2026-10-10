@@ -5,8 +5,10 @@ import type {
   ArticleQuery,
   Category,
   SocialChannel,
+  StudioArticleFilter,
 } from "./article";
-import type { EntityRepository } from "./entity";
+import type { CategoryAdminRepository } from "./category";
+import type { EntityAdminRepository, EntityRepository } from "./entity";
 import type { Locale } from "../../locale";
 import type {
   DistributionPublication,
@@ -19,12 +21,19 @@ import type {
 
 export interface ArticleRepository {
   listPublished(query: ArticleQuery): Promise<ArticlePage>;
-  listForStudio(locale: Locale): Promise<Article[]>;
+  /** Every status, newest change first. */
+  listForStudio(locale: Locale, filter?: StudioArticleFilter): Promise<Article[]>;
   findBySlug(slug: string, locale: Locale): Promise<Article | null>;
   findById(id: string, locale: Locale): Promise<Article | null>;
   listCategories(locale: Locale): Promise<Category[]>;
   save(input: ArticleDraftInput): Promise<Article>;
+  /** One transaction: every article is written, or none. Returns them in input order. */
+  saveMany(inputs: ArticleDraftInput[]): Promise<Article[]>;
+  /** Puts articles on the public site (`true`) or back to draft (`false`) in one transaction. The only way to change publication. */
+  setPublished(ids: string[], published: boolean): Promise<Article[]>;
   delete(id: string): Promise<void>;
+  /** One transaction: every article is deleted, or none. */
+  deleteMany(ids: string[]): Promise<void>;
   setDistributionChannels(id: string, channels: SocialChannel[]): Promise<void>;
 }
 
@@ -50,6 +59,8 @@ export interface MediaRepository {
   isAssetReferenced(path: string): Promise<boolean>;
   uploadAsset(input: MediaUpload): Promise<MediaAsset>;
   deleteAsset(path: string): Promise<void>;
+  /** Removes all the assets in one storage call. */
+  deleteAssets(paths: string[]): Promise<void>;
 }
 
 export interface EditorialRepositories {
@@ -62,7 +73,9 @@ export interface EditorialRepositories {
 }
 
 export type AdminEditorialRepository = ArticleRepository
+  & CategoryAdminRepository
   & EntityRepository
+  & EntityAdminRepository
   & NewsletterRepository
   & DistributionRepository
   & MediaRepository;
