@@ -1,6 +1,6 @@
 # Model Context Protocol
 
-AtlasNews exposes one stateless Streamable HTTP endpoint, `POST /mcp`, served by the standalone `apps/mcp` process (`npm run start -w apps/mcp`, port `PORT`, default `8787`). Anonymous callers read published content and approved comments. A signed-in editor also gets the newsroom tools. OpenAI allows one MCP server for each plugin, so both live behind the same URL and the caller's token decides what runs.
+AtlasNews exposes one stateless Streamable HTTP endpoint, `POST /mcp`, served by the standalone `apps/mcp` process (`pnpm --filter @atlasnews/mcp start`, port `PORT`, default `8787`). Anonymous callers read published content and approved comments. A signed-in editor also gets the newsroom tools. OpenAI allows one MCP server for each plugin, so both live behind the same URL and the caller's token decides what runs.
 
 ## Where tools are defined
 

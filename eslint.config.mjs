@@ -25,7 +25,8 @@ const otherApps = (self) => ({
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  { settings: { next: { rootDir: "apps/web" } } },
+  // React lives only in apps/web, so "detect" cannot resolve it from the other workspaces' files.
+  { settings: { next: { rootDir: "apps/web" }, react: { version: "19" } } },
   { files: ["packages/core/**/*.{ts,tsx}"], rules: restrict(...framework, ...apps, adapters, contract, supabase) },
   { files: ["packages/contract/**/*.{ts,tsx}"], rules: restrict(...framework, ...apps, adapters, supabase) },
   { files: ["packages/adapters/**/*.{ts,tsx}"], rules: restrict(...framework, ...apps) },

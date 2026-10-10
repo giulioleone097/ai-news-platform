@@ -7,7 +7,7 @@ import { normalizeLocale } from "@/i18n";
 
 // The consent page is not under /[locale]: Supabase Auth sends the browser to one fixed path.
 const inter = localFont({
-  src: "../../../../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+  src: "../../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
   display: "swap",
   fallback: ["Inter", "sans-serif"],
   preload: false,

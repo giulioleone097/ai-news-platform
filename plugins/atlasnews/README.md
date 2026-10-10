@@ -22,7 +22,7 @@ Copilot CLI reads `.github/plugin/marketplace.json` from the same repository.
 
 ## Connect and sign in
 
-The server URL is in two files that must stay identical: `mcp.json` (OpenAI and Copilot) and `.mcp.json` (Claude). Both ship with the local development address `http://localhost:8787/mcp` (`npm run start -w apps/mcp`). Before you publish, replace it with the public HTTPS address of the deployed server, as described in `docs/AGENT_PLUGIN.md`.
+The server URL is in two files that must stay identical: `mcp.json` (OpenAI and Copilot) and `.mcp.json` (Claude). Both ship with the local development address `http://localhost:8787/mcp` (`pnpm --filter @atlasnews/mcp start`). Before you publish, replace it with the public HTTPS address of the deployed server, as described in `docs/AGENT_PLUGIN.md`.
 
 Reading is anonymous. When an editor tool is first used the host starts OAuth 2.1 sign-in against Supabase Auth with dynamic client registration; no key or token is ever stored in this plugin.
 
@@ -33,4 +33,4 @@ Reading is anonymous. When an editor tool is first used the host starts OAuth 2.
 
 ## Checks
 
-`npm run plugin:check` validates the structure and limits of every manifest. `npm run plugin:release` additionally lists what must be supplied before submission to the OpenAI and Claude directories.
+`pnpm plugin:check` validates the structure and limits of every manifest. `pnpm plugin:release` additionally lists what must be supplied before submission to the OpenAI and Claude directories.

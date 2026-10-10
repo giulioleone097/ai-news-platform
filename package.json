@@ -3,20 +3,24 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "apps/*"
-  ],
+  "packageManager": "pnpm@12.11.2",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.11.2",
+      "onFail": "download"
+    }
+  },
   "engines": {
     "node": "24.x"
   },
   "scripts": {
-    "dev": "npm run dev -w apps/web",
-    "build": "npm run build:next -w apps/web",
-    "build:sites": "npm run build -w apps/web && npm run typegen -w apps/web",
-    "start": "npm run start -w apps/web",
+    "dev": "pnpm --filter @atlasnews/web dev",
+    "build": "pnpm --filter @atlasnews/web build:next",
+    "build:sites": "pnpm --filter @atlasnews/web build && pnpm --filter @atlasnews/web typegen",
+    "start": "pnpm --filter @atlasnews/web start",
     "lint": "eslint . --max-warnings=0",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "design:lint": "designmd lint --format json DESIGN.md",
@@ -26,10 +30,10 @@
     "plugin:release": "node scripts/validate-plugin.mjs --release",
     "perf:budget": "node scripts/performance-budget.mjs",
     "smoke:runtime": "node scripts/runtime-smoke.mjs",
-    "supabase:start": "npx --no-install supabase start",
-    "supabase:reset": "npx --no-install supabase db reset --local",
-    "supabase:status": "npx --no-install supabase status",
-    "check": "npm run design:lint && npm run design:tokens:check && npm run plugin:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run perf:budget && npm run build:sites"
+    "supabase:start": "supabase start",
+    "supabase:reset": "supabase db reset --local",
+    "supabase:status": "supabase status",
+    "check": "pnpm run design:lint && pnpm run design:tokens:check && pnpm run plugin:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run perf:budget && pnpm run build:sites"
   },
   "devDependencies": {
     "@google/design.md": "0.4.0",

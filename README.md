@@ -29,11 +29,11 @@ An English-first, internationalized AI news platform: a Next.js reader site host
 
 ## Run locally
 
-Node.js 24 is used in CI and in the container image. No environment variables are required for the read-only editorial demo or ephemeral demo Studio during local development.
+Node.js 24 is used in CI and in the container image. The repository is a pnpm workspace and only pnpm installs it: `package.json` pins the version in `packageManager`, and npm refuses to install it. Enable Corepack once (`corepack enable pnpm`) or use any recent pnpm, which switches to the pinned version by itself. No environment variables are required for the read-only editorial demo or ephemeral demo Studio during local development.
 
 ```bash
-npm ci
-npm run dev
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
 Open <http://localhost:3000>. The root redirects permanently to `/en`; use `/it` for Italian. Demo editorial data lives in memory and resets when the process restarts. Comments, newsletter delivery and social publishing remain visibly unavailable until Supabase and their real providers are configured.
@@ -41,8 +41,8 @@ Open <http://localhost:3000>. The root redirects permanently to `/en`; use `/it`
 The reader site and Studio are `apps/web`. The MCP server and the background workers are separate processes that run under plain Node and read their configuration from the process environment:
 
 ```bash
-npm run start -w apps/mcp    # http://localhost:8787  (PORT overrides)
-npm run start -w apps/jobs   # http://localhost:8788  (PORT overrides)
+pnpm --filter @atlasnews/mcp start    # http://localhost:8787  (PORT overrides)
+pnpm --filter @atlasnews/jobs start   # http://localhost:8788  (PORT overrides)
 ```
 
 To make local settings explicit:
@@ -58,10 +58,10 @@ Use `ATLASNEWS_CONTENT_MODE=demo` locally and `ATLASNEWS_CONTENT_MODE=supabase` 
 ## Quality gate
 
 ```bash
-npm run check
+pnpm check
 ```
 
-The gate runs design-system validation, plugin validation, lint, TypeScript, tests, the plain production build, the Brotli bundle/image budgets and the ChatGPT Sites build. GitHub Actions runs the same checks from a clean `npm ci` install. `npm run plugin:release` additionally lists what the owner must supply before the plugin is submitted to a store.
+The gate runs design-system validation, plugin validation, lint, TypeScript, tests, the plain production build, the Brotli bundle/image budgets and the ChatGPT Sites build. GitHub Actions runs the same checks from a clean `pnpm install --frozen-lockfile`. `pnpm plugin:release` additionally lists what the owner must supply before the plugin is submitted to a store.
 
 ## MCP quick check
 

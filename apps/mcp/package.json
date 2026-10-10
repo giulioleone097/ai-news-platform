@@ -8,14 +8,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@atlasnews/adapters": "*",
-    "@atlasnews/contract": "*",
-    "@atlasnews/core": "*",
+    "@atlasnews/adapters": "workspace:*",
+    "@atlasnews/contract": "workspace:*",
+    "@atlasnews/core": "workspace:*",
     "@modelcontextprotocol/server": "2.0.0",
     "jose": "^6.2.8",
+    "tsx": "^4.23.15",
     "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "tsx": "^4.23.15"
   }
 }
