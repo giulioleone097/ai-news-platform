@@ -2,6 +2,7 @@ import * as z from "zod/v4";
 
 import { locales } from "@atlasnews/core/locale";
 import { decodeArticleCursor } from "@atlasnews/core/editorial/application/public-feed";
+import { entityKinds } from "@atlasnews/core/editorial/domain/entity";
 
 import { readOnly } from "../annotations";
 import { defineSpec } from "../capability";
@@ -11,6 +12,8 @@ import {
   articleSummaryOutputSchema,
   categoryOutputSchema,
   categorySlugSchema,
+  claimStatusSchema,
+  entitySlugSchema,
   localeSchema,
   newsroomAppUri,
 } from "./shared";
@@ -42,6 +45,8 @@ export const listArticles = defineSpec({
   input: z.object({
     locale: localeSchema,
     category: categorySlugSchema.optional(),
+    entity: entitySlugSchema.optional().describe("Only stories that link this entity slug."),
+    claimStatus: claimStatusSchema.optional(),
     limit: z.number().int().min(1).max(25).default(10),
     cursor: encodedCursorSchema.optional(),
   }),
@@ -65,6 +70,52 @@ export const getArticle = defineSpec({
   scopes: [],
   surfaces: ["mcp"],
   ui: newsroomAppUri,
+});
+
+const entityOutputSchema = z.object({
+  kind: z.enum(entityKinds),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  officialUrl: z.string().nullable(),
+  parent: z.object({ slug: z.string(), name: z.string() }).nullable(),
+});
+
+export const listEntities = defineSpec({
+  name: "list_entities",
+  title: "List AI companies, models and products",
+  description:
+    "List the companies, models and products that AtlasNews stories link, with their story counts, in English or Italian.",
+  input: z.object({ locale: localeSchema, kind: z.enum(entityKinds).optional() }),
+  output: z.object({
+    items: z.array(entityOutputSchema.extend({ storyCount: z.number().int().nonnegative() })),
+  }),
+  annotations: readOnly,
+  scopes: [],
+  surfaces: ["mcp"],
+});
+
+export const getEntityTimeline = defineSpec({
+  name: "get_entity_timeline",
+  title: "Get an AI entity timeline",
+  description:
+    "Get one company, model or product with its published AtlasNews stories, oldest first, with the claim status of each.",
+  input: z.object({ locale: localeSchema, slug: entitySlugSchema }),
+  output: z.object({
+    entity: entityOutputSchema,
+    stories: z.array(
+      z.object({
+        date: z.string().describe("Publication time, ISO 8601."),
+        status: claimStatusSchema,
+        title: z.string(),
+        slug: z.string(),
+        url: z.string(),
+      }),
+    ),
+  }),
+  annotations: readOnly,
+  scopes: [],
+  surfaces: ["mcp"],
 });
 
 export const listCategories = defineSpec({

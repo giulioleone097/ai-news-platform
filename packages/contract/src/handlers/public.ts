@@ -15,13 +15,16 @@ import {
   toArticle,
   toArticleSummary,
   toCategory,
+  toEntity,
 } from "../presenters";
 import {
   fetchArticle,
   getArticle,
+  getEntityTimeline,
   listArticles,
   listCategories,
   listComments,
+  listEntities,
   search,
 } from "../specs/public";
 import { searchArticles } from "../specs/search-articles";
@@ -46,19 +49,44 @@ export async function listPublishedArticleComments(
 
 
 export const publicCapabilities = [
-  implement(listArticles, async ({ articles }, { locale, category, limit, cursor }) => {
+  implement(listArticles, async ({ articles }, { locale, category, entity, claimStatus, limit, cursor }) => {
     const page = await articles.listPublished({
       locale,
       category,
+      entity,
+      claimStatus,
       limit,
       cursor: (cursor ? decodeArticleCursor(cursor) : undefined) ?? undefined,
     });
     return { items: page.items.map(toArticleSummary), nextCursor: encodeArticleCursor(page.nextCursor) };
   }),
 
-  implement(searchArticles, async ({ articles }, { locale, query, limit }) => {
-    const page = await articles.listPublished({ locale, query, limit });
+  implement(searchArticles, async ({ articles }, { locale, query, entity, claimStatus, limit }) => {
+    const page = await articles.listPublished({ locale, query, entity, claimStatus, limit });
     return { items: page.items.map(toArticleSummary) };
+  }),
+
+  implement(listEntities, async ({ entities }, { locale, kind }) => ({
+    items: (await entities.listEntities(locale, kind)).map((entity) => ({
+      ...toEntity(entity),
+      storyCount: entity.storyCount,
+    })),
+  })),
+
+  implement(getEntityTimeline, async ({ entities, site }, { locale, slug }) => {
+    const entity = await entities.findEntityBySlug(slug, locale);
+    if (!entity) throw new CapabilityFailure(`Entity not found for locale "${locale}".`);
+    const stories = await entities.listEntityTimeline(slug, locale);
+    return {
+      entity: toEntity(entity),
+      stories: stories.map((story) => ({
+        date: story.publishedAt,
+        status: story.claimStatus,
+        title: story.title,
+        slug: story.slug,
+        url: site.absolute(articlePath({ locale, slug: story.slug })),
+      })),
+    };
   }),
 
   implement(getArticle, async ({ articles }, { locale, slug }) => {
@@ -117,6 +145,7 @@ export const publicCapabilities = [
       url,
       metadata: {
         locale: article.locale,
+        claimStatus: article.claimStatus,
         category: article.category.name,
         author: article.author.name,
         publishedAt: article.publishedAt ?? article.updatedAt,

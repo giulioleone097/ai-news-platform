@@ -11,6 +11,7 @@ export function createRuntimePorts(): CapabilityPorts {
   return {
     site: siteLinks(getPublicSiteUrl()),
     articles: getPublicEditorialRepositories().articles,
+    entities: getPublicEditorialRepositories().entities,
     invalidateCache,
 
     async publicComments() {

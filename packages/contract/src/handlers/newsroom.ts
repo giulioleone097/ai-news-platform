@@ -1,6 +1,9 @@
 import {
   hasExpectedImageSignature,
 } from "@atlasnews/core/editorial/domain/editorial-image";
+import type { ArticleDraftInput } from "@atlasnews/core/editorial/domain/article";
+import { StoryFieldError } from "@atlasnews/core/editorial/domain/article";
+import type { AdminEditorialRepository } from "@atlasnews/core/editorial/domain/article-repository";
 import { ArticleCommandService } from "@atlasnews/core/editorial/application/article-commands";
 
 import { CapabilityFailure, implement } from "../capability";
@@ -24,6 +27,16 @@ import {
 
 const scheduledNeedsDate = "scheduledFor is required for scheduled articles.";
 
+/** Core owns the story rules; a rejected story field reaches the caller with its own message. */
+async function saveArticle(repository: AdminEditorialRepository, draft: ArticleDraftInput) {
+  try {
+    return await new ArticleCommandService(repository).save(draft);
+  } catch (error) {
+    if (error instanceof StoryFieldError) throw new CapabilityFailure(error.message);
+    throw error;
+  }
+}
+
 export const newsroomCapabilities = [
   implement(adminListArticles, async (ports, { locale }) => ({
     items: (await (await ports.editorial()).listForStudio(locale)).map(newsroomArticle),
@@ -41,7 +54,7 @@ export const newsroomCapabilities = [
 
   implement(adminCreateArticle, async (ports, input) => {
     if (input.status === "scheduled" && !input.scheduledFor) throw new CapabilityFailure(scheduledNeedsDate);
-    const article = await new ArticleCommandService(await ports.editorial()).save(input);
+    const article = await saveArticle(await ports.editorial(), input);
     await ports.invalidateCache({ locale: article.locale, slugs: [article.slug] });
     return { article: newsroomArticle(article) };
   }),
@@ -52,7 +65,7 @@ export const newsroomCapabilities = [
     if (!current) throw new CapabilityFailure("Article not found.");
     const draft = { ...toDraft(current), ...changes, id, locale };
     if (draft.status === "scheduled" && !draft.scheduledFor) throw new CapabilityFailure(scheduledNeedsDate);
-    const article = await new ArticleCommandService(repository).save(draft);
+    const article = await saveArticle(repository, draft);
     await ports.invalidateCache({ locale: article.locale, slugs: [current.slug, article.slug] });
     return { article: newsroomArticle(article) };
   }),

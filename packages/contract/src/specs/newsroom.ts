@@ -1,12 +1,22 @@
 import * as z from "zod/v4";
 
 import { locales } from "@atlasnews/core/locale";
-import { articleStatuses, socialChannels } from "@atlasnews/core/editorial/domain/article";
+import {
+  articleStatuses,
+  socialChannels,
+  storyLimits,
+} from "@atlasnews/core/editorial/domain/article";
 import { distributionStatuses, newsletterStatuses } from "@atlasnews/core/editorial/domain/editorial-operations";
 import { isAllowedEditorialImageSource } from "@atlasnews/core/editorial/domain/editorial-image";
 
 import { destructive, readOnly, write } from "../annotations";
 import { defineSpec } from "../capability";
+import {
+  claimStatusSchema,
+  entityRefOutputSchema,
+  entitySlugSchema,
+  sourceOutputSchema,
+} from "./shared";
 
 const localeSchema = z.enum(locales);
 const statusSchema = z.enum(articleStatuses);
@@ -28,6 +38,27 @@ const mediaPathSchema = z.string().trim().min(1).max(256).regex(/^[a-zA-Z0-9][a-
 const record = z.record(z.string(), z.unknown());
 const editorialUnavailable = "The editorial operation could not be completed.";
 
+/** Bounds come from core; core still checks the rules that a number cannot express (https, primary entity). */
+const storyFields = {
+  claimStatus: claimStatusSchema.optional(),
+  keyPoints: z
+    .array(z.string().trim().min(storyLimits.keyPoints.min).max(storyLimits.keyPoints.max))
+    .max(storyLimits.keyPoints.count)
+    .optional(),
+  sources: z
+    .array(z.object({
+      title: z.string().trim().min(storyLimits.sources.titleMin).max(storyLimits.sources.titleMax),
+      url: z.string().trim().max(storyLimits.sources.urlMax),
+      supports: z.string().trim().min(storyLimits.sources.supportsMin).max(storyLimits.sources.supportsMax),
+    }))
+    .max(storyLimits.sources.count)
+    .optional(),
+  entities: z
+    .array(z.object({ slug: entitySlugSchema, isPrimary: z.boolean().optional() }))
+    .max(storyLimits.entities.count)
+    .optional(),
+} as const;
+
 const articleFields = {
   locale: localeSchema,
   title: z.string().trim().min(8).max(180),
@@ -43,6 +74,7 @@ const articleFields = {
   coverAlt: z.string().trim().min(3).max(240).optional(),
   scheduledFor: z.string().datetime().nullable().optional(),
   distribution: z.array(channelSchema).max(socialChannels.length).optional(),
+  ...storyFields,
 } as const;
 
 export const newsroomArticleSchema = z.object({
@@ -62,6 +94,10 @@ export const newsroomArticleSchema = z.object({
   scheduledFor: z.string().nullable(),
   updatedAt: z.string(),
   distribution: z.array(channelSchema),
+  claimStatus: claimStatusSchema,
+  keyPoints: z.array(z.string()),
+  sources: z.array(sourceOutputSchema),
+  entities: z.array(entityRefOutputSchema),
 });
 const articleResult = z.object({ article: newsroomArticleSchema });
 
@@ -131,6 +167,7 @@ export const adminUpdateArticle = defineSpec({
     coverAlt: articleFields.coverAlt,
     scheduledFor: articleFields.scheduledFor,
     distribution: articleFields.distribution,
+    ...storyFields,
   }),
   output: articleResult,
   annotations: write,

@@ -11,9 +11,9 @@ const source = dirname(fileURLToPath(import.meta.url));
 const reserved = /\b(best|official)\b/i;
 
 describe("capability catalogue", () => {
-  it("offers 44 data capabilities with unique, short, verb-like names", () => {
+  it("offers 46 data capabilities with unique, short, verb-like names", () => {
     const names = capabilities.map((capability) => capability.name);
-    expect(names).toHaveLength(44);
+    expect(names).toHaveLength(46);
     expect(new Set(names).size).toBe(names.length);
     for (const name of names) {
       expect(name.length).toBeLessThanOrEqual(64);
@@ -43,7 +43,8 @@ describe("capability catalogue", () => {
   it("requires a scope for every capability except the public reads", () => {
     const anonymous = capabilities.filter((capability) => capability.scopes.length === 0).map((capability) => capability.name);
     expect(anonymous.sort()).toEqual([
-      "fetch", "get_article", "list_articles", "list_categories", "list_comments", "search", "search_articles",
+      "fetch", "get_article", "get_entity_timeline", "list_articles", "list_categories", "list_comments",
+      "list_entities", "search", "search_articles",
     ]);
     for (const capability of capabilities) {
       if (capability.scopes.length === 0) expect(capability.annotations.readOnlyHint).toBe(true);
@@ -110,7 +111,12 @@ describe("@atlasnews/contract/page", () => {
     expect(files.filter((file) => file.startsWith("handlers/") || file.includes("catalogue") || file.includes("ports"))).toEqual([]);
     for (const target of bare) {
       expect(target, target).not.toMatch(/^node:|^@atlasnews\/adapters|\/application\//);
-      expect(["zod/v4", "@atlasnews/core/locale", "@atlasnews/core/editorial/domain/article"]).toContain(target);
+      expect([
+        "zod/v4",
+        "@atlasnews/core/locale",
+        "@atlasnews/core/editorial/domain/article",
+        "@atlasnews/core/editorial/domain/entity",
+      ]).toContain(target);
     }
   });
 });

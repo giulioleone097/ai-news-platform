@@ -25,6 +25,7 @@ export function memoryPorts(
   return {
     site: siteLinks(new URL("http://localhost:3000")),
     articles: repository,
+    entities: repository,
     invalidateCache,
     publicComments: unavailable,
     editorial: async () => repository,

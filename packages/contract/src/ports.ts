@@ -1,4 +1,5 @@
 import type { ArticleRepository, AdminEditorialRepository } from "@atlasnews/core/editorial/domain/article-repository";
+import type { EntityRepository } from "@atlasnews/core/editorial/domain/entity";
 import type { EditorialCacheInvalidator } from "@atlasnews/core/editorial/application/cache-port";
 import type { CommentService } from "@atlasnews/core/comments/application/comment-service";
 import type { CommentNotificationDeliveryService } from "@atlasnews/core/comments/application/comment-notification-delivery";
@@ -12,6 +13,11 @@ export type PublicArticleReader = Pick<
   "listPublished" | "findBySlug" | "listCategories"
 >;
 
+export type PublicEntityReader = Pick<
+  EntityRepository,
+  "listEntities" | "findEntityBySlug" | "listEntityTimeline"
+>;
+
 export type PublicCommentReader = Pick<CommentService, "listApproved">;
 
 /**
@@ -21,6 +27,7 @@ export type PublicCommentReader = Pick<CommentService, "listApproved">;
 export interface CapabilityPorts {
   readonly site: SiteLinks;
   readonly articles: PublicArticleReader;
+  readonly entities: PublicEntityReader;
   readonly invalidateCache: EditorialCacheInvalidator;
   publicComments(): Promise<PublicCommentReader>;
   editorial(): Promise<AdminEditorialRepository>;
