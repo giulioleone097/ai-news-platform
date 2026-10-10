@@ -8,6 +8,7 @@ import { CallbackVerifier } from "@atlasnews/core/mcp-events/application/callbac
 import { deriveSubscriptionId } from "@atlasnews/core/mcp-events/application/canonical-json";
 import {
   DefaultMcpEventsService,
+  maximumSubscriptionsPerDomain,
   maximumSubscriptionsPerHost,
   secretRotationWindowMs,
   verificationCacheMs,
@@ -162,6 +163,21 @@ describe("events/subscribe", () => {
     expect(client.requests[1].headers["webhook-signature"]).not.toContain(" ");
   });
 
+  it("proves a re-key again with the callback, even for a secret that was verified before", async () => {
+    await subscribe();
+    await subscribe({ delivery: delivery({ secret: otherSecret }) });
+    expect(client.requests).toHaveLength(2);
+
+    // The first secret is still inside the 24 h verification cache; putting it back must not reuse that.
+    await subscribe({ delivery: delivery({ secret: testSecret }) });
+    expect(client.requests).toHaveLength(3);
+
+    // A wrong answer from the callback leaves the stored secret alone.
+    client.respond = () => ({ status: 200, body: JSON.stringify({ challenge: "wrong" }) });
+    await expectError(subscribe({ delivery: delivery({ secret: otherSecret }) }), "callback_error", "challenge_failed");
+    expect([...repository.subscriptions.values()][0].secret).toBe(testSecret);
+  });
+
   it("restarts from now when a lapsed subscription is renewed", async () => {
     const { id } = await subscribe({ ttlMs: hour });
     now = new Date(now.getTime() + 5 * hour);
@@ -227,6 +243,32 @@ describe("events/subscribe", () => {
     // Refreshing an existing one still works, and other hosts are unaffected.
     await subscribe({ delivery: delivery({ url: "https://receiver.example.com/cb/0" }) });
     await subscribe({ delivery: delivery({ url: "https://another.example.org/cb" }) });
+  });
+});
+
+describe("subscription capacity", () => {
+  const at = (host: string, path = "cb") => delivery({ url: `https://${host}/${path}` });
+
+  it("counts every subdomain of one registrable domain together", async () => {
+    for (let index = 0; index < maximumSubscriptionsPerDomain; index += 1) {
+      await subscribe({ delivery: at(`h${index}.attacker.example`) });
+    }
+    await expectError(subscribe({ delivery: at("fresh.attacker.example") }), "invalid_params", "subscription_limit");
+    await expectError(subscribe({ delivery: at("attacker.example") }), "invalid_params", "subscription_limit");
+    // A different domain, and a country-code domain that merely shares a suffix, are separate.
+    await subscribe({ delivery: at("a.other.example") });
+    await subscribe({ delivery: at("a.attacker.co.uk") });
+  });
+
+  it("stops new subscriptions at the global cap but still refreshes live ones", async () => {
+    service = new DefaultMcpEventsService(repository, new CallbackVerifier(client, () => now), () => now, { total: 3 });
+    for (const host of ["a.one.example", "b.two.example", "c.three.example"]) await subscribe({ delivery: at(host) });
+    await expectError(subscribe({ delivery: at("d.four.example") }), "invalid_params", "subscription_limit");
+    await subscribe({ delivery: at("a.one.example") });
+
+    // A lapsed subscription frees its place.
+    now = new Date(now.getTime() + 8 * 24 * hour);
+    await subscribe({ delivery: at("d.four.example") });
   });
 });
 

@@ -88,5 +88,5 @@ export const saveArticle = defineSpec({
   surfaces: ["page"],
 });
 
-/** Every spec offered on the page, in the order the site registers them. */
+/** The reader tools of the page, in the order the site registers them. */
 export const pageSpecs = [searchArticles, filterFeed, openArticle, readOpenArticle, saveArticle] as const;

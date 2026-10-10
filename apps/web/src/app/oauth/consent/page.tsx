@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { normalizeLocale } from "@/i18n";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { authorizationIdPattern, isEditorProfile } from "./authorization";
+import { authorizationIdPattern, isEditorProfile, isRedirectAllowed, redirectHost } from "./authorization";
 import "./consent.css";
 import { consentCopy, type ConsentCopy } from "./copy";
 import { DecisionForm } from "./decision-form";
@@ -17,14 +17,6 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   const locale = normalizeLocale((await headers()).get("accept-language"));
   return { title: `${consentCopy[locale].title} - AtlasNews`, robots: { index: false, follow: false } };
-}
-
-function redirectHost(redirectUri: string) {
-  try {
-    return new URL(redirectUri).host || redirectUri;
-  } catch {
-    return redirectUri;
-  }
 }
 
 function Panel({ copy, children }: { copy: ConsentCopy; children: React.ReactNode }) {
@@ -94,8 +86,14 @@ export default async function ConsentPage({
   if (error || !details) return <Problem copy={copy} message={copy.expiredRequest} />;
   // The account already allowed this application for these scopes.
   if (!("authorization_id" in details)) {
-    if (isEditor) redirect(details.redirect_url);
-    return <Problem copy={copy} message={copy.notAnEditor} />;
+    if (!isEditor) return <Problem copy={copy} message={copy.notAnEditor} />;
+    if (!isRedirectAllowed(details.redirect_url)) {
+      return <Problem copy={copy} message={copy.redirectNotAllowed(redirectHost(details.redirect_url))} />;
+    }
+    redirect(details.redirect_url);
+  }
+  if (!isRedirectAllowed(details.redirect_uri)) {
+    return <Problem copy={copy} message={copy.redirectNotAllowed(redirectHost(details.redirect_uri))} />;
   }
 
   const clientName = details.client.name || redirectHost(details.redirect_uri);
@@ -105,13 +103,12 @@ export default async function ConsentPage({
   return (
     <Panel copy={copy}>
       <h1 id="consent-title">{copy.requestTitle(clientName)}</h1>
+      <p className="consent-redirect">
+        {copy.returnsTo} <strong>{redirectHost(details.redirect_uri)}</strong>
+      </p>
       <p>{copy.signedInAs(signedInAs)}</p>
 
       <dl className="consent-details">
-        <div>
-          <dt>{copy.returnsTo}</dt>
-          <dd>{redirectHost(details.redirect_uri)}</dd>
-        </div>
         {details.client.uri ? (
           <div>
             <dt>{copy.website}</dt>

@@ -2,10 +2,10 @@ import * as z from "zod/v4";
 
 import { locales } from "@atlasnews/core/locale";
 import { decodeArticleCursor } from "@atlasnews/core/editorial/application/public-feed";
-import { entityKinds } from "@atlasnews/core/editorial/domain/entity";
 
 import { readOnly } from "../annotations";
 import { defineSpec } from "../capability";
+import { contentTrustSchema, untrustedDescription } from "../untrusted";
 import {
   articleOutputSchema,
   articleSlugSchema,
@@ -13,6 +13,7 @@ import {
   categoryOutputSchema,
   categorySlugSchema,
   claimStatusSchema,
+  entityOutputSchema,
   entitySlugSchema,
   localeSchema,
   newsroomAppUri,
@@ -72,29 +73,6 @@ export const getArticle = defineSpec({
   ui: newsroomAppUri,
 });
 
-const entityOutputSchema = z.object({
-  kind: z.enum(entityKinds),
-  slug: z.string(),
-  name: z.string(),
-  description: z.string(),
-  officialUrl: z.string().nullable(),
-  parent: z.object({ slug: z.string(), name: z.string() }).nullable(),
-});
-
-export const listEntities = defineSpec({
-  name: "list_entities",
-  title: "List AI companies, models and products",
-  description:
-    "List the companies, models and products that AtlasNews stories link, with their story counts, in English or Italian.",
-  input: z.object({ locale: localeSchema, kind: z.enum(entityKinds).optional() }),
-  output: z.object({
-    items: z.array(entityOutputSchema.extend({ storyCount: z.number().int().nonnegative() })),
-  }),
-  annotations: readOnly,
-  scopes: [],
-  surfaces: ["mcp"],
-});
-
 export const getEntityTimeline = defineSpec({
   name: "get_entity_timeline",
   title: "Get an AI entity timeline",
@@ -133,7 +111,8 @@ export const listComments = defineSpec({
   name: "list_comments",
   title: "List approved article comments",
   description:
-    "List approved top-level comments or replies for a published article with keyset pagination.",
+    "List approved top-level comments or replies for a published article with keyset pagination."
+    + untrustedDescription,
   input: z.object({
     slug: articleSlugSchema,
     locale: localeSchema,
@@ -144,6 +123,7 @@ export const listComments = defineSpec({
   output: z.object({
     items: z.array(publicCommentOutputSchema),
     nextCursor: z.string().nullable(),
+    contentTrust: contentTrustSchema,
   }),
   annotations: readOnly,
   scopes: [],

@@ -14,6 +14,10 @@ export interface McpEventsRepository {
   /** Idempotent: unknown or already inactive ids are a no-op. */
   deactivate(id: string, status: Exclude<SubscriptionStatus, "active">): Promise<void>;
   countLiveForHost(host: string, excludingId: string, now: Date): Promise<number>;
+  /** Live subscriptions whose callback host is `domain` or one of its subdomains. */
+  countLiveForDomain(domain: string, excludingId: string, now: Date): Promise<number>;
+  /** All live subscriptions, whoever owns them. */
+  countLive(now: Date): Promise<number>;
   /** Verification time of a still-trusted prior verification for the same principal, URL and secret. */
   findVerifiedAt(input: {
     principal: string;
@@ -21,6 +25,7 @@ export interface McpEventsRepository {
     secret: string;
     since: Date;
   }): Promise<string | null>;
+  /** Live subscriptions, oldest checkpoint first, so that a run that reads `limit` of them serves the longest-waiting ones. */
   listLive(now: Date, limit: number): Promise<EventSubscription[]>;
   getMany(ids: string[]): Promise<EventSubscription[]>;
   /** Moves the checkpoint forward only. */

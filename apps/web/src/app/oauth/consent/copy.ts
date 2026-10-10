@@ -9,7 +9,9 @@ export const consentCopy = {
     requestTitle: (client: string) => `Allow ${client} to use AtlasNews?`,
     signedInAs: (name: string) => `Signed in as ${name}`,
     clientNameNote: "The name is chosen by the application. Check the address it returns to.",
-    returnsTo: "Returns to",
+    returnsTo: "After you allow it, you are sent to",
+    redirectNotAllowed: (host: string) =>
+      `This application sends you to ${host}, which this newsroom does not allow. Do not continue; start the connection again from a supported application.`,
     website: "Website",
     permissionsTitle: "What it can do",
     newsroomAccess:
@@ -47,7 +49,9 @@ export const consentCopy = {
     requestTitle: (client: string) => `Consentire a ${client} di usare AtlasNews?`,
     signedInAs: (name: string) => `Accesso eseguito come ${name}`,
     clientNameNote: "Il nome lo sceglie l'applicazione. Controlla l'indirizzo a cui torna.",
-    returnsTo: "Torna a",
+    returnsTo: "Dopo il consenso vieni inviato a",
+    redirectNotAllowed: (host: string) =>
+      `Questa applicazione ti invia a ${host}, che questa redazione non consente. Non continuare: riavvia il collegamento da un'applicazione supportata.`,
     website: "Sito web",
     permissionsTitle: "Cosa può fare",
     newsroomAccess:

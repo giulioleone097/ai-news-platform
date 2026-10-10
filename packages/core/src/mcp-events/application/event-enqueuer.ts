@@ -16,7 +16,9 @@ import { maximumDeliveryAttempts } from "./delivery-backoff";
  * deliveries are unique per (subscription, article).
  */
 export const checkpointLookbackMs = 15 * 60 * 1000;
-// ceiling: one worker run reads at most 100 live subscriptions; upgrade by paging listLive when exceeded.
+// ceiling: one run serves the 100 live subscriptions that have waited longest (the repository orders by
+// checkpoint, and a served subscription's checkpoint moves forward), so every subscription is reached within
+// ceil(live / 100) runs. maximumLiveSubscriptions bounds that wait; page listLive if it must be shorter.
 const subscriptionBatchSize = 100;
 
 export function toWebhookEvent(

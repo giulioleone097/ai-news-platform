@@ -67,6 +67,10 @@ password_requirements = "lower_upper_letters_digits"
 # ChatGPT and Claude register themselves, send the editor to the consent page of the web app
 # (site_url + authorization_url_path), and receive ES256 access tokens that apps/mcp checks against
 # the JWKS. Restart the stack (`supabase stop`, `supabase start`) for a change to take effect.
+# Dynamic registration is for trying hosts locally: anyone can register a client with any name and
+# redirect URI. In a hosted project turn it off, pre-register the hosts and set
+# ATLASNEWS_MCP_OAUTH_CLIENT_IDS (docs/MCP.md, "Sign-in with Supabase Auth"). The consent page already
+# refuses redirect hosts outside ATLASNEWS_OAUTH_REDIRECT_HOSTS whatever the client is called.
 [auth.oauth_server]
 enabled = true
 authorization_url_path = "/oauth/consent"

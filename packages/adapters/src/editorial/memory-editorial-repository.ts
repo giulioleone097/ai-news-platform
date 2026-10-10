@@ -6,14 +6,24 @@ import {
   type Article,
   type ArticleDraftInput,
   type ArticleQuery,
+  type Category,
   type SocialChannel,
+  type StudioArticleFilter,
 } from "@atlasnews/core/editorial/domain/article";
 import type {
+  CategoryAdminRepository,
+  CategoryRecord,
+  CategoryWrite,
+} from "@atlasnews/core/editorial/domain/category";
+import type {
+  EntityAdminRepository,
   EntityDetail,
   EntityKind,
+  EntityRecord,
   EntityRepository,
   EntitySummary,
   EntityTimelineItem,
+  EntityWrite,
 } from "@atlasnews/core/editorial/domain/entity";
 import type {
   ArticleRepository,
@@ -30,15 +40,30 @@ import {
   type NewsletterStatus,
   type NewsletterSubscription,
 } from "@atlasnews/core/editorial/domain/editorial-operations";
-import type { Locale } from "@atlasnews/core/locale";
+import { locales, type Locale } from "@atlasnews/core/locale";
 import { getEditorialMediaReferenceKey } from "@atlasnews/core/editorial/domain/editorial-image";
 import { seedArticles, seedAuthor, seedCategories, seedEntities, type SeedEntity } from "./seed";
 
+/** A seed entity whose descriptions may be missing for a locale. */
+type StoredEntity = Omit<SeedEntity, "description"> & { description: Partial<Record<Locale, string>> };
+
 export class MemoryEditorialRepository
-  implements ArticleRepository, EntityRepository, NewsletterRepository, DistributionRepository, MediaRepository
+  implements
+    ArticleRepository,
+    CategoryAdminRepository,
+    EntityRepository,
+    EntityAdminRepository,
+    NewsletterRepository,
+    DistributionRepository,
+    MediaRepository
 {
   private articles = structuredClone(seedArticles);
-  private entities = new Map(seedEntities.map((entity) => [entity.slug, entity]));
+  private categories: Category[] = structuredClone(seedCategories);
+  /** Position of each category by translation key: the order of the seed. */
+  private categoryPositions = new Map(
+    [...new Set(seedCategories.map((category) => category.translationKey))].map((key, index) => [key, index + 1]),
+  );
+  private entities = new Map<string, StoredEntity>(seedEntities.map((entity) => [entity.slug, structuredClone(entity)]));
   private subscribers = new Map<string, NewsletterSubscription>();
   private publications = new Map<string, DistributionPublication>();
   readonly writable = false;
@@ -125,10 +150,16 @@ export class MemoryEditorialRepository
     };
   }
 
-  async listForStudio(locale: Locale) {
+  async listForStudio(locale: Locale, filter: StudioArticleFilter = {}) {
+    const words = filter.query?.trim().toLocaleLowerCase(locale === "it" ? "it-IT" : "en-US");
     return structuredClone(
       this.articles
         .filter((article) => article.locale === locale)
+        .filter((article) => !filter.status || article.status === filter.status)
+        .filter((article) => !filter.category || article.category.slug === filter.category)
+        .filter((article) => !filter.entity || article.entities.some((entity) => entity.slug === filter.entity))
+        .filter((article) => !filter.claimStatus || article.claimStatus === filter.claimStatus)
+        .filter((article) => !words || [article.title, article.excerpt, article.content].join(" ").toLocaleLowerCase().includes(words))
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
     );
   }
@@ -151,7 +182,9 @@ export class MemoryEditorialRepository
 
   async listCategories(locale: Locale) {
     return structuredClone(
-      seedCategories.filter((category) => category.locale === locale),
+      this.categories
+        .filter((category) => category.locale === locale)
+        .sort((left, right) => this.positionOf(left.translationKey) - this.positionOf(right.translationKey)),
     );
   }
 
@@ -167,7 +200,7 @@ export class MemoryEditorialRepository
       throw new Error(`Article ${input.id} does not belong to locale ${input.locale}`);
     }
     const selectedCategory =
-      seedCategories.find(
+      this.categories.find(
         (category) =>
           category.locale === input.locale && category.slug === input.categorySlug,
       );
@@ -248,7 +281,7 @@ export class MemoryEditorialRepository
       .sort((left, right) => (left.publishedAt ?? "").localeCompare(right.publishedAt ?? "") || left.id.localeCompare(right.id));
   }
 
-  private toEntityDetail(entity: SeedEntity, locale: Locale): EntityDetail {
+  private toEntityDetail(entity: StoredEntity, locale: Locale): EntityDetail {
     const parent = entity.parent ? this.entities.get(entity.parent) : undefined;
     return {
       id: entity.id,
@@ -257,7 +290,7 @@ export class MemoryEditorialRepository
       name: entity.name,
       officialUrl: entity.officialUrl,
       parent: parent ? { slug: parent.slug, name: parent.name } : null,
-      description: entity.description[locale],
+      description: entity.description[locale] ?? "",
     };
   }
 
@@ -290,6 +323,209 @@ export class MemoryEditorialRepository
     for (const [publicationId, publication] of this.publications) {
       if (publication.articleId === id) this.publications.delete(publicationId);
     }
+  }
+
+  /**
+   * The memory counterpart of a database transaction: the state before the work is restored when the
+   * work throws, so a batch never leaves half of its items behind.
+   */
+  private async atomic<T>(work: () => Promise<T> | T): Promise<T> {
+    const before = structuredClone({
+      articles: this.articles,
+      categories: this.categories,
+      categoryPositions: this.categoryPositions,
+      entities: this.entities,
+      publications: this.publications,
+    });
+    try {
+      return await work();
+    } catch (error) {
+      Object.assign(this, before);
+      throw error;
+    }
+  }
+
+  async saveMany(inputs: ArticleDraftInput[]) {
+    return this.atomic(async () => {
+      const saved: Article[] = [];
+      for (const input of inputs) saved.push(await this.save(input));
+      return saved;
+    });
+  }
+
+  async setPublished(ids: string[], published: boolean) {
+    return this.atomic(() => {
+      const timestamp = new Date().toISOString();
+      const targets = [...new Set(ids)].map((id) => {
+        const article = this.articles.find((item) => item.id === id);
+        if (!article) throw new Error(`Article ${id} not found`);
+        return article;
+      });
+      for (const article of targets) {
+        article.status = published ? "published" : "draft";
+        article.publishedAt = published ? article.publishedAt ?? timestamp : article.publishedAt;
+        article.scheduledFor = null;
+        article.updatedAt = timestamp;
+      }
+      return structuredClone(targets);
+    });
+  }
+
+  async deleteMany(ids: string[]) {
+    await this.atomic(async () => {
+      for (const id of ids) {
+        if (!this.articles.some((article) => article.id === id)) throw new Error(`Article ${id} not found`);
+      }
+      for (const id of ids) await this.delete(id);
+    });
+  }
+
+  private positionOf(translationKey: string) {
+    return this.categoryPositions.get(translationKey) ?? Number.MAX_SAFE_INTEGER;
+  }
+
+  private categoryRecord(translationKey: string): CategoryRecord {
+    const translations: CategoryRecord["translations"] = {};
+    for (const category of this.categories.filter((item) => item.translationKey === translationKey)) {
+      const { id, slug, name, description } = category;
+      translations[category.locale] = { id, slug, name, description };
+    }
+    return { translationKey, position: this.positionOf(translationKey), translations };
+  }
+
+  async listCategoryRecords() {
+    return [...this.categoryPositions.keys()]
+      .sort((left, right) => this.positionOf(left) - this.positionOf(right))
+      .map((key) => this.categoryRecord(key));
+  }
+
+  private writeCategory(item: CategoryWrite, create: boolean) {
+    this.categoryPositions.set(item.translationKey, item.position);
+    for (const locale of locales) {
+      const text = item.translations[locale];
+      if (!text) continue;
+      const index = this.categories.findIndex((category) => category.translationKey === item.translationKey && category.locale === locale);
+      if (create === (index >= 0)) throw new Error(`Category ${item.translationKey}/${locale} ${create ? "already exists" : "does not exist"}`);
+      const category: Category = {
+        id: this.categories[index]?.id ?? `cat-${item.translationKey}-${locale}`,
+        translationKey: item.translationKey,
+        locale,
+        ...text,
+      };
+      if (index >= 0) this.categories[index] = category;
+      else this.categories.push(category);
+      for (const article of this.articles) {
+        if (article.category.id === category.id) article.category = { ...category };
+      }
+    }
+  }
+
+  async createCategories(items: CategoryWrite[]) {
+    return this.atomic(() => {
+      for (const item of items) this.writeCategory(item, true);
+      return items.map((item) => this.categoryRecord(item.translationKey));
+    });
+  }
+
+  async updateCategories(items: CategoryWrite[]) {
+    return this.atomic(() => {
+      for (const item of items) this.writeCategory(item, false);
+      return items.map((item) => this.categoryRecord(item.translationKey));
+    });
+  }
+
+  async deleteCategories(translationKeys: string[]) {
+    await this.atomic(() => {
+      for (const key of translationKeys) {
+        if (this.countArticlesIn(key)) throw new Error(`Category ${key} is in use`);
+        if (!this.categoryPositions.delete(key)) throw new Error(`Category ${key} not found`);
+        this.categories = this.categories.filter((category) => category.translationKey !== key);
+      }
+    });
+  }
+
+  private countArticlesIn(translationKey: string) {
+    return this.articles.filter((article) => article.category.translationKey === translationKey).length;
+  }
+
+  async countCategoryArticles(translationKeys: string[]) {
+    return new Map(translationKeys.map((key) => [key, this.countArticlesIn(key)]));
+  }
+
+  private entityRecord(entity: StoredEntity): EntityRecord {
+    const parent = entity.parent ? this.entities.get(entity.parent) : undefined;
+    return {
+      id: entity.id,
+      kind: entity.kind,
+      slug: entity.slug,
+      name: entity.name,
+      officialUrl: entity.officialUrl,
+      parent: parent ? { slug: parent.slug, name: parent.name } : null,
+      descriptions: { ...entity.description },
+    };
+  }
+
+  async listEntityRecords() {
+    return [...this.entities.values()].map((entity) => this.entityRecord(entity));
+  }
+
+  private writeEntity(item: EntityWrite, create: boolean) {
+    const existing = this.entities.get(item.slug);
+    if (create === Boolean(existing)) throw new Error(`Entity ${item.slug} ${create ? "already exists" : "does not exist"}`);
+    if (item.parentSlug && this.entities.get(item.parentSlug)?.kind !== "company") {
+      throw new Error(`The parent of ${item.slug} must be a company`);
+    }
+    this.entities.set(item.slug, {
+      id: existing?.id ?? crypto.randomUUID(),
+      kind: item.kind,
+      slug: item.slug,
+      name: item.name,
+      officialUrl: item.officialUrl,
+      parent: item.parentSlug,
+      description: { ...item.descriptions },
+    });
+    // Stories show the name and kind of the entities they link.
+    for (const article of this.articles) {
+      for (const link of article.entities) {
+        if (link.slug === item.slug) Object.assign(link, { kind: item.kind, name: item.name });
+      }
+    }
+  }
+
+  async createEntities(items: EntityWrite[]) {
+    return this.atomic(() => {
+      for (const item of items) this.writeEntity(item, true);
+      return items.map((item) => this.entityRecord(this.entities.get(item.slug)!));
+    });
+  }
+
+  async updateEntities(items: EntityWrite[]) {
+    return this.atomic(() => {
+      for (const item of items) this.writeEntity(item, false);
+      return items.map((item) => this.entityRecord(this.entities.get(item.slug)!));
+    });
+  }
+
+  async deleteEntities(slugs: string[]) {
+    await this.atomic(() => {
+      for (const slug of slugs) {
+        if (!this.entities.has(slug)) throw new Error(`Entity ${slug} not found`);
+        if (this.articles.some((article) => article.entities.some((link) => link.slug === slug))) {
+          throw new Error(`Entity ${slug} is linked to stories`);
+        }
+        if ([...this.entities.values()].some((other) => other.parent === slug)) {
+          throw new Error(`Entity ${slug} is the parent of other entities`);
+        }
+        this.entities.delete(slug);
+      }
+    });
+  }
+
+  async countEntityStories(slugs: string[]) {
+    return new Map(slugs.map((slug) => [
+      slug,
+      this.articles.filter((article) => article.entities.some((link) => link.slug === slug)).length,
+    ]));
   }
 
   async setDistributionChannels(id: string, channels: SocialChannel[]) {
@@ -428,6 +664,11 @@ export class MemoryEditorialRepository
 
   async deleteAsset(path: string): Promise<never> {
     void path;
+    throw new Error("Bundled demo assets cannot be deleted");
+  }
+
+  async deleteAssets(paths: string[]): Promise<never> {
+    void paths;
     throw new Error("Bundled demo assets cannot be deleted");
   }
 }

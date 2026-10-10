@@ -68,6 +68,30 @@ describe("proxy authentication refresh", () => {
   });
 });
 
+describe("proxy framing policy", () => {
+  beforeEach(() => {
+    mocks.getSupabaseEnvironment.mockReset();
+    mocks.getSupabaseEnvironment.mockReturnValue(null);
+  });
+
+  it("denies framing of sign-in, Studio and OAuth consent, including their redirects", async () => {
+    for (const path of ["/oauth/consent", "/en/login", "/it/login", "/en/studio", "/it/studio/newsletter", "/en/auth/callback"]) {
+      const response = await proxy(new NextRequest(`https://atlasnews.test${path}`));
+      expect(response.headers.get("x-frame-options"), path).toBe("DENY");
+    }
+    // /studio without a locale is redirected to the default locale first; the redirect is not framable content.
+    const redirect = await proxy(new NextRequest("https://atlasnews.test/studio"));
+    expect(redirect.status).toBe(308);
+  });
+
+  it("leaves public pages to the general rule", async () => {
+    for (const path of ["/en", "/en/latest", "/en/articles/a-story", "/en/loginfo"]) {
+      const response = await proxy(new NextRequest(`https://atlasnews.test${path}`));
+      expect(response.headers.get("x-frame-options"), path).toBeNull();
+    }
+  });
+});
+
 describe("proxy agent-facing rewrites", () => {
   beforeEach(() => {
     mocks.createServerClient.mockReset();

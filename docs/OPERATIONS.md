@@ -160,6 +160,14 @@ Add the exact caller origin (scheme, host, and port) to `MCP_ALLOWED_ORIGINS`, c
 
 Work through [MCP.md](MCP.md#verify-a-deployment) in order: Supabase discovery and JWKS, the `resource` in `/.well-known/oauth-protected-resource` (it must equal the URL the host was given, so set `NEXT_PUBLIC_MCP_URL` behind a proxy), the 401 challenge, and the editor's `public.profiles` row. A valid token for someone without an editor profile only reaches the anonymous tools.
 
+### Comments or newsletter signups are rate limited for everyone, or not at all
+
+The per-network limits depend on `ATLASNEWS_CLIENT_IP_HEADER` ([DEPLOYMENT.md](DEPLOYMENT.md#client-address-and-rate-limits)). If many visitors share a limit, the header holds your proxy's own address instead of the client's. If nobody is ever limited per network, the variable is empty (the per-visitor and global limits still apply).
+
+### ChatGPT cannot subscribe to events
+
+Check the answer to `events/subscribe`: HTTP 429 means the per-network subscribe limit (`ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE`, shared by all callers while `ATLASNEWS_CLIENT_IP_HEADER` is empty); `subscription_limit` means the per-host, per-domain or global cap ([OPENAI_EXTENSIONS.md](OPENAI_EXTENSIONS.md#abuse-limits)). All ChatGPT callbacks may arrive from one host, in which case raise `ATLASNEWS_MCP_EVENTS_MAX_PER_HOST` and `_PER_DOMAIN`.
+
 ### MCP call times out
 
 Check database region alignment, query indexes, container start-up and the result limit. Locate the slow boundary before changing any timeout.

@@ -67,3 +67,28 @@ export const articleOutputSchema = articleSummaryOutputSchema.extend({
   keyPoints: z.array(z.string()),
   sources: z.array(sourceOutputSchema),
 });
+
+export const entityOutputSchema = z.object({
+  kind: z.enum(entityKinds),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  officialUrl: z.string().nullable(),
+  parent: z.object({ slug: z.string(), name: z.string() }).nullable(),
+});
+
+/**
+ * The result of a batch: what happened to each item, in request order. A batch is all or nothing,
+ * so every item has the same `action`; the list tells the caller which id or slug each one got.
+ */
+export function batchOutput<S extends z.ZodRawShape>(action: z.ZodType<string>, item: S) {
+  return z.object({
+    count: z.number().int().nonnegative(),
+    items: z.array(z.object({ index: z.number().int().nonnegative(), action, ...item })),
+  });
+}
+
+/** `{ en: x, it: x }` for every content locale. */
+export function perLocale<T extends z.ZodType>(item: T) {
+  return z.object({ en: item, it: item });
+}

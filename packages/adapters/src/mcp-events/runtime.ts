@@ -1,4 +1,4 @@
-import { getPublicSiteUrl } from "../config/env";
+import { getMcpEventsLimits, getPublicSiteUrl } from "../config/env";
 import { createServiceSupabaseClient } from "../supabase/service";
 import { getPublicEditorialRepositories } from "../editorial/container";
 
@@ -20,7 +20,12 @@ function createRepository() {
 export function createMcpEventsPersistentService() {
   const repository = createRepository();
   if (!repository) return null;
-  return new DefaultMcpEventsService(repository, new CallbackVerifier(new SafeHttpsWebhookClient()));
+  return new DefaultMcpEventsService(
+    repository,
+    new CallbackVerifier(new SafeHttpsWebhookClient()),
+    undefined,
+    getMcpEventsLimits(),
+  );
 }
 
 /** Cron worker (enqueue, deliver, prune); null when service-role persistence is not configured. */

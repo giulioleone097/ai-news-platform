@@ -138,6 +138,10 @@ async function swallow(...calls: Array<() => Promise<unknown>>) {
   for (const call of calls) await call().catch(() => undefined);
 }
 
+// Definer functions that an earlier migration granted to anon or authenticated and the sweep migration
+// withdraws on purpose (name:role). subscribe_newsletter was already revoked by the newsletter migration.
+const intentionallyDropped = new Set<string>(["subscribe_newsletter:anon", "subscribe_newsletter:authenticated"]);
+
 describe("Supabase grants declared by the migrations", () => {
   const grants = declaredGrants();
 
@@ -197,4 +201,49 @@ describe("Supabase grants declared by the migrations", () => {
     // apps/mcp/src/auth/editors.ts calls PostgREST directly, so the repository recording cannot see it.
     expect(grants.can("service_role", "profiles", "select")).toBe(true);
   });
+
+  describe("SECURITY DEFINER functions", () => {
+    const sweepFile = "20261014090000_restrict_function_execute.sql";
+    const files = readdirSync(migrationsUrl).filter((name) => name.endsWith(".sql")).sort();
+    const sql = (file: string) => readFileSync(new URL(file, migrationsUrl), "utf8").replace(/--.*$/gm, "");
+
+    const definerFunctions = new Set<string>();
+    for (const file of files) {
+      for (const match of sql(file).matchAll(/create\s+(?:or\s+replace\s+)?function\s+public\.(\w+)\s*\(([\s\S]*?)\$\w*\$/gi)) {
+        if (/security\s+definer/i.test(match[2])) definerFunctions.add(match[1].toLowerCase());
+      }
+    }
+    const clientGrants = (file: string) =>
+      [...sql(file).matchAll(/grant\s+execute\s+on\s+function\s+public\.(\w+)\s*\([^)]*\)\s*to\s+([a-z_,\s]+?);/gi)]
+        .map((match) => ({ name: match[1].toLowerCase(), roles: match[2].toLowerCase().split(",").map((role) => role.trim()) }))
+        .filter(({ name, roles }) => definerFunctions.has(name) && roles.some((role) => role === "anon" || role === "authenticated"));
+
+    it("sweeps every definer function and changes the default privileges", () => {
+      const sweep = sql(sweepFile);
+      expect(sweep).toMatch(/p\.prosecdef/);
+      expect(sweep).toMatch(/revoke all on function %s from public, anon, authenticated/);
+      expect(sweep).toMatch(/alter default privileges revoke execute on functions from public/);
+      expect(sweep).toMatch(/alter default privileges in schema public revoke execute on functions from anon, authenticated/);
+    });
+
+    it("re-grants every definer function that an earlier migration opened to anon or authenticated, per role", () => {
+      const regranted = clientGrants(sweepFile);
+      const holds = (name: string, role: string) => regranted.some((grant) => grant.name === name && grant.roles.includes(role));
+      const lost = files
+        .filter((file) => file < sweepFile)
+        .flatMap((file) => clientGrants(file).map((grant) => ({ file, ...grant })))
+        .flatMap(({ file, name, roles }) =>
+          roles.filter((role) => role === "anon" || role === "authenticated")
+            // The sweep revokes these on purpose; a later revoke in the same history is checked by the live query.
+            .filter((role) => !holds(name, role) && !intentionallyDropped.has(`${name}:${role}`))
+            .map((role) => `${file}: ${name} -> ${role}`));
+      expect(lost).toEqual([]);
+    });
+
+    it("grants no definer function to anon or authenticated after the sweep without a reviewed change to this test", () => {
+      const later = files.filter((file) => file > sweepFile).flatMap((file) => clientGrants(file).map((grant) => `${file}: ${grant.name}`));
+      expect(later).toEqual([]);
+    });
+  });
 });
+

@@ -49,6 +49,18 @@ export class MemoryMcpEventsRepository implements McpEventsRepository {
     ).length;
   }
 
+  async countLiveForDomain(domain: string, excludingId: string, now: Date) {
+    return [...this.subscriptions.values()].filter(
+      (subscription) => (subscription.host === domain || subscription.host.endsWith(`.${domain}`))
+        && subscription.id !== excludingId
+        && isSubscriptionLive(subscription, now),
+    ).length;
+  }
+
+  async countLive(now: Date) {
+    return [...this.subscriptions.values()].filter((subscription) => isSubscriptionLive(subscription, now)).length;
+  }
+
   async findVerifiedAt(input: { principal: string; url: string; secret: string; since: Date }) {
     const match = [...this.subscriptions.values()]
       .filter((subscription) => subscription.principal === input.principal
@@ -62,6 +74,7 @@ export class MemoryMcpEventsRepository implements McpEventsRepository {
   async listLive(now: Date, limit: number) {
     return [...this.subscriptions.values()]
       .filter((subscription) => isSubscriptionLive(subscription, now))
+      .sort((left, right) => left.checkpoint.localeCompare(right.checkpoint) || left.id.localeCompare(right.id))
       .slice(0, limit);
   }
 

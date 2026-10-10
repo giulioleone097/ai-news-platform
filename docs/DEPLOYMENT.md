@@ -38,6 +38,10 @@ Never point a Preview deployment at the production database.
 | `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_API_VERSION` | Empty | Optional test-number values | Preview values | Production values | Server-only |
 | `WHATSAPP_WEBHOOK_SECRET` / `WHATSAPP_VERIFY_TOKEN` | Empty | Independent test values | Preview values | Production values | Server-only |
 | `ATLASNEWS_ENABLE_DEMO_STUDIO` | Empty | Empty | Empty unless the preview is intentionally ephemeral | Empty | Server-only |
+| `ATLASNEWS_CLIENT_IP_HEADER` | Empty | Empty | Name of the edge's client-address header | Name of the edge's client-address header | Server-only, `apps/web` and `apps/mcp`; [below](#client-address-and-rate-limits) |
+| `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` | Empty | Empty | Pre-registered client ids | Pre-registered client ids | Server-only, `apps/mcp`; [MCP.md](MCP.md#sign-in-with-supabase-auth) |
+| `ATLASNEWS_OAUTH_REDIRECT_HOSTS` | Empty (default hosts) | Empty | Empty unless a client needs another host | Empty unless a client needs another host | Server-only, `apps/web`; [MCP.md](MCP.md#sign-in-with-supabase-auth) |
+| `ATLASNEWS_MCP_EVENTS_MAX_PER_HOST` / `_MAX_PER_DOMAIN` / `_MAX_SUBSCRIPTIONS` / `_SUBSCRIBES_PER_MINUTE` | Empty (25 / 100 / 1000 / 30) | Empty | Empty | Tune from observed ChatGPT callback hosts | Server-only, `apps/mcp`; [OPENAI_EXTENSIONS.md](OPENAI_EXTENSIONS.md#abuse-limits) |
 | `NEXT_PUBLIC_LINKEDIN_URL` | Empty | Empty or official profile | Preview-safe official profile | Official LinkedIn profile URL | Public, build-time |
 | `NEXT_PUBLIC_X_URL` | Empty | Empty or official profile | Preview-safe official profile | Official X profile URL | Public, build-time |
 | `NEXT_PUBLIC_MCP_URL` | Empty (defaults to `http://localhost:8787`) | Local `apps/mcp` origin | Preview `apps/mcp` origin | Production `apps/mcp` origin | Public, build-time |
@@ -50,6 +54,23 @@ The committed Next.js configuration rejects a production build aimed at a public
 In explicit demo mode, public routes serve the read-only memory dataset. Studio is available automatically in local development, but fails closed in a production build. Set `ATLASNEWS_ENABLE_DEMO_STUDIO=true` only for an intentional disposable review deployment; never use it as a Production substitute for Supabase Auth, Storage and RLS.
 
 `NEXT_PUBLIC_*` values are frozen into client bundles during `next build`. Changing one requires a new deployment.
+
+### Client address and rate limits
+
+Three limits are keyed by the caller's network: new comments, edits, deletions and reports, newsletter subscription requests, and `events/subscribe` on the MCP server. A client controls every request header unless a proxy in front of the app overwrites it, so the address is read from exactly one header, named by `ATLASNEWS_CLIENT_IP_HEADER`, with no fallback and no default. The value must be an IP address; for a comma list such as `x-forwarded-for` the last entry (the one your proxy appended) is used. IPv6 addresses count per /64.
+
+| Deployment | Set `ATLASNEWS_CLIENT_IP_HEADER` to |
+| --- | --- |
+| ChatGPT Sites (Cloudflare-style Worker) | `cf-connecting-ip`. Cloudflare sets it on every request that reaches the Worker, so a client cannot choose it. Not verified on a real Sites deployment: check it, see [SITES.md](SITES.md#not-verified-without-a-real-deployment) |
+| Container behind Cloudflare | `cf-connecting-ip` |
+| Container behind another proxy or load balancer | The header that proxy overwrites, for example `x-real-ip` (nginx with `proxy_set_header X-Real-IP $remote_addr`) or `x-forwarded-for` when exactly one proxy appends to it. Verify by sending a forged value and reading it back |
+| Direct (nothing in front), or unknown | Leave it empty |
+
+While it is empty no network identity is derived from the request, and the limits behave as follows:
+
+- Comments and newsletter requests give each request a network bucket of its own, so the per-network limit never binds. Everything else still does: the per-visitor limits (signed guest cookie or account), the 5-minute resend cooldown per email address and the global request limit of the newsletter. A shared "unknown" bucket was rejected because one client could use up the limit for every visitor.
+- `events/subscribe` shares one window of `ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE` calls for all callers. It holds back a flood but lets one caller delay others for up to a minute.
+- Counters of the MCP limiter are in memory, per process: with several instances the limit is multiplied by their number.
 
 ## Local demo
 

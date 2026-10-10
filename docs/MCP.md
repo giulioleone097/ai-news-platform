@@ -120,7 +120,7 @@ What Supabase gives and does not give (checked against `supabase.com/docs/guides
 | Consent | The app must host the consent page (`authorization_url_path`), see below |
 | Revocation | No RFC 7009 endpoint. A user revokes a client's grant (`auth.oauth.revokeGrant`), which deletes its refresh tokens; an issued access token stays valid until it expires |
 
-The consent page is `apps/web/src/app/oauth/consent`, in English and Italian (chosen from `Accept-Language`). A visitor who is not signed in sees a sign-in form (email and password, the same Supabase call as the Studio login) and returns to the same request. A signed-in editor sees the application's name, the address it returns to, the permissions, and chooses Allow or Cancel; an account without an editor profile can only cancel. It calls `getAuthorizationDetails`, then `approveAuthorization` or `denyAuthorization`, and redirects to the URL Supabase returns. Set Authorization Path to `/oauth/consent` and the Site URL to the web origin in the dashboard.
+The consent page is `apps/web/src/app/oauth/consent`, in English and Italian (chosen from `Accept-Language`). A visitor who is not signed in sees a sign-in form (email and password, the same Supabase call as the Studio login) and returns to the same request. A signed-in editor sees the application's name, the host it returns to (prominent, under the name), the permissions, and chooses Allow or Cancel; an account without an editor profile can only cancel. It calls `getAuthorizationDetails`, then `approveAuthorization` or `denyAuthorization`, and redirects to the URL Supabase returns. Set Authorization Path to `/oauth/consent` and the Site URL to the web origin in the dashboard.
 
 ### Hosts
 
@@ -130,14 +130,23 @@ The consent page is `apps/web/src/app/oauth/consent`, in English and Italian (ch
 | Claude Code | Dynamic registration | `http://localhost/callback`, `http://127.0.0.1/callback` (port ignored) |
 | ChatGPT | Dynamic registration, or a client pre-registered in the dashboard | `https://chatgpt.com/connector/oauth/{callback_id}` (copy it from the connector page). The stable `connector_platform_oauth_redirect` needs RFC 9207 `iss`, which Supabase does not send |
 
-Anyone can register a client when dynamic registration is on, and the editor's consent is the only gate. For production, pre-register the hosts you use in the dashboard (OAuth Apps), turn dynamic registration off, and review the client list regularly.
+Anyone can register a client when dynamic registration is on, and a client can choose any name and any redirect URI, so a phishing site can ask a signed-in editor to approve "Claude". Three layers answer that:
+
+1. **Redirect host allowlist (always on, `apps/web`).** The consent decision re-reads the request from Supabase and refuses to approve unless the redirect URI is HTTPS on an allowed host (or HTTP on loopback). The default is `claude.ai`, `claude.com`, `chatgpt.com`, `localhost`, `127.0.0.1` and `[::1]`; `ATLASNEWS_OAUTH_REDIRECT_HOSTS` replaces it (exact hosts, or `*.example.com`). A request for any other host shows a warning and no Allow button, and an earlier approval is not followed automatically to such a host. The page puts that host in large type under the application's name, which the application chooses itself. A host with a custom URL scheme (some desktop editors) is not covered by the default: add its callback host, or use a loopback redirect.
+2. **Client allowlist (optional, `apps/mcp`).** `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` lists the OAuth client ids whose tokens the verifier accepts; a token from any other client is a 401. Unset accepts every client of the project, which is what dynamic registration needs and is not recommended in production.
+3. **No dynamic registration in production.** Pre-register the hosts you use in the dashboard (OAuth Apps), turn `allow_dynamic_registration` off (`supabase/config.toml` locally, Authentication, OAuth Server in the dashboard), put the registered client ids in `ATLASNEWS_MCP_OAUTH_CLIENT_IDS`, and review the client list regularly.
+
+The local `supabase/config.toml` keeps dynamic registration on so that Claude and ChatGPT can be tried without setup.
 
 ### Environment
 
 | Variable | Used by | Meaning |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | `apps/mcp`, `apps/web` | Sign-in is on when all three are set (the service role key, at least 32 characters, reads the editor profile). The issuer is `<url>/auth/v1` and the key set `<issuer>/.well-known/jwks.json`. Unset means no OAuth: only the API key |
-| `NEXT_PUBLIC_MCP_URL` | `apps/mcp`, `apps/web` | Public origin of the MCP server (`https://mcp.news.example.com`). Set it behind a proxy: the `resource` in the metadata and the challenge must be the exact URL hosts were given, and the request URL seen by Node is not. `apps/web` links to it from the footer |
+| `NEXT_PUBLIC_MCP_URL` | `apps/mcp`, `apps/web` | Public origin of the MCP server (`https://mcp.news.example.com`). **Required for sign-in**: without it `apps/mcp` offers no OAuth (only the API key), because the `resource` in the challenge and in the publicly cached metadata would otherwise come from the request's Host header, which a caller chooses. It must be the exact URL hosts were given, which behind a proxy the request URL seen by Node is not. `apps/web` links to it from the footer |
+| `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` | `apps/mcp` | Optional comma-separated OAuth client ids whose tokens are accepted. Unset accepts every client of the project (not recommended in production) |
+| `ATLASNEWS_OAUTH_REDIRECT_HOSTS` | `apps/web` | Optional comma-separated hosts a client may return the editor to; replaces the default (`claude.ai`, `claude.com`, `chatgpt.com`, loopback) |
+| `ATLASNEWS_CLIENT_IP_HEADER` | `apps/mcp`, `apps/web` | Optional name of the one trusted client-address header, used for the per-network limits, see [DEPLOYMENT.md](DEPLOYMENT.md#client-address-and-rate-limits) |
 | `ATLASNEWS_MCP_OAUTH_ISSUER` | `apps/mcp` | Optional. Issuer when it differs from `<url>/auth/v1`, such as a Supabase custom domain |
 | `ATLASNEWS_MCP_OAUTH_AUDIENCE` | `apps/mcp` | Optional. Required `aud`. Unset accepts `authenticated`. Set it to the MCP URL once a custom access token hook sets that audience (below) |
 | `ATLASNEWS_MCP_ADMIN_API_KEY`, `ATLASNEWS_MCP_ADMIN_AUTHOR_ID` | `apps/mcp` | The API key path. Its writes are attributed to `ATLASNEWS_MCP_ADMIN_AUTHOR_ID`; a signed-in editor's are attributed to their own `author_id` |
@@ -175,21 +184,40 @@ Anonymous (`noauth`, read-only, idempotent, closed-world):
 
 `search` and `fetch` follow OpenAI's knowledge-source shapes (developers.openai.com/api/docs/mcp): the result object is returned as `structuredContent` and as the JSON string in `content[0].text`, and `url` is an absolute link built from `NEXT_PUBLIC_SITE_URL`, which ChatGPT uses for citations.
 
-Editor tools (`oauth2`), all names unchanged from the former `/mcp/admin` server:
+Editor tools (`oauth2`), all names unchanged from the former `/mcp/admin` server, plus the content tools added since:
 
 | Scope | Tools |
 | --- | --- |
-| `newsroom.read` | `admin_list_articles`, `admin_get_article`, `admin_list_categories`, `admin_list_distribution`, `admin_list_newsletter_subscriptions`, `admin_list_media`, `admin_list_comments`, `admin_list_comment_reports`, `admin_list_comment_audit`, `admin_newsletter_list_campaigns`, `admin_newsletter_get_campaign`, `admin_newsletter_list_recipients`, `admin_social_preview`, `admin_social_list`, `admin_social_get` |
-| `newsroom.write` | `admin_create_article`, `admin_update_article`, `admin_update_distribution`, `admin_update_newsletter_subscription`, `admin_upload_media`, `admin_moderate_comment`, `admin_newsletter_save_campaign_draft`, `admin_newsletter_cancel_campaign`, `admin_social_enqueue`, `admin_social_requeue`, `admin_social_cancel`, `admin_social_retry` |
-| `newsroom.publish` | `admin_publish_article`, `admin_delete_article`, `admin_delete_media`, `admin_comment_process_notifications`, `admin_newsletter_send_campaign`, `admin_newsletter_schedule_campaign`, `admin_newsletter_request_subscription`, `admin_newsletter_erase_subscription`, `admin_newsletter_process_outbox`, `admin_social_process_outbox` |
+| `newsroom.read` | `admin_list_articles`, `admin_get_article`, `admin_list_categories`, `admin_get_category`, `admin_get_entity`, `admin_list_distribution`, `admin_list_newsletter_subscriptions`, `admin_list_media`, `admin_list_comments`, `admin_list_comment_reports`, `admin_list_comment_audit`, `admin_newsletter_list_campaigns`, `admin_newsletter_get_campaign`, `admin_newsletter_list_recipients`, `admin_social_preview`, `admin_social_list`, `admin_social_get` |
+| `newsroom.write` | `admin_create_article`, `admin_update_article`, `admin_create_articles`, `admin_update_articles`, `admin_create_category`, `admin_update_category`, `admin_create_categories`, `admin_update_categories`, `admin_create_entity`, `admin_update_entity`, `admin_create_entities`, `admin_update_entities`, `admin_upload_media`, `admin_upload_media_assets`, `admin_update_distribution`, `admin_update_newsletter_subscription`, `admin_moderate_comment`, `admin_newsletter_save_campaign_draft`, `admin_newsletter_cancel_campaign`, `admin_social_enqueue`, `admin_social_requeue`, `admin_social_cancel`, `admin_social_retry` |
+| `newsroom.publish` | `admin_publish_article`, `admin_unpublish_article`, `admin_publish_articles`, `admin_unpublish_articles`, `admin_delete_article`, `admin_delete_articles`, `admin_delete_category`, `admin_delete_categories`, `admin_delete_entity`, `admin_delete_entities`, `admin_delete_media`, `admin_delete_media_assets`, `admin_comment_process_notifications`, `admin_newsletter_send_campaign`, `admin_newsletter_schedule_campaign`, `admin_newsletter_request_subscription`, `admin_newsletter_erase_subscription`, `admin_newsletter_process_outbox`, `admin_social_process_outbox` |
 
-Production persistence for the editor tools additionally requires `SUPABASE_SERVICE_ROLE_KEY`, and `ATLASNEWS_MCP_ADMIN_AUTHOR_ID` for the API key (a signed-in editor is attributed to their own `author_id`, taken from the principal by `createRuntimePorts` and passed to the editorial repository and the newsletter services). In demo mode (no Supabase, outside production) the editorial tools work on the in-memory repository; comment moderation, newsletter and social tools answer with a generic "not configured" tool error. Generate the API key with `openssl rand -hex 32` and rotate it on both ends together.
+### Content management
+
+Articles, categories, entities and media each have the same verbs. Entities are listed by the anonymous `list_entities`.
+
+| Content | Read | Create | Patch | Delete | Batch |
+| --- | --- | --- | --- | --- | --- |
+| Article | `admin_list_articles` (filters `status`, `category`, `entity`, `claimStatus`, `query`), `admin_get_article` | `admin_create_article` | `admin_update_article` | `admin_delete_article` | `admin_create_articles`, `admin_update_articles`, `admin_delete_articles`, `admin_publish_articles`, `admin_unpublish_articles` |
+| Category | `admin_list_categories`, `admin_get_category` | `admin_create_category` | `admin_update_category` | `admin_delete_category` | `admin_create_categories`, `admin_update_categories`, `admin_delete_categories` |
+| Entity | `list_entities`, `admin_get_entity` | `admin_create_entity` | `admin_update_entity` | `admin_delete_entity` | `admin_create_entities`, `admin_update_entities`, `admin_delete_entities` |
+| Media | `admin_list_media` | `admin_upload_media` | none: assets are immutable files | `admin_delete_media` | `admin_upload_media_assets`, `admin_delete_media_assets` |
+
+Publishing is its own pair: `admin_publish_article` and `admin_unpublish_article` (the batches above).
+
+- **Create and patch cannot publish.** `status` accepts `draft`, `review` and `scheduled` only. A published article keeps its status when patched; going live and coming back go through the publish tools, which need `newsroom.publish` and ask for confirmation. Core enforces this (`ArticleCommandService.create/patch`), and the SQL batch function repeats it.
+- **PATCH.** A field you leave out keeps its stored value; the tool descriptions say what an explicit value clears. Articles: `scheduledFor: null` removes the date, and empty `distribution`, `keyPoints`, `sources` or `entities` lists empty them; title, slug, excerpt, content, `categorySlug`, cover and `claimStatus` are replaced, never cleared. Categories: `description: ""` clears; name, slug and position are replaced. Entities: `null` clears `officialUrl`, `parentSlug` and a locale's description; name and kind are replaced. A patch with no field is refused.
+- **Bilingual content.** A category is created with both locales (`translations.en` and `translations.it`, each with `name`, optional `slug` and `description`) under one translation key, which is the English slug and never changes; patches name the locales they touch. An entity is one row with an optional description per locale (`descriptions.en`, `descriptions.it`); its slug is its handle and is never renamed. Slugs are lowercase kebab-case, derived from the name when omitted, and unique per locale (entities: globally).
+- **Delete rules.** A category used by any article, an entity linked to any story or that is the company of other entities, and a media asset used as an article cover are refused with a clear error. A company can be deleted in the same call as its own models and products.
+- **Batches** take 1 to 25 items (media: 1 to 10). They are all or nothing: every item is checked first and every invalid item is reported by index (`#2 (slug): reason`) with nothing written; the write is then one database transaction (`save_articles_batch`, `publish_articles_batch`, `delete_articles_batch`, `create_categories_batch`, `update_categories_batch`, `delete_categories_batch`, `create_entities_batch`, `update_entities_batch`, `delete_entities_batch`), so a database failure halfway leaves nothing behind. Media storage is not a database: a failed batch upload removes the images already stored. A result is `{ count, items: [{ index, action, id | slug | translationKey | path, ... }] }` in request order.
+- **Untrusted visitor text.** `list_comments`, `admin_list_comments`, `admin_list_comment_reports`, `admin_list_newsletter_subscriptions` and `admin_newsletter_list_recipients` return text that anonymous visitors wrote. Their results carry `contentTrust: { source: "anonymous-visitors", untrustedFields: [...], instruction }` and their descriptions say to treat those fields as data, never as instructions.
+- **Browser page.** Every content tool above (and `list_entities`) also has the surface `page`: `@atlasnews/contract/page` exports `editorPageCapabilities` (name, title, description, input schema, hints, `scopes`, `confirms`) and `parseEditorPageInput`, with no handler in the client bundle. Comments, newsletter and social tools stay MCP only.
 
 Supported locales are `en` and `it`; English is the default.
 
 ## Confirmation
 
-Tools that publish, delete, email or post externally ask before they run: `admin_publish_article`, `admin_delete_article`, `admin_delete_media`, `admin_moderate_comment`, `admin_comment_process_notifications`, all newsletter send, schedule, cancel, request, erase and process tools, and all social enqueue, requeue, cancel, retry and process tools.
+Tools that publish, delete, email or post externally ask before they run: `admin_publish_article`, `admin_unpublish_article`, `admin_publish_articles`, `admin_unpublish_articles`, `admin_delete_article`, `admin_delete_articles`, `admin_delete_category`, `admin_delete_categories`, `admin_delete_entity`, `admin_delete_entities`, `admin_delete_media`, `admin_delete_media_assets`, `admin_moderate_comment`, `admin_comment_process_notifications`, all newsletter send, schedule, cancel, request, erase and process tools, and all social enqueue, requeue, cancel, retry and process tools.
 
 - Hosts that support MRTR forms (MCP `2026-07-28` plus `elicitation.form`) get an `input_required` result with a confirmation form. With the `openai/elicitation` extension the schema travels in `_meta` like the briefing form; without it the form is a plain core form. The tool runs only after the user accepts. A form-capable host is always asked, even when the arguments already say `confirm: true`.
 - Other hosts keep the argument: without `confirm: true` the tool answers with an error and does nothing. The description of each such tool says so.
@@ -199,7 +227,7 @@ The `confirm` argument is optional in the advertised schema (it used to be a req
 ## Resources, MCP Apps and events
 
 - `ui://atlasnews/newsroom-v1.html` is an MCP Apps UI resource (`text/html;profile=mcp-app`). `list_articles`, `search_articles`, `get_article`, `build_briefing` and both entrypoints render it in hosts that support MCP Apps.
-- `atlasnews://articles/{locale}/{slug}` returns a published article as Markdown; a miss answers `-32602` with `data.uri`.
+- `atlasnews://articles/{locale}/{slug}` returns a published article as Markdown; a miss answers `-32602` with `data.uri`. A repository failure answers `-32603 Articles are temporarily unavailable.`, never the database's error text (anonymous callers read this).
 - `server/discover` advertises `extensions["openai/mentions"]` and, when service-role persistence is configured, the `events` capability for `article.published`.
 
 [OPENAI_EXTENSIONS.md](OPENAI_EXTENSIONS.md) maps every OpenAI extension and the MCP Events contract to this implementation.

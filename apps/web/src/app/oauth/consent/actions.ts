@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { StudioActionState } from "@/components/studio/action-state";
 import { normalizeLocale } from "@/i18n";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { authorizationIdPattern, consentPath, isEditorProfile } from "./authorization";
+import { authorizationIdPattern, consentPath, isEditorProfile, isRedirectAllowed, redirectHost } from "./authorization";
 import { consentCopy } from "./copy";
 
 async function currentCopy() {
@@ -70,6 +70,16 @@ export async function decideAuthorization(
   // The page hides the button from non-editors; the decision is checked again here.
   if (parsed.data.decision === "approve" && !(await isEditorProfile(client, auth.user.id))) {
     return { status: "error", message: copy.notAnEditor };
+  }
+
+  // Read the request from Supabase rather than from the form: the redirect address is not the page's to claim.
+  if (parsed.data.decision === "approve") {
+    const { data: details } = await client.auth.oauth.getAuthorizationDetails(parsed.data.authorizationId);
+    if (!details) return { status: "error", message: copy.expiredRequest };
+    const target = "redirect_uri" in details ? details.redirect_uri : details.redirect_url;
+    if (!isRedirectAllowed(target)) {
+      return { status: "error", message: copy.redirectNotAllowed(redirectHost(target)) };
+    }
   }
 
   const options = { skipBrowserRedirect: true };

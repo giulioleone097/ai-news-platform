@@ -50,6 +50,22 @@ beforeEach(() => {
 });
 
 describe("EventEnqueuer", () => {
+  it("serves the subscriptions that waited longest, so more than one batch is reached in turn", async () => {
+    const urls = Array.from({ length: 150 }, (_, index) => `https://receiver.d${index}.example/cb`);
+    for (const url of urls) await subscribe({}, url);
+    // A newer subscription sits behind the ones created before it.
+    advance(20 * minute);
+    source.articles = [article({ id: "late", publishedAt: new Date(now.getTime() - minute).toISOString() })];
+    // The first run serves the 100 oldest checkpoints; the other 50 are first in line on the next run.
+    const first = await enqueuer.run();
+    expect(first.subscriptions).toBe(100);
+    advance(minute);
+    const second = await enqueuer.run();
+    expect(second.subscriptions).toBe(100);
+    const reached = new Set(repository.deliveries.map((delivery) => delivery.subscriptionId));
+    expect(reached.size).toBe(150);
+  });
+
   it("never backfills articles published before the subscription", async () => {
     source.articles = [article({ id: "old", publishedAt: "2026-10-10T11:59:59.000Z" })];
     await subscribe();

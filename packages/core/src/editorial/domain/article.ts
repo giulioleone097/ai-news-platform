@@ -1,5 +1,6 @@
 import type { Locale } from "../../locale";
 import type { EntityKind } from "./entity";
+import { EditorialRuleError } from "./errors";
 
 export const articleStatuses = [
   "draft",
@@ -7,6 +8,12 @@ export const articleStatuses = [
   "scheduled",
   "published",
 ] as const;
+
+/**
+ * The statuses that creating or patching may set: the ones the public cannot see. `published` is
+ * reached and left only through publishing and unpublishing, which are their own use cases.
+ */
+export const draftStatuses = ["draft", "review", "scheduled"] as const;
 
 export const socialChannels = ["newsletter", "linkedin", "x", "whatsapp"] as const;
 
@@ -20,6 +27,7 @@ export const claimStatuses = [
 ] as const;
 
 export type ArticleStatus = (typeof articleStatuses)[number];
+export type DraftStatus = (typeof draftStatuses)[number];
 export type SocialChannel = (typeof socialChannels)[number];
 export type ClaimStatus = (typeof claimStatuses)[number];
 
@@ -117,6 +125,31 @@ export interface ArticleDraftInput {
   entities?: Array<{ slug: string; isPrimary?: boolean }>;
 }
 
+/** A new story. It cannot be published on creation; `status` defaults to `draft`. */
+export type ArticleCreate = Omit<ArticleDraftInput, "id" | "status"> & { status?: DraftStatus };
+
+/**
+ * A partial update: every field is optional and an omitted one keeps its stored value. What an
+ * explicit value clears: `scheduledFor: null` drops the date, and an empty `distribution`,
+ * `keyPoints`, `sources` or `entities` list empties it. Title, slug, excerpt, content, category,
+ * cover and claim status are required on a story, so they can be replaced but not cleared.
+ * The status can move between the draft statuses only; publishing is a separate use case.
+ */
+export type ArticlePatch = Partial<Omit<ArticleDraftInput, "id" | "locale" | "translationKey" | "status">>
+  & { status?: DraftStatus };
+
+/** The filters of the editor's article list; all optional. */
+export interface StudioArticleFilter {
+  status?: ArticleStatus;
+  /** Category slug in the listed locale. */
+  category?: string;
+  /** Entity slug. */
+  entity?: string;
+  claimStatus?: ClaimStatus;
+  /** Words in the title, excerpt or body. */
+  query?: string;
+}
+
 export interface ArticleCursor {
   publishedAt: string;
   id: string;
@@ -136,6 +169,30 @@ export interface ArticleQuery {
   claimStatus?: ClaimStatus;
   query?: string;
   cursor?: ArticleCursor;
+}
+
+/** What an editor sees in the form: the stored story as a draft input, ready to be changed and saved again. */
+export function articleToDraft(article: Article): ArticleDraftInput {
+  return {
+    id: article.id,
+    translationKey: article.translationKey,
+    locale: article.locale,
+    title: article.title,
+    slug: article.slug,
+    excerpt: article.excerpt,
+    content: article.content,
+    categorySlug: article.category.slug,
+    status: article.status,
+    featured: article.featured,
+    coverImage: article.coverImage,
+    coverAlt: article.coverAlt,
+    scheduledFor: article.scheduledFor,
+    distribution: [...article.distribution],
+    claimStatus: article.claimStatus,
+    keyPoints: [...article.keyPoints],
+    sources: article.sources.map((source) => ({ ...source })),
+    entities: article.entities.map(({ slug, isPrimary }) => ({ slug, isPrimary })),
+  };
 }
 
 /** Lowercase kebab-case slug shared by articles and categories. */
@@ -191,10 +248,11 @@ const storyFieldMessages: Record<StoryField, string> = {
 };
 
 /** Names the invalid story field so that a form can mark it. */
-export class StoryFieldError extends Error {
+export class StoryFieldError extends EditorialRuleError {
+  override readonly name = "StoryFieldError";
+
   constructor(readonly field: StoryField) {
     super(storyFieldMessages[field]);
-    this.name = "StoryFieldError";
   }
 }
 

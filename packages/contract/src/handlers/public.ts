@@ -24,10 +24,11 @@ import {
   listArticles,
   listCategories,
   listComments,
-  listEntities,
   search,
 } from "../specs/public";
+import { listEntities } from "../specs/entities";
 import { searchArticles } from "../specs/search-articles";
+import { markUntrusted } from "../untrusted";
 
 export async function listPublishedArticleComments(
   reader: Pick<PublicArticleReader, "findBySlug">,
@@ -104,13 +105,14 @@ export const publicCapabilities = [
   implement(listComments, async (ports, { slug, locale, parentId, cursor, limit }) => {
     const decodedCursor = decodeCommentCursor(cursor);
     if (cursor && !decodedCursor) throw new Error("Invalid comment cursor.");
-    return listPublishedArticleComments(ports.articles, await ports.publicComments(), {
+    const page = await listPublishedArticleComments(ports.articles, await ports.publicComments(), {
       slug,
       locale,
       parentId: parentId ?? null,
       cursor: decodedCursor,
       limit,
     });
+    return markUntrusted(page, ["items[].body", "items[].displayName"]);
   }),
 
   implement(search, async ({ articles, site }, { query }) => {

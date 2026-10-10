@@ -72,7 +72,7 @@ export function defaultAccessTokenVerifier(): AccessTokenVerifier {
   return {
     verify(token, context) {
       const oauth = getMcpOAuthEnvironment();
-      const key = oauth ? JSON.stringify([oauth.issuer, oauth.audience, oauth.profiles.url, oauth.profiles.serviceRoleKey]) : "";
+      const key = oauth ? JSON.stringify([oauth.issuer, oauth.audience, oauth.clientIds, oauth.profiles.url, oauth.profiles.serviceRoleKey]) : "";
       if (configured?.key !== key) {
         const apiKey = apiKeyVerifier();
         configured = {
@@ -80,7 +80,7 @@ export function defaultAccessTokenVerifier(): AccessTokenVerifier {
           verifier: oauth
             ? firstAccepting(
                 supabaseOAuthVerifier(
-                  { issuer: oauth.issuer, jwksUrl: oauth.jwksUrl, audience: oauth.audience },
+                  { issuer: oauth.issuer, jwksUrl: oauth.jwksUrl, audience: oauth.audience, clientIds: oauth.clientIds },
                   supabaseEditorDirectory(oauth.profiles),
                 ),
                 apiKey,

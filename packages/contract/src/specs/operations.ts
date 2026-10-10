@@ -4,6 +4,7 @@ import { commentAdminToolDefinitions } from "@atlasnews/core/comments/applicatio
 
 import { enqueue, externalWrite, readOnly } from "../annotations";
 import { defineSpec } from "../capability";
+import { contentTrustSchema, untrustedDescription } from "../untrusted";
 
 const idSchema = z.string().uuid();
 const providerSchema = z.enum(["linkedin", "x", "whatsapp"]);
@@ -49,9 +50,9 @@ export const adminListComments = defineSpec({
   ...base,
   name: "admin_list_comments",
   title: comments.admin_list_comments.title,
-  description: comments.admin_list_comments.description,
+  description: comments.admin_list_comments.description + untrustedDescription,
   input: comments.admin_list_comments.inputSchema,
-  output: z.object({ page: looseResult }),
+  output: z.object({ page: looseResult, contentTrust: contentTrustSchema }),
   annotations: comments.admin_list_comments.annotations,
   scopes: ["newsroom.read"],
 });
@@ -60,9 +61,9 @@ export const adminListCommentReports = defineSpec({
   ...base,
   name: "admin_list_comment_reports",
   title: comments.admin_list_comment_reports.title,
-  description: comments.admin_list_comment_reports.description,
+  description: comments.admin_list_comment_reports.description + untrustedDescription,
   input: comments.admin_list_comment_reports.inputSchema,
-  output: z.object({ reports: looseResult }),
+  output: z.object({ reports: looseResult, contentTrust: contentTrustSchema }),
   annotations: comments.admin_list_comment_reports.annotations,
   scopes: ["newsroom.read"],
 });
@@ -132,9 +133,9 @@ export const adminNewsletterListRecipients = defineSpec({
   ...base,
   name: "admin_newsletter_list_recipients",
   title: "List newsletter campaign recipients",
-  description: "List recipient delivery receipts. This contains personal data and requires an editor sign-in.",
+  description: "List recipient delivery receipts. This contains personal data and requires an editor sign-in." + untrustedDescription,
   input: z.object({ id: idSchema, limit: z.number().int().min(1).max(500).default(100) }),
-  output: z.object({ recipients: z.array(record) }),
+  output: z.object({ recipients: z.array(record), contentTrust: contentTrustSchema }),
   annotations: readOnly,
   scopes: ["newsroom.read"],
 });

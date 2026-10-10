@@ -52,7 +52,7 @@ describe("MCP endpoint", () => {
       ...mcpCapabilities.map((capability) => capability.name),
       ...appToolNames,
     ]);
-    expect(tools).toHaveLength(50);
+    expect(tools).toHaveLength(72);
     for (const tool of tools) {
       expect(Object.keys(tool.annotations).sort(), tool.name).toEqual([
         "destructiveHint", "idempotentHint", "openWorldHint", "readOnlyHint",
@@ -177,6 +177,32 @@ describe("MCP endpoint", () => {
     expect(challenge).toContain('error="invalid_token"');
     expect(challenge).toContain('scope="newsroom.write"');
     expect(response.headers.get("access-control-expose-headers")).toContain("WWW-Authenticate");
+    expect((await repository.listForStudio("en")).length).toBe(before);
+  });
+
+  it("challenges every content write and delete tool anonymously with its own scope, and writes nothing", async () => {
+    const repository = new MemoryEditorialRepository();
+    const before = (await repository.listForStudio("en")).length;
+    const ports = memoryPorts(repository);
+    const cases: Array<[string, string]> = [
+      ["admin_create_articles", "newsroom.write"], ["admin_update_articles", "newsroom.write"],
+      ["admin_publish_articles", "newsroom.publish"], ["admin_unpublish_articles", "newsroom.publish"],
+      ["admin_delete_articles", "newsroom.publish"], ["admin_unpublish_article", "newsroom.publish"],
+      ["admin_create_category", "newsroom.write"], ["admin_update_categories", "newsroom.write"],
+      ["admin_delete_category", "newsroom.publish"], ["admin_create_entity", "newsroom.write"],
+      ["admin_update_entities", "newsroom.write"], ["admin_delete_entities", "newsroom.publish"],
+      ["admin_upload_media_assets", "newsroom.write"], ["admin_delete_media_assets", "newsroom.publish"],
+      ["admin_get_category", "newsroom.read"], ["admin_get_entity", "newsroom.read"],
+    ];
+    for (const [name, scope] of cases) {
+      const { response } = await sendRpc(
+        { jsonrpc: "2.0", id: 1, method: "tools/call", params: modernParams({ name, arguments: {} }) },
+        mcpProtocolVersion,
+        { ports },
+      );
+      expect(response.status, name).toBe(401);
+      expect(response.headers.get("www-authenticate"), name).toContain(`scope="${scope}"`);
+    }
     expect((await repository.listForStudio("en")).length).toBe(before);
   });
 
@@ -324,7 +350,7 @@ describe("MCP endpoint", () => {
     expect(payload.internationalization.defaultLocale).toBe("en");
     const all = [...payload.capabilities.tools.anonymous, ...payload.capabilities.tools.scoped];
     expect(all).toEqual(expect.arrayContaining(["search", "fetch", "admin_publish_article", ...appToolNames]));
-    expect(all).toHaveLength(50);
+    expect(all).toHaveLength(72);
     expect(payload.capabilities.tools.anonymous).toEqual(expect.arrayContaining(["list_articles", "search"]));
     expect(payload.capabilities.tools.scoped).not.toContain("list_articles");
 

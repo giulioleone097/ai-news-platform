@@ -167,6 +167,19 @@ describe("Supabase access tokens", () => {
     }
   });
 
+  it("accepts only the listed OAuth clients when a client allowlist is set", async () => {
+    const double = await supabase();
+    const issuer = double.issuer;
+    const verify = (clientIds: string[] | null) => createAccessTokenVerifier({
+      issuer, jwksUrl: double.jwksUrl, audience: null, jwksCooldownMs: 0, clientIds,
+    });
+    const token = await mint({ signer, issuer });
+    await expect(verify([clientId])(token)).resolves.toMatchObject({ subject: editorId, clientId });
+    await expect(verify(["11111111-2222-4333-8444-555555555555"])(token)).resolves.toBeNull();
+    // Unset: any client of the project, the behaviour before the allowlist existed.
+    await expect(verify(null)(token)).resolves.toMatchObject({ clientId });
+  });
+
   it("can require the MCP resource as audience", async () => {
     const double = await supabase();
     const resource = "https://mcp.news.example.com/mcp";
@@ -272,7 +285,7 @@ describe("the configured server", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", double.origin);
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey);
-    vi.stubEnv("NEXT_PUBLIC_MCP_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_MCP_URL", "http://localhost:8787");
     vi.stubEnv("ATLASNEWS_MCP_ADMIN_API_KEY", testApiKey);
     vi.stubEnv("ATLASNEWS_CONTENT_MODE", "demo");
     return double;
@@ -313,6 +326,30 @@ describe("the configured server", () => {
     const challenge = bad.response.headers.get("www-authenticate");
     expect(challenge).toContain('resource_metadata="http://localhost:8787/.well-known/oauth-protected-resource"');
     expect(challenge).toContain('error="invalid_token"');
+  });
+
+  it("answers 401 for an editor's token from a client that is not on ATLASNEWS_MCP_OAUTH_CLIENT_IDS", async () => {
+    const double = await configure();
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "11111111-2222-4333-8444-555555555555");
+    const refused = await call(`Bearer ${await mint({ signer, issuer: double.issuer })}`);
+    expect(refused.response.status).toBe(401);
+
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", `11111111-2222-4333-8444-555555555555, ${clientId}`);
+    const accepted = await call(`Bearer ${await mint({ signer, issuer: double.issuer })}`);
+    expect(accepted.response.status).toBe(200);
+    expect(accepted.payload.result.isError).not.toBe(true);
+  });
+
+  it("offers no sign-in while the public MCP origin is not configured, rather than trust the Host header", async () => {
+    const double = await configure();
+    vi.stubEnv("NEXT_PUBLIC_MCP_URL", "");
+    const token = await mint({ signer, issuer: double.issuer });
+    expect((await call(`Bearer ${token}`)).response.status).toBe(401);
+
+    const hostile = new Request("http://evil.example/.well-known/oauth-protected-resource", { headers: { host: "evil.example" } });
+    const metadata = await (await getResourceMetadata(hostile)).json();
+    expect(metadata.authorization_servers).toBeUndefined();
+    expect((await call(`Bearer ${testApiKey}`)).payload.result.isError).not.toBe(true);
   });
 
   it("keeps the API key working after the OAuth verifier, and anonymous reads unaffected", async () => {

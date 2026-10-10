@@ -40,6 +40,20 @@ describe("Studio environment boundary", () => {
     expect(isStudioAvailable()).toBe(false);
   });
 
+  it("fails closed when the runtime sets no NODE_ENV at all", () => {
+    vi.stubEnv("NODE_ENV", undefined);
+    vi.stubEnv("ATLASNEWS_ENABLE_DEMO_STUDIO", "");
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "demo");
+    disableSupabase();
+
+    expect(isDemoStudioEnabled()).toBe(false);
+    expect(isStudioAvailable()).toBe(false);
+    for (const unknown of ["staging", "Production", ""]) {
+      vi.stubEnv("NODE_ENV", unknown);
+      expect(isDemoStudioEnabled(), unknown).toBe(false);
+    }
+  });
+
   it("requires an exact production opt-in for the demo Studio", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("ATLASNEWS_ENABLE_DEMO_STUDIO", "true");
@@ -146,12 +160,20 @@ describe("Studio environment boundary", () => {
     expect(getMcpOAuthEnvironment()).toBeNull();
 
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "s".repeat(40));
+    // The sign-in challenge names the server's own public origin; the Host header is not an input.
+    vi.stubEnv("NEXT_PUBLIC_MCP_URL", "");
+    expect(getMcpOAuthEnvironment()).toBeNull();
+    vi.stubEnv("NEXT_PUBLIC_MCP_URL", "https://mcp.news.example.com");
     expect(getMcpOAuthEnvironment()).toMatchObject({
       issuer: "https://project.supabase.co/auth/v1",
+      clientIds: null,
       jwksUrl: new URL("https://project.supabase.co/auth/v1/.well-known/jwks.json"),
       audience: null,
       scopes: ["email"],
     });
+
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", " abc ,def,, ");
+    expect(getMcpOAuthEnvironment()?.clientIds).toEqual(["abc", "def"]);
 
     vi.stubEnv("ATLASNEWS_MCP_OAUTH_ISSUER", "https://auth.news.example.com/auth/v1/");
     vi.stubEnv("ATLASNEWS_MCP_OAUTH_AUDIENCE", "https://mcp.news.example.com/mcp");

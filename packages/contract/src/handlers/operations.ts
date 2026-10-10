@@ -2,6 +2,7 @@ import { createCommentAdminToolHandlers } from "@atlasnews/core/comments/applica
 
 import { implement, type Principal } from "../capability";
 import type { CapabilityPorts } from "../ports";
+import { markUntrusted } from "../untrusted";
 import {
   adminCommentProcessNotifications,
   adminListCommentAudit,
@@ -46,12 +47,12 @@ async function socialHandlers(ports: CapabilityPorts) {
 const confirmed = { confirm: true } as const;
 
 export const operationsCapabilities = [
-  implement(adminListComments, async (ports, input, principal) => ({
+  implement(adminListComments, async (ports, input, principal) => markUntrusted({
     page: await (await commentHandlers(ports, principal)).admin_list_comments(input),
-  })),
-  implement(adminListCommentReports, async (ports, input, principal) => ({
+  }, ["page.items[].body", "page.items[].displayName"])),
+  implement(adminListCommentReports, async (ports, input, principal) => markUntrusted({
     reports: await (await commentHandlers(ports, principal)).admin_list_comment_reports(input),
-  })),
+  }, ["reports.items[].details"])),
   implement(adminModerateComment, async (ports, input, principal) => ({
     result: await (await commentHandlers(ports, principal)).admin_moderate_comment(input),
   })),
@@ -68,9 +69,9 @@ export const operationsCapabilities = [
   implement(adminNewsletterGetCampaign, async (ports, { id }) => ({
     campaign: await (await ports.newsletter()).campaign.getCampaign(id),
   })),
-  implement(adminNewsletterListRecipients, async (ports, { id, limit }) => ({
+  implement(adminNewsletterListRecipients, async (ports, { id, limit }) => markUntrusted({
     recipients: await (await ports.newsletter()).campaign.listRecipients(id, limit),
-  })),
+  }, ["recipients[].email"])),
   implement(adminNewsletterSaveCampaignDraft, async (ports, input) => {
     const { campaign, authorId } = await ports.newsletter();
     return { campaign: await campaign.saveDraft(input, authorId) };

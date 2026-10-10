@@ -7,7 +7,7 @@ import type { AdminEditorialRepository } from "@atlasnews/core/editorial/domain/
 import { anonymous, CapabilityFailure } from "../capability";
 import { capabilities } from "../catalogue";
 import { siteLinks, type CapabilityPorts } from "../ports";
-import { adminCreateArticle, adminUpdateArticle } from "../specs/newsroom";
+import { adminCreateArticle, adminUpdateArticle } from "../specs/articles";
 
 const keyPoint = "A short key point that a reader can scan before the body.";
 const source = { title: "Company blog", url: "https://example.com/post", supports: "The launch date claim" };

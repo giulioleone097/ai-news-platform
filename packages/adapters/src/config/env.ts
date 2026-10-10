@@ -14,9 +14,20 @@ function serverValue(name: string, minimumLength = 1) {
   return value && value.length >= minimumLength ? value : null;
 }
 
+/** A comma-separated list, or null when the variable is unset or empty. */
+function listValue(name: string) {
+  const items = (process.env[name] ?? "").split(",").map((item) => item.trim()).filter(Boolean);
+  return items.length ? items : null;
+}
+
 function emailValue(name: string) {
   const value = serverValue(name);
   return value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? value : null;
+}
+
+function positiveInteger(name: string) {
+  const value = Number(process.env[name]?.trim());
+  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
 }
 
 export type ContentMode = "demo" | "supabase";
@@ -32,8 +43,14 @@ export function getContentMode(): ContentMode {
   return hasSupabaseEnvironment() ? "supabase" : "demo";
 }
 
+/**
+ * The demo Studio signs in everyone as an admin on in-memory data. It exists only where the runtime says
+ * it is a development or test run, or when the operator opts in; a runtime that does not set NODE_ENV
+ * (a bare Worker or container) must not get it.
+ */
 export function isDemoStudioEnabled() {
-  return process.env.NODE_ENV !== "production"
+  const runtime = process.env.NODE_ENV;
+  return runtime === "development" || runtime === "test"
     || process.env.ATLASNEWS_ENABLE_DEMO_STUDIO?.trim() === "true";
 }
 
@@ -93,11 +110,14 @@ export function getConfiguredMcpUrl() {
 
 /**
  * Supabase Auth as the OAuth authorization server for the MCP endpoint. Present only when the
- * project URL and the service-role key (used to read the editor's profile) are configured.
+ * project URL, the service-role key (used to read the editor's profile) and the public origin of the
+ * MCP server are configured. Without `NEXT_PUBLIC_MCP_URL` the resource URL in the sign-in challenge
+ * and in the (publicly cached) resource metadata would come from the request's Host header, which a
+ * caller chooses, so sign-in stays off rather than trust it.
  */
 export function getMcpOAuthEnvironment() {
   const service = getSupabaseServiceEnvironment();
-  if (!service) return null;
+  if (!service || !getConfiguredMcpUrl()) return null;
 
   const base = new URL(service.url);
   if (!base.pathname.endsWith("/")) base.pathname += "/";
@@ -110,9 +130,24 @@ export function getMcpOAuthEnvironment() {
     jwksUrl: new URL(`${issuer}/.well-known/jwks.json`),
     /** Required `aud`; null accepts Supabase's own `authenticated` audience. */
     audience,
+    /**
+     * OAuth client ids whose tokens are accepted; null accepts any client of this project, which is what
+     * dynamic client registration needs and is not recommended in production.
+     */
+    clientIds: listValue("ATLASNEWS_MCP_OAUTH_CLIENT_IDS"),
     scopes: supabaseOAuthScopes as readonly string[],
     profiles: { url: service.url, serviceRoleKey: service.serviceRoleKey },
   };
+}
+
+/**
+ * Hosts an OAuth client may send the editor back to once they approve it: exact hostnames, or `*.host`
+ * for any subdomain. The default covers the hosts that run the supported clients and loopback for
+ * local ones; `ATLASNEWS_OAUTH_REDIRECT_HOSTS` replaces it.
+ */
+export function getOAuthRedirectHosts() {
+  return listValue("ATLASNEWS_OAUTH_REDIRECT_HOSTS")
+    ?? ["claude.ai", "claude.com", "chatgpt.com", "localhost", "127.0.0.1", "[::1]"];
 }
 
 export function getSupabaseServiceEnvironment() {
@@ -120,6 +155,23 @@ export function getSupabaseServiceEnvironment() {
   const serviceRoleKey = serverValue("SUPABASE_SERVICE_ROLE_KEY", 32);
   if (!environment || !serviceRoleKey) return null;
   return { ...environment, serviceRoleKey };
+}
+
+/**
+ * Operator overrides for the MCP Events abuse limits; an unset or invalid value keeps the default
+ * that the events service defines.
+ */
+export function getMcpEventsLimits() {
+  return {
+    perHost: positiveInteger("ATLASNEWS_MCP_EVENTS_MAX_PER_HOST"),
+    perDomain: positiveInteger("ATLASNEWS_MCP_EVENTS_MAX_PER_DOMAIN"),
+    total: positiveInteger("ATLASNEWS_MCP_EVENTS_MAX_SUBSCRIPTIONS"),
+  };
+}
+
+/** Accepted `events/subscribe` calls per minute for one client network (all clients, when no client address header is trusted). */
+export function getMcpEventsSubscribeRate() {
+  return positiveInteger("ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE") ?? 30;
 }
 
 export function getCronSecret() {

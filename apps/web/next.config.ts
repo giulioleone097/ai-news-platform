@@ -3,6 +3,7 @@ import {
   isSecureProductionOrigin,
   parseHttpUrl,
 } from "@atlasnews/adapters/config/url-policy";
+import { locales } from "@atlasnews/core/locale";
 
 const configuredSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const configuredSupabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -58,7 +59,12 @@ const nextConfig: NextConfig = {
     qualities: [70, 75, 88],
     remotePatterns,
   },
+  // Both builds read this: `next build` and the vinext Sites build (measured on the artifact in workerd).
+  // Do not give two rules the same header for one path: Next lets the later rule win, vinext the first.
+  // The sensitive routes therefore only add a header the general rule lacks; src/proxy.ts, which both
+  // builds also run, upgrades their X-Frame-Options to DENY.
   async headers() {
+    const localePattern = locales.join("|");
     return [
       {
         source: "/(.*)",
@@ -72,6 +78,18 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Pages where one click approves something (OAuth consent) or changes the newsroom (Studio, its
+      // sign-in) must never be framed, not even by this site. frame-ancestors is what current browsers
+      // enforce.
+      ...[
+        "/oauth/:path*",
+        `/:locale(${localePattern})/studio/:path*`,
+        `/:locale(${localePattern})/login`,
+        `/:locale(${localePattern})/auth/:path*`,
+      ].map((source) => ({
+        source,
+        headers: [{ key: "Content-Security-Policy", value: "frame-ancestors 'none'" }],
+      })),
     ];
   },
 };
