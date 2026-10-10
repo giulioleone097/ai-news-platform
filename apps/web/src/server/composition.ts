@@ -1,6 +1,9 @@
 import "server-only";
 
-import { getStudioEditorialRepositories as composeStudioEditorialRepositories } from "@atlasnews/adapters/editorial/container";
+import {
+  getStudioAdminEditorialRepository as composeStudioAdminEditorialRepository,
+  getStudioEditorialRepositories as composeStudioEditorialRepositories,
+} from "@atlasnews/adapters/editorial/container";
 import { getStudioNewsletterCampaignService as composeStudioNewsletterCampaignService } from "@atlasnews/adapters/newsletter/container";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -17,6 +20,10 @@ export {
 
 export const getStudioEditorialRepositories = () =>
   composeStudioEditorialRepositories(createServerSupabaseClient);
+
+/** The signed-in editor's own repository, including the category, entity and batch writes. RLS applies. */
+export const getStudioAdminEditorialRepository = () =>
+  composeStudioAdminEditorialRepository(createServerSupabaseClient);
 
 export const getStudioNewsletterCampaignService = () =>
   composeStudioNewsletterCampaignService(createServerSupabaseClient);
