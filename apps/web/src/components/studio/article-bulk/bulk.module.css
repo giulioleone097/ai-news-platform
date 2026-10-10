@@ -1,0 +1,83 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: var(--atlasnews-spacing-xs) 0;
+}
+
+.selectAll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--atlasnews-spacing-xs);
+  min-height: 2.75rem;
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.checkCell {
+  display: inline-grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  place-items: center;
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--coral);
+  cursor: pointer;
+}
+
+.titleCell {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--atlasnews-spacing-xxs);
+  min-width: 0;
+}
+
+.titleLink {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--atlasnews-spacing-sm);
+  margin-bottom: var(--atlasnews-spacing-sm);
+  padding: var(--atlasnews-spacing-sm) var(--atlasnews-spacing-md);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--coral);
+  background: var(--paper-raised);
+}
+
+.count {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--atlasnews-spacing-xs);
+}
+
+.actions > button {
+  flex: 1 1 auto;
+}
+
+.limit {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--coral-dark);
+  font-size: 0.78rem;
+}

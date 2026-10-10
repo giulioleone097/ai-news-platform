@@ -1628,3 +1628,10 @@
     justify-content: flex-start;
   }
 }
+
+/* Light ink on the brighter dark-theme coral fails contrast; use the fixed dark ink there. */
+@media (prefers-color-scheme: dark) {
+  .studio-button--primary {
+    color: var(--atlasnews-color-ink);
+  }
+}

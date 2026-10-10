@@ -1,5 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import type { ArticleDraftInput } from "@atlasnews/core/editorial/domain/article";
+import type { CategoryWrite } from "@atlasnews/core/editorial/domain/category";
+import type { EntityWrite } from "@atlasnews/core/editorial/domain/entity";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import { SupabaseEditorialRepository } from "../editorial/supabase-editorial-repository";
@@ -133,6 +135,19 @@ const draft: ArticleDraftInput = {
   status: "draft",
   distribution: ["x"],
 };
+const category: CategoryWrite = {
+  translationKey: "research-cat",
+  position: 1,
+  translations: { en: { slug: "research", name: "Research", description: "Research news." } },
+};
+const entity: EntityWrite = {
+  kind: "company",
+  slug: "openai",
+  name: "OpenAI",
+  officialUrl: null,
+  parentSlug: null,
+  descriptions: { en: "An AI company." },
+};
 
 async function swallow(...calls: Array<() => Promise<unknown>>) {
   for (const call of calls) await call().catch(() => undefined);
@@ -189,6 +204,19 @@ describe("Supabase grants declared by the migrations", () => {
       () => repository.listPublications("en"),
       () => repository.updatePublication({ id: uuid, status: "draft" }),
       () => repository.isAssetReferenced("cover.png"),
+      () => repository.saveMany([draft]),
+      () => repository.setPublished([uuid], true),
+      () => repository.deleteMany([uuid]),
+      () => repository.listCategoryRecords(),
+      () => repository.createCategories([category]),
+      () => repository.updateCategories([category]),
+      () => repository.deleteCategories(["research-cat"]),
+      () => repository.countCategoryArticles(["research-cat"]),
+      () => repository.listEntityRecords(),
+      () => repository.createEntities([entity]),
+      () => repository.updateEntities([entity]),
+      () => repository.deleteEntities(["openai"]),
+      () => repository.countEntityStories(["openai"]),
     );
 
     expect(accesses.length).toBeGreaterThan(0);

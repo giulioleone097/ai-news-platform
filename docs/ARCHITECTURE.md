@@ -75,6 +75,12 @@ Where each part runs: `apps/web` on ChatGPT Sites ([SITES.md](SITES.md)); `apps/
 4. Tools that publish, delete, email or post ask for confirmation through a form, or need `confirm: true`. Email and social delivery are queued; the leased outbox workers send them.
 5. After an editorial write `apps/mcp` asks the site to invalidate its caches through `POST /api/revalidate`.
 
+### Content management
+
+Articles, categories, entities and media are written by the same use cases whichever surface asks. Studio screens, WebMCP editor tools and the MCP endpoint all run the catalogue capabilities in `packages/contract`; the web side reaches them through `apps/web/src/server/capabilities.ts`, and the MCP side through `apps/mcp/src/adapter.ts`. Each rule therefore has one owner in `packages/core/src/editorial/application/`: `article-commands.ts`, `category-commands.ts`, `entity-commands.ts` and `media-commands.ts`. Each service depends only on its repository port (`ArticleRepository`, `CategoryAdminRepository`, `EntityAdminRepository`, `MediaRepository`); the article service also reads entities through the `findEntityBySlug` part of `EntityRepository`.
+
+Batch writes follow one rule: validate every item first, then write the batch in one transaction. `validateEach` checks all items and reports every invalid one by index, so a rejected batch writes nothing. The Supabase adapter then applies a valid batch in a single RPC, for example `save_articles_batch`, `create_categories_batch` or `create_entities_batch`, so the batch either lands completely or not at all. Media is the exception: storage is not a database, so a batch upload that fails halfway removes the files it had already stored.
+
 ### Site tools
 
 1. The reader site loads the page capabilities of the catalogue as plain data and registers them with `document.modelContext.registerTool` only where WebMCP exists.

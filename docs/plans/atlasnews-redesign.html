@@ -43,12 +43,15 @@
 <header>
   <h1>Redesigning the AtlasNews AI Portal</h1>
   <doc-changes new="41" changed="46" deleted="9"></doc-changes>
-  <details class="thread"><summary>Why · 5 requests</summary>
+  <details class="thread"><summary>Why · 8 requests</summary>
     <doc-quote via="doc" from="project goal">completare lo sviluppo. completo del portale ai news e deployarlo su chatgpt sites … profondamente integrato com chatgpt e claude come plugin … deve supportare tutte le nuove funzionalità offerte dai plugin di openAi ed Mcp ultima versione</doc-quote>
     <doc-quote via="prompt" from="Giulio">ovviamente segui i principi kiss dry solid hexagonal e clean architecture . evitiamo monoliti</doc-quote>
     <doc-quote via="prompt" from="Giulio">direi in primis di valutare lo stato attuale . poi facciamo un redesign</doc-quote>
     <doc-quote via="prompt" from="Giulio">tieni conto che mcp tools ed webmcp openai consiglia di evitare duplicazione</doc-quote>
     <doc-quote via="prompt" from="Giulio">come riferimento di sito per news lato ai puoi considerare testingcatalog, ma direi che conviene che nei trovi più di uno come riferimento</doc-quote>
+    <doc-quote via="prompt" from="Giulio" at="2026-10-10">Ovviamente deve essere possibile Full CRUD Patch, Batch completo dei contenuti tramite mcp e webmcp e di conseguenza plugin</doc-quote>
+    <doc-quote via="prompt" from="Giulio" at="2026-10-10">toccherà fare anche praticamente una dashboard di amministrazione, però non facciamo nulla di overkill … Tantissimo faremo tramite MCP</doc-quote>
+    <doc-quote via="prompt" from="Giulio" at="2026-10-10">Usiamo pnpm non npm se serve rifattorizza ed hard cut off</doc-quote>
   </details>
 </header>
 
@@ -372,6 +375,50 @@ return {
       <doc-pin line="3" tone="warn" title="Hosted Claude: not confirmed">The fallback on the last line stays.</doc-pin>
     </doc-code>
   </doc-claim>
+
+  <doc-claim>
+    <p>An agent can create, patch, delete and batch all content.</p>
+    <doc-code title="tools/call admin_update_articles · one batch · sketch" lang="json" caption="A batch is all or nothing. One bad item stops the write.">
+<script type="text/plain">
+{ "name": "admin_update_articles",
+  "arguments": { "items": [
+    { "id": "…a1", "locale": "en", "keyPoints": ["First point", "Second point"] },
+    { "id": "…b2", "locale": "en", "claimStatus": "confirmed", "scheduledFor": null },
+    { "id": "…c3", "locale": "en", "status": "published" }
+  ] } }
+
+// result: nothing is written
+{ "isError": true,
+  "content": [{ "type": "text",
+    "text": "#3 (…c3): a patch cannot publish. Use admin_publish_articles." }] }
+</script>
+      <doc-pin line="4" title="PATCH">A field that is not sent keeps its value.</doc-pin>
+      <doc-pin line="5" title="null clears a field"></doc-pin>
+      <doc-pin line="6" tone="warn" title="Publication has its own tools">They need the publish scope and a confirmation.</doc-pin>
+    </doc-code>
+  </doc-claim>
+
+  <doc-claim>
+    <p>The Studio and the page tools run the same capabilities.</p>
+    <doc-flow caption="Three surfaces. One catalogue. One set of use cases.">
+<script type="text/plain">
+mcp   = MCP endpoint / apps/mcp
++ wm  = Studio site tools / WebMCP
++ st  = Studio screens / entities, categories
++ run = runEditorCapability / apps/web [green]
+cat   = Catalogue / packages/contract
+core  = Use cases / packages/core
+| mcp | wm  | st   |
+| .   | run | .    |
+| .   | cat | core |
+wm -> run : POST
+st -> run : action
+run -> cat : run()
+mcp -> cat : run()
+cat -> core : ports
+</script>
+    </doc-flow>
+  </doc-claim>
 </doc-claim>
 
 <!-- ═════ 4 ═════ -->
@@ -477,7 +524,8 @@ export async function registerSiteTools() {
   <p>Each part deploys alone, and the core imports no framework.</p>
   <doc-tree caption="Three packages hold the rules. Three apps are adapters.">
 <script type="text/plain">
-~ package.json                 # adds "workspaces"
+~ package.json                 # pnpm only; npm refuses to run
++ pnpm-workspace.yaml
 packages/
   + core/                      # domain + use cases, four contexts
   + contract/                  # the capability catalogue
@@ -655,7 +703,7 @@ export interface Capability<I, O> {
     <li>The tables of comments, newsletter and social outbox stay as they are.</li>
     <li>The routes <code>/en</code> and <code>/it</code> stay. English stays the default.</li>
     <li>The tokens of <code>DESIGN.md</code> stay. Only the layout changes.</li>
-    <li>The 42 tool names that exist stay. <code>search</code> and <code>fetch</code> are new.</li>
+    <li>The 42 tool names that exist stay. New tools have new names.</li>
     <li>Pull request 1 stays: MCP App, sidebar app, panel, mentions, briefing form and MCP Events.</li>
     <li>The plugin shows no advertisements and sells no subscriptions.</li>
   </ul>

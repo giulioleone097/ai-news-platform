@@ -29,9 +29,17 @@ function batchResult<A extends string>(action: A, keys: readonly string[]) {
 }
 
 export const categoryCapabilities = [
-  implement(adminListCategories, async (ports, { locale }) => ({
-    categories: (await (await ports.editorial()).listCategories(locale)).map((category) => ({ ...category })),
-  })),
+  implement(adminListCategories, async (ports, { locale }) => {
+    const repository = await ports.editorial();
+    const [listed, records] = await Promise.all([repository.listCategories(locale), repository.listCategoryRecords()]);
+    const byKey = new Map(records.map((record) => [record.translationKey, record]));
+    return {
+      categories: listed.map((category) => {
+        const record = byKey.get(category.translationKey);
+        return { ...category, position: record?.position ?? 0, translations: record?.translations ?? {} };
+      }),
+    };
+  }),
 
   implement(adminGetCategory, async (ports, { translationKey }) => {
     const { repository } = await categories(ports);

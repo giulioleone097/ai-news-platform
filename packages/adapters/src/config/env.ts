@@ -108,6 +108,27 @@ export function getConfiguredMcpUrl() {
   return parseHttpUrl(process.env.NEXT_PUBLIC_MCP_URL);
 }
 
+/** Token for OpenAI's domain verification, served as plain text; one line of printable ASCII without spaces. */
+export function getOpenAiAppsChallenge() {
+  const value = process.env.ATLASNEWS_OPENAI_APPS_CHALLENGE?.trim();
+  return value && /^[\x21-\x7E]{8,256}$/.test(value) ? value : null;
+}
+
+/**
+ * Dedicated origin of the hosted UI (`_meta.ui.domain`), which OpenAI requires for plugins that ship UI.
+ * Only the canonical https origin is accepted: no path, query, fragment, userinfo or port.
+ */
+export function getMcpUiDomain() {
+  const value = process.env.ATLASNEWS_MCP_UI_DOMAIN?.trim().replace(/\/$/, "");
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.origin === value ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Supabase Auth as the OAuth authorization server for the MCP endpoint. Present only when the
  * project URL, the service-role key (used to read the editor's profile) and the public origin of the

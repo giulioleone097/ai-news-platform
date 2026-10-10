@@ -3,6 +3,8 @@ import type { MarkdownEditorCopy } from "./markdown-editor";
 
 export const studioSupplementalCopy = {
   en: {
+    navEntities: "Entities",
+    navCategories: "Categories",
     articlesDescription: "Review every story, language and publishing state.",
     dashboardKicker: "Editorial command centre",
     totalStories: "Total stories",
@@ -96,6 +98,8 @@ export const studioSupplementalCopy = {
     deletePending: "Deleting…",
   },
   it: {
+    navEntities: "Entità",
+    navCategories: "Categorie",
     articlesDescription: "Controlla ogni storia, lingua e stato di pubblicazione.",
     dashboardKicker: "Centro di comando editoriale",
     totalStories: "Storie totali",

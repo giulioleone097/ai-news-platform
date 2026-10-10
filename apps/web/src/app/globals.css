@@ -1782,6 +1782,7 @@ svg {
     --rule-strong: #596168;
     --coral: #f06a58;
     --coral-dark: #ff806e;
+    --success: var(--atlasnews-color-claim-confirmed-ink);
   }
 
   .site-header {

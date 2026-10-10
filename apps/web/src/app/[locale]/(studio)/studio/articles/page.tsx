@@ -47,7 +47,7 @@ export default async function StudioArticlesPage({
       ) : null}
 
       <section className="studio-section" aria-label={messages.studio.articleList}>
-        <ArticleList articles={articles} locale={locale} messages={messages} />
+        <ArticleList articles={articles} bulk locale={locale} messages={messages} />
       </section>
     </>
   );

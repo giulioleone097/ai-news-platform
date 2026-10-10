@@ -3,15 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Building2,
   FileText,
   Gauge,
   Images,
   Mail,
   MessageSquareText,
   Send,
+  Tags,
   type LucideIcon,
 } from "lucide-react";
 import type { Locale, Messages } from "@/i18n";
+import { studioSupplementalCopy } from "./studio-copy";
 
 interface NavigationItem {
   href: string;
@@ -29,9 +32,12 @@ export function StudioNavigation({
 }) {
   const pathname = usePathname();
   const root = `/${locale}/studio`;
+  const { navEntities, navCategories } = studioSupplementalCopy[locale];
   const items: NavigationItem[] = [
     { href: root, label: copy.dashboard, icon: Gauge, exact: true },
     { href: `${root}/articles`, label: copy.articles, icon: FileText },
+    { href: `${root}/entities`, label: navEntities, icon: Building2 },
+    { href: `${root}/categories`, label: navCategories, icon: Tags },
     { href: `${root}/media`, label: copy.media, icon: Images },
     { href: `${root}/distribution`, label: copy.distribution, icon: Send },
     { href: `${root}/newsletter`, label: copy.newsletter, icon: Mail },
