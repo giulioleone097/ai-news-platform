@@ -246,6 +246,7 @@ export class SupabaseCommentRepository implements CommentRepository {
       p_body: input.body,
       p_author_display_name: input.displayName,
       ...actorRpc(input.actor),
+      p_owner_guest_identity_hash: input.actor.guestOwnerHash,
     });
     if (error) throw repositoryError(error);
     const row = requireRows(data, createdCommentRowSchema)[0];

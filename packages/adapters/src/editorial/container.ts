@@ -34,7 +34,7 @@ export function getPublicEditorialRepositories(): EditorialRepositories {
     throw new Error("NEURA_CONTENT_MODE=supabase requires both public Supabase credentials.");
   }
 
-  const repository = new SupabaseEditorialRepository(client);
+  const repository = new SupabaseEditorialRepository(client, { audience: "public" });
   return {
     articles: repository,
     entities: repository,
@@ -67,7 +67,7 @@ export async function getStudioEditorialRepositories(
     throw new Error("NEURA_CONTENT_MODE=supabase requires both public Supabase credentials.");
   }
 
-  const repository = new SupabaseEditorialRepository(client);
+  const repository = new SupabaseEditorialRepository(client, { audience: "editorial" });
   return {
     articles: repository,
     entities: repository,
@@ -80,7 +80,7 @@ export async function getStudioEditorialRepositories(
 
 export function getAdminEditorialRepository(): AdminEditorialRepository {
   const admin = createAdminSupabaseClient();
-  if (admin) return new SupabaseEditorialRepository(admin.client, admin.authorId);
+  if (admin) return new SupabaseEditorialRepository(admin.client, { audience: "editorial", authorId: admin.authorId });
 
   if (isDemoStudioEnabled()) return memoryRepository;
   throw new Error("Admin MCP persistence is not configured.");

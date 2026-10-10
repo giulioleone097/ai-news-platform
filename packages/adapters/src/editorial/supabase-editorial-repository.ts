@@ -102,18 +102,21 @@ const rawArticleSchema = z.object({
     .optional(),
 });
 
-const articleSelect = `
+const publicArticleSelect = `
   id, translation_key, locale, slug, title, excerpt, content, cover_image, cover_alt, status,
   featured, reading_minutes, published_at, scheduled_for, created_at, updated_at,
   category:categories!inner(id, translation_key, locale, slug, name, description),
   author:authors!inner(id, name, role, initials, avatar_url),
-  distribution:social_publications(channel),
   claim_status, key_points, sources,
   entities:article_entities(is_primary, entity:entities(kind, slug, name))
 `;
 
+// Distribution channels are editorial workflow state: social_publications is readable by editors
+// and the service role only, so the public (anon) repository must not embed it.
+const editorialArticleSelect = `${publicArticleSelect}, distribution:social_publications(channel)`;
+
 // An inner join on a second embed keeps the articles of one entity without narrowing `entities`.
-const entityFilterSelect = `${articleSelect}, entity_filter:article_entities!inner(entity:entities!inner(slug))`;
+const entityFilterEmbed = "entity_filter:article_entities!inner(entity:entities!inner(slug))";
 
 const entityRowSchema = z.object({
   id: z.string(),
@@ -265,15 +268,27 @@ function throwIfError(error: { message: string } | null, context: string): asser
   if (error) throw new Error(`${context}: ${error.message}`);
 }
 
+export type EditorialRepositoryOptions = {
+  /** `public` serves the anonymous site and omits editor-only data; `editorial` serves Studio and admin MCP. */
+  audience: "public" | "editorial";
+  /** Author recorded for writes made with a service-role client, which has no signed-in editor. */
+  authorId?: string;
+};
+
 export class SupabaseEditorialRepository
   implements ArticleRepository, EntityRepository, NewsletterRepository, DistributionRepository, MediaRepository
 {
   readonly writable = true;
+  private readonly articleSelect: string;
+  private readonly actorAuthorId: string | undefined;
 
   constructor(
     private readonly client: SupabaseClient,
-    private readonly actorAuthorId?: string,
-  ) {}
+    options: EditorialRepositoryOptions,
+  ) {
+    this.articleSelect = options.audience === "public" ? publicArticleSelect : editorialArticleSelect;
+    this.actorAuthorId = options.authorId;
+  }
 
   private async getActorAuthorId() {
     if (this.actorAuthorId) return this.actorAuthorId;
@@ -295,7 +310,7 @@ export class SupabaseEditorialRepository
     const limit = Math.min(Math.max(input.limit ?? 20, 1), 50);
     let query = this.client
       .from("articles")
-      .select(input.entity ? entityFilterSelect : articleSelect)
+      .select(input.entity ? `${this.articleSelect}, ${entityFilterEmbed}` : this.articleSelect)
       .eq("locale", input.locale)
       .eq("status", "published")
       .lte("published_at", new Date().toISOString())
@@ -337,7 +352,7 @@ export class SupabaseEditorialRepository
   async listForStudio(locale: Locale) {
     const { data, error } = await this.client
       .from("articles")
-      .select(articleSelect)
+      .select(this.articleSelect)
       .eq("locale", locale)
       .order("updated_at", { ascending: false })
       .limit(100);
@@ -348,7 +363,7 @@ export class SupabaseEditorialRepository
   async findBySlug(slug: string, locale: Locale) {
     const { data, error } = await this.client
       .from("articles")
-      .select(articleSelect)
+      .select(this.articleSelect)
       .eq("locale", locale)
       .eq("slug", slug)
       .maybeSingle();
@@ -359,7 +374,7 @@ export class SupabaseEditorialRepository
   async findById(id: string, locale: Locale) {
     const { data, error } = await this.client
       .from("articles")
-      .select(articleSelect)
+      .select(this.articleSelect)
       .eq("locale", locale)
       .eq("id", id)
       .maybeSingle();
@@ -566,6 +581,8 @@ export class SupabaseEditorialRepository
         { count: "exact" },
       )
       .eq("locale", input.locale)
+      // The double opt-in flow also stores `pending` and `suppressed` rows, which this view cannot model.
+      .in("status", newsletterStatuses)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false });
     if (input.status) query = query.eq("status", input.status);

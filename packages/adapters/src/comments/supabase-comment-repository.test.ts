@@ -69,3 +69,40 @@ describe("SupabaseCommentRepository owner feed", () => {
     });
   });
 });
+
+describe("SupabaseCommentRepository guest edits", () => {
+  it("sends the guest owner hash that edit_own_comment requires", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{
+        id: parentId,
+        parent_id: null,
+        body: "Edited.",
+        author_display_name: "Ada",
+        status: "pending",
+        created_at: "2026-08-10T09:00:00.000Z",
+      }],
+      error: null,
+    });
+    const client = { rpc } as unknown as SupabaseClient;
+    const guestHash = "a".repeat(64);
+
+    await new SupabaseCommentRepository(client, client).editOwn({
+      id: parentId,
+      body: "Edited.",
+      displayName: "Ada",
+      actor: {
+        kind: "guest",
+        userId: null,
+        guestHash,
+        guestOwnerHash: guestHash,
+        actorRateHash: "b".repeat(64),
+        networkRateHash: "c".repeat(64),
+      },
+    });
+
+    expect(rpc).toHaveBeenCalledWith("edit_own_comment", expect.objectContaining({
+      p_guest_identity_hash: guestHash,
+      p_owner_guest_identity_hash: guestHash,
+    }));
+  });
+});
