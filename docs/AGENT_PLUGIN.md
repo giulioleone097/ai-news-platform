@@ -1,28 +1,54 @@
 # Agent plugin
 
-NEURA ships one repository-local plugin at `plugins/neura-ai-news` for Codex/OpenAI agent plugins, Claude Code, and GitHub Copilot CLI.
+AtlasNews ships one plugin, `plugins/atlasnews`, for ChatGPT and Codex (OpenAI Agent Plugins), Claude (Claude Code, claude.ai, Cowork) and GitHub Copilot CLI. It declares exactly one MCP server, the `POST /mcp` endpoint of `apps/mcp` ([MCP.md](MCP.md)): anonymous callers read, signed-in editors also get the newsroom tools.
 
-## Connections
+## Files
 
-- `neura-public`: anonymous read-only articles, categories and approved comments at `/api/mcp`
-- `neura-admin`: authenticated editorial, moderation, campaign, media and social-publishing MCP at `/api/mcp/admin`
+| File | Read by | Purpose |
+| --- | --- | --- |
+| `plugin.json` | OpenAI, Copilot CLI | Portable manifest (Agent Plugins schema): identity, `extensions.com.openai` with the listing (`interface`), the onboarding skill, the review test cases and the publication notes |
+| `mcp.json` | OpenAI, Copilot CLI | The one server (`type: streamable-http`) and its auth declaration: `mixed` (anonymous plus OAuth), dynamic client registration, default scope `email` |
+| `.claude-plugin/plugin.json` | Claude | Claude manifest, including the directory listing fields (icon, documentation, support, privacy, terms) |
+| `.mcp.json` | Claude | The same server with `type: http`; Claude finds the sign-in through the server's resource metadata |
+| `skills/onboarding/SKILL.md`, `skills/newsroom/SKILL.md` | all | First-run setup, and the reading and editor workflow |
+| `assets/icon*.svg`, `assets/logo*.svg` | OpenAI, Claude | Composer icon and logo, light and dark, in the brand colours of `DESIGN.md` |
+| `README.md` | Claude directory | What it does, install, connect, sign in (the directory requires at least 40 words) |
+| `../../.agents/plugins/marketplace.json`, `../../.claude-plugin/marketplace.json`, `../../.github/plugin/marketplace.json` | Codex, Claude, Copilot CLI | The three marketplace files at the repository root, each listing `atlasnews` at `./plugins/atlasnews` |
 
-The admin connection reads `NEURA_MCP_ADMIN_API_KEY` from the client environment. The same value must be configured server-side. Keep `SUPABASE_SERVICE_ROLE_KEY` and `NEURA_MCP_ADMIN_AUTHOR_ID` server-only.
+There is no `.codex-plugin/plugin.json`: OpenAI documents it only as a fallback for packages without the inline `extensions.com.openai` object. There are no hooks, apps, commands or agents, which public submission rejects.
 
-Generate a key:
+## Install from this repository
 
-```bash
-openssl rand -hex 32
+```sh
+claude plugin marketplace add <owner>/<repository>
+claude plugin install atlasnews@atlasnews-plugins
+codex plugin marketplace add <owner>/<repository>
 ```
 
-For local use, keep the bundled localhost URLs. For Vercel, replace the origin in `plugins/neura-ai-news/.mcp.json` with the production URL before distributing the plugin.
+Copilot CLI reads `.github/plugin/marketplace.json`. The plugin ships with the local server address `http://localhost:8787/mcp` (`npm run start -w apps/mcp`), so it works against a development checkout.
 
-## Validation
+## Auth
 
-```bash
-npm run plugin:check
+The plugin holds no key and no token. Reading is anonymous. When an editor tool is called the server answers 401 with a Bearer challenge; the host registers itself with Supabase Auth, opens the consent page of the reader site and sends the resulting access token. The scopes `newsroom.*` are decided on the server from the editor's profile, and Supabase can grant only `email`, which is what the declaration lists. `ATLASNEWS_MCP_ADMIN_API_KEY` is a CI and CLI credential for the server and is not part of the plugin.
+
+## Validate
+
+```sh
+npm run plugin:check     # structure, limits, one server, consistency across manifests (runs in npm run check)
+npm run plugin:release   # the same, plus what the stores need from the owner
 ```
 
-The repository includes marketplace catalogs for all three hosts. Follow the host's plugin marketplace command to add this repository, then install `neura-ai-news`.
+`scripts/validate-plugin.mjs` is the only owner of the rules. It checks, among others: names and field limits of the OpenAI manifest (display name and short description at most 30 characters, five positive and three negative review cases whose tools exist in the catalogue, at most three default prompts), brand colours that exist in `DESIGN.md` with the required contrast, square icons of at least 48 px, one server with identical URLs in `mcp.json` and `.mcp.json`, an auth declaration that matches Supabase's dynamic registration setting, no API-key wording, tool names in the skills that exist, a README of at least 40 words, and the marketplace sources (`./plugins/atlasnews`, resolved from the repository root). `claude plugin validate plugins/atlasnews --strict` and `claude plugin validate .` pass as well.
 
-The portable skill keeps consequential actions explicit: article deletion, moderation, subscriber erasure, campaign queueing and social delivery require a direct user request. Queueing is not evidence of delivery; use the outbox/read-back tools for the persisted Resend, LinkedIn, X or WhatsApp receipt. The cross-client bundle is versioned `2.0.0` and validated in CI.
+## Before submission
+
+Release mode fails until the owner supplies, in `plugin.json`, `.claude-plugin/plugin.json`, `mcp.json` and `.mcp.json`:
+
+- the public HTTPS origin of the deployed MCP server (it must never change after publication), in both MCP files;
+- the website, support, privacy policy and terms of service URLs (`interface.websiteURL`, `supportURL`, `privacyPolicyURL`, `termsOfServiceURL`, with `homepage` and the Claude `supportUrl`, `privacyPolicyUrl`, `termsOfServiceUrl` set to the same pages) and the documentation URL (`documentationUrl`);
+- a licence (`license`, an SPDX identifier);
+- the review demo recording (`review.demo_recording_url`).
+
+Those pages and the licence are the owner's to write; the repository does not contain them. Outside the package, the stores also need an OpenAI developer account with a verified publisher and global data residency, the domain-verification token served at `/.well-known/openai-apps-challenge` on the MCP origin, `_meta.ui.domain` on the newsroom UI resource, a reviewer account with an editor profile entered in the portal (never in the package), and a Claude developer-portal submission from a public GitHub repository. See [OPENAI_EXTENSIONS.md](OPENAI_EXTENSIONS.md).
+
+Consequential tools stay explicit: publishing, deletion, moderation, subscriber erasure, campaign queueing and social delivery ask for confirmation, and queueing is not evidence of delivery; the skill tells the assistant to read the outbox back before saying anything was sent.

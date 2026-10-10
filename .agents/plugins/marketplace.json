@@ -1,14 +1,14 @@
 {
-  "name": "neura-plugins",
+  "name": "atlasnews-plugins",
   "interface": {
-    "displayName": "NEURA Plugins"
+    "displayName": "AtlasNews Plugins"
   },
   "plugins": [
     {
-      "name": "neura-ai-news",
+      "name": "atlasnews",
       "source": {
         "source": "local",
-        "path": "./plugins/neura-ai-news"
+        "path": "./plugins/atlasnews"
       },
       "policy": {
         "installation": "AVAILABLE",

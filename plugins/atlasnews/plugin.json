@@ -1,0 +1,116 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "atlasnews",
+  "version": "3.0.0",
+  "description": "Read published AtlasNews stories on AI in English and Italian, and let signed-in editors run the AtlasNews newsroom.",
+  "author": {
+    "name": "AtlasNews"
+  },
+  "homepage": "https://owner-must-supply.invalid/website",
+  "repository": "https://github.com/giulioleone097/ai-news-platform",
+  "keywords": [
+    "news",
+    "ai",
+    "briefing",
+    "newsroom",
+    "editorial"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "AtlasNews",
+        "shortDescription": "AI news and newsroom tools",
+        "longDescription": "AtlasNews is an English and Italian publication on AI. This plugin brings its published stories into the conversation and, for signed-in editors, the newsroom behind them.\n\nAnyone can: list and search published stories, open one story with its key points, sources and claim status (confirmed, rolling out, in test, rumour or analysis), browse categories, read approved comments, build a briefing by topic, and open the AtlasNews newsroom beside the chat. Reading needs no account.\n\nEditors can sign in with their AtlasNews account to list drafts, create and update articles, publish, moderate comments, manage newsletter campaigns and media, and queue social posts. Actions that publish, delete, email or post ask for confirmation first, and email and social delivery are queued and sent by background workers, never inline.\n\nStories are read from the AtlasNews catalogue only; the plugin does not search the open web, show advertisements or process payments.",
+        "developerName": "AtlasNews",
+        "category": "Productivity",
+        "capabilities": [
+          "Read AI news",
+          "Search stories",
+          "Build a briefing",
+          "Read approved comments",
+          "Edit and publish stories",
+          "Moderate comments",
+          "Manage newsletter and social queues"
+        ],
+        "websiteURL": "https://owner-must-supply.invalid/website",
+        "supportURL": "https://owner-must-supply.invalid/support",
+        "privacyPolicyURL": "https://owner-must-supply.invalid/privacy",
+        "termsOfServiceURL": "https://owner-must-supply.invalid/terms",
+        "defaultPrompt": [
+          "Show the latest AI news.",
+          "Build my AI news briefing.",
+          "Search AtlasNews for new model releases."
+        ],
+        "brandColor": "#c64a3b",
+        "brandColorDark": "#f0a497",
+        "composerIcon": "./assets/icon.svg",
+        "composerIconDark": "./assets/icon-dark.svg",
+        "logo": "./assets/logo.svg",
+        "logoDark": "./assets/logo-dark.svg"
+      },
+      "onboardingSkill": "./skills/onboarding/SKILL.md",
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Latest stories",
+              "prompt": "Show me the latest AtlasNews stories about AI agents.",
+              "tools_triggered": "list_articles",
+              "expected_behavior": "Returns published English story summaries with title, claim status and link, and opens the AtlasNews newsroom view where the host supports it."
+            },
+            {
+              "description": "Search across both languages",
+              "prompt": "Search AtlasNews for stories about OpenAI model releases.",
+              "tools_triggered": "search_articles",
+              "expected_behavior": "Returns matching published stories with titles and links; says plainly when nothing matches instead of inventing stories."
+            },
+            {
+              "description": "Read one story with sources",
+              "prompt": "Open the most recent AtlasNews story and tell me its key points and sources.",
+              "tools_triggered": "get_article",
+              "expected_behavior": "Reads the full published story and answers from its key points and sources, naming its claim status."
+            },
+            {
+              "description": "Browse categories in Italian",
+              "prompt": "Which AtlasNews categories can I browse in Italian?",
+              "tools_triggered": "list_categories",
+              "expected_behavior": "Lists the Italian category names and slugs and offers to show the latest stories of one of them."
+            },
+            {
+              "description": "Sign in as an editor and list drafts",
+              "prompt": "List the draft articles in the AtlasNews newsroom.",
+              "tools_triggered": "admin_list_articles",
+              "expected_behavior": "Starts the AtlasNews sign-in, then, once signed in as an editor, lists draft articles with title, locale and status. Reading drafts changes nothing."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Unsupported payment",
+              "prompt": "Charge my credit card for an AtlasNews subscription."
+            },
+            {
+              "description": "Another publisher's news",
+              "prompt": "Summarise today's headlines from the New York Times."
+            },
+            {
+              "description": "Unrelated task",
+              "prompt": "Book me a train from Milan to Rome tomorrow morning."
+            }
+          ]
+        },
+        "demo_recording_url": "https://owner-must-supply.invalid/demo",
+        "commerce": false,
+        "commerce_description": "This plugin does not sell products or process payments."
+      },
+      "publication": {
+        "release_notes": "Initial release: read tools for published stories and comments, the AtlasNews newsroom view, and editor tools behind AtlasNews sign-in.",
+        "translations": {
+          "it-IT": {
+            "subtitle": "Notizie AI e redazione",
+            "description": "AtlasNews è una testata in inglese e italiano sull'intelligenza artificiale. Il plugin porta nella conversazione le storie pubblicate e, per gli editor che accedono con il proprio account, la redazione che le produce."
+          }
+        }
+      }
+    }
+  }
+}

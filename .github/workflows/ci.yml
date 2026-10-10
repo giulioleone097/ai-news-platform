@@ -53,3 +53,6 @@ jobs:
 
       - name: Enforce performance budgets
         run: npm run perf:budget
+
+      - name: Build ChatGPT Sites artifact
+        run: npm run build:sites

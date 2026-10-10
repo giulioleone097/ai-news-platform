@@ -1,0 +1,17 @@
+{
+  "name": "@atlasnews/jobs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/node.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@atlasnews/adapters": "*",
+    "@atlasnews/core": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
+}

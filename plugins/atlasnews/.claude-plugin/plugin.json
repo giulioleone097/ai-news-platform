@@ -1,0 +1,23 @@
+{
+  "name": "atlasnews",
+  "displayName": "AtlasNews",
+  "version": "3.0.0",
+  "description": "Read published AtlasNews stories on AI in English and Italian, and let signed-in editors run the AtlasNews newsroom.",
+  "author": {
+    "name": "AtlasNews"
+  },
+  "homepage": "https://owner-must-supply.invalid/website",
+  "repository": "https://github.com/giulioleone097/ai-news-platform",
+  "keywords": [
+    "news",
+    "ai",
+    "briefing",
+    "newsroom",
+    "editorial"
+  ],
+  "icon": "./assets/logo.svg",
+  "documentationUrl": "https://owner-must-supply.invalid/docs",
+  "supportUrl": "https://owner-must-supply.invalid/support",
+  "privacyPolicyUrl": "https://owner-must-supply.invalid/privacy",
+  "termsOfServiceUrl": "https://owner-must-supply.invalid/terms"
+}

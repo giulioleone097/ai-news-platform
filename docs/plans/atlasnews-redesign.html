@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>AtlasNews Redesign Plan</title>
+<link rel="stylesheet" href="htmlplan.css">
+<script src="htmlplan.js" defer></script>
+<style data-mock-shared>
+  .nw { font: 14px/1.35 Inter, -apple-system, "Segoe UI", sans-serif; color: #f3f5f6; background: #151719; border: 1px solid #2a2e32; border-radius: 12px; overflow: hidden; }
+  .nw .top { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #2a2e32; }
+  .nw .logo { font-weight: 800; letter-spacing: .02em; font-size: 16px; }
+  .nw .lang { font-size: 11px; font-weight: 700; border: 1px solid #3a3f44; border-radius: 99px; padding: 2px 8px; color: #c9ced3; }
+  .nw .ents { display: flex; gap: 6px; padding: 8px 14px; border-bottom: 1px solid #2a2e32; overflow: hidden; white-space: nowrap; }
+  .nw .ents span { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 99px; background: #1f2326; color: #c9ced3; }
+  .nw .ents .on { background: #f3f5f6; color: #151719; }
+  .nw .day { padding: 8px 14px 4px; font-size: 11px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; color: #9aa1a8; }
+  .nw .st { display: grid; grid-template-columns: 44px 1fr; gap: 0 8px; padding: 8px 14px; border-bottom: 1px solid #22262a; }
+  .nw .st .tm { font-size: 12px; color: #9aa1a8; padding-top: 2px; font-variant-numeric: tabular-nums; }
+  .nw .st h3 { margin: 3px 0 0; font-size: 15px; line-height: 1.25; font-weight: 650; }
+  .nw .chip { font-size: 10.5px; font-weight: 750; letter-spacing: .03em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; margin-right: 6px; }
+  .nw .ok { background: #1e3a1c; color: #9fd699; } .nw .ru { background: #43301a; color: #f0c27a; } .nw .te { background: #1b3442; color: #93cbe6; } .nw .an { background: #2a2e32; color: #c9ced3; } .nw .ro { background: #3d211d; color: #f0a497; }
+  .nw .en { font-size: 12px; color: #c9ced3; font-weight: 600; }
+  .nw .pad { padding: 12px 14px; }
+  .nw .tl { display: grid; grid-template-columns: 62px 1fr; gap: 0 10px; padding: 7px 14px; border-left: 2px solid #3a3f44; margin-left: 20px; }
+  .nw .tl small { color: #9aa1a8; } .nw .tl b { font-weight: 650; }
+  .nw .muted { color: #9aa1a8; font-size: 12.5px; }
+  .chat { font: 14px/1.4 -apple-system, "Segoe UI", sans-serif; color: #1c1b19; background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 12px; }
+  .chat .me { margin: 0 0 10px auto; width: fit-content; max-width: 80%; background: #f1f1ee; border-radius: 14px; padding: 7px 12px; }
+  .chat .tool { color: #6b6a65; font-size: 12.5px; margin: 0 0 8px; }
+  .chat .card { border: 1px solid #e3e1da; border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+  .chat .card b { font-weight: 650; } .chat .card small { color: #6b6a65; }
+  .chat .tag { font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: #2d6a26; }
+  .chat .btn { display: inline-block; font-weight: 600; font-size: 13px; padding: 6px 12px; border-radius: 8px; border: 1px solid #d5d3cc; background: #fff; margin-right: 6px; } .chat .btn.pri { background: #1c1b19; color: #fff; border-color: #1c1b19; }
+  .chat .box { border: 1px solid #e3e1da; border-radius: 10px; padding: 10px 12px; }
+  .chat .warn { color: #9a5b00; font-weight: 600; }
+  .pop { font: 13.5px/1.35 -apple-system, "Segoe UI", sans-serif; color: #1c1b19; background: #fff; border: 1px solid #d5d3cc; border-radius: 12px; box-shadow: 0 8px 22px rgba(0,0,0,.14); overflow: hidden; }
+  .pop .bar { padding: 8px 12px; background: #f4f3ef; border-bottom: 1px solid #e3e1da; display: flex; gap: 8px; align-items: center; color: #6b6a65; font-size: 12.5px; } .pop .bar b { color: #1c1b19; }
+  .pop .pill { margin-left: auto; background: #1c1b19; color: #fff; border-radius: 99px; padding: 2px 9px; font-weight: 600; font-size: 12px; }
+  .pop .t { padding: 7px 12px; border-bottom: 1px solid #f0eee8; } .pop .t code { font-weight: 650; } .pop .t small { display: block; color: #6b6a65; }
+  .pop .ro { float: right; font-size: 11px; color: #2d6a26; font-weight: 650; }
+</style>
+<body>
+
+<header>
+  <h1>Redesigning the AtlasNews AI Portal</h1>
+  <doc-changes new="41" changed="46" deleted="9"></doc-changes>
+  <details class="thread"><summary>Why · 5 requests</summary>
+    <doc-quote via="doc" from="project goal">completare lo sviluppo. completo del portale ai news e deployarlo su chatgpt sites … profondamente integrato com chatgpt e claude come plugin … deve supportare tutte le nuove funzionalità offerte dai plugin di openAi ed Mcp ultima versione</doc-quote>
+    <doc-quote via="prompt" from="Giulio">ovviamente segui i principi kiss dry solid hexagonal e clean architecture . evitiamo monoliti</doc-quote>
+    <doc-quote via="prompt" from="Giulio">direi in primis di valutare lo stato attuale . poi facciamo un redesign</doc-quote>
+    <doc-quote via="prompt" from="Giulio">tieni conto che mcp tools ed webmcp openai consiglia di evitare duplicazione</doc-quote>
+    <doc-quote via="prompt" from="Giulio">come riferimento di sito per news lato ai puoi considerare testingcatalog, ma direi che conviene che nei trovi più di uno come riferimento</doc-quote>
+  </details>
+</header>
+
+<main>
+<doc-plan>
+
+<!-- ═════ 1 ═════ -->
+<doc-claim>
+  <p>A reader sees seven stories on the first phone screen.</p>
+  <doc-mock frame="none" w="390" caption="Today this screen shows one story."><template>
+<div class="nw">
+  <div class="top"><span class="logo">ATLASNEWS</span><span class="lang">IT</span></div>
+  <div class="ents" data-ref="ents"><span class="on">Tutto</span><span>ChatGPT</span><span>Claude</span><span>Gemini</span><span>Grok</span><span>Mistral</span></div>
+  <div class="day" data-ref="day">Oggi · 10 ottobre</div>
+  <div class="st" data-ref="row"><span class="tm">10:34</span><div><span class="chip ok" data-ref="status">Confermato</span><span class="en">Modelli aperti</span><h3>Modelli aperti: la nuova corsa all’efficienza</h3></div></div>
+  <div class="st"><span class="tm">09:07</span><div><span class="chip an">Analisi</span><span class="en">AI Act</span><h3>L’Europa riscrive le regole per l’AI</h3></div></div>
+  <div class="st"><span class="tm">08:40</span><div><span class="chip ru">Rumor</span><span class="en">[prodotto]</span><h3>[Titolo di una indiscrezione con screenshot]</h3></div></div>
+  <div class="st"><span class="tm">07:42</span><div><span class="chip ro">In rilascio</span><span class="en">Strumenti</span><h3>Cinque strumenti da provare questa settimana</h3></div></div>
+  <div class="st"><span class="tm">07:15</span><div><span class="chip te">In test</span><span class="en">[modello]</span><h3>[Titolo di una funzione vista in test]</h3></div></div>
+  <div class="day">Ieri · 9 ottobre</div>
+  <div class="st"><span class="tm">18:20</span><div><span class="chip ok">Confermato</span><span class="en">Agenti</span><h3>Gli agenti AI entrano nel lavoro quotidiano</h3></div></div>
+  <div class="st"><span class="tm">16:02</span><div><span class="chip an">Analisi</span><span class="en">[azienda]</span><h3>[Titolo di una analisi con fonti numerate]</h3></div></div>
+</div></template>
+    <doc-pin ref="ents" anchor="tr" title="Entities in the navigation">TestingCatalog puts seven AI products here.</doc-pin>
+    <doc-pin ref="status" anchor="bl" title="Status on each row">The reader knows what is a rumour.</doc-pin>
+    <doc-pin ref="day" anchor="l" title="One feed, grouped by day"></doc-pin>
+  </doc-mock>
+
+  <doc-claim>
+    <p>The home page is one dated feed with one static lead.</p>
+    <doc-code diff file="src/modules/editorial/domain/editorial-service.ts">
+<script type="text/plain">
+@@ -5,6 +5,6 @@
+ export interface HomeFeed {
+-  feature: Article;
+-  latest: Article[];
+-  spotlight: Article[];
++  lead: Article;                                  // one block, no slider
++  days: { date: string; stories: Article[] }[];   // 20 newest, all types
++  nextCursor: ArticleCursor | null;
+   categories: Category[];
+ }
+</script>
+    </doc-code>
+    <doc-claim at="src/app/[locale]/(site)/page.tsx:33">
+      <p><b>page.tsx:33</b> · Home()</p>
+      <doc-code src="src/app/[locale]/(site)/page.tsx" lines="33-47" hl="33-39">
+        <doc-pin line="33" tone="warn" title="The hero fills the phone screen">One story shows before the reader scrolls.</doc-pin>
+      </doc-code>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Each story names its companies, models and products.</p>
+    <doc-schema id="entities" lang="sql" title="supabase/migrations/…_entities.sql · sketch">
+<script type="text/plain">
+create table public.entities (
+  id           uuid primary key default gen_random_uuid(),
+  kind         text not null check (kind in ('company','model','product')),
+  slug         text not null unique check (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
+  name         text not null,
+  official_url text,                                 -- sameAs in JSON-LD
+  parent_id    uuid references public.entities(id)   -- model → company
+);
+create table public.entity_descriptions (            -- one line, as on a tag page
+  entity_id   uuid references public.entities(id) on delete cascade,
+  locale      text not null,
+  description text not null,
+  primary key (entity_id, locale)
+);
+create table public.article_entities (
+  article_id uuid references public.articles(id) on delete cascade,
+  entity_id  uuid references public.entities(id) on delete restrict,
+  is_primary boolean not null default false,         -- the chip on the row
+  primary key (article_id, entity_id)
+);
+</script>
+    </doc-schema>
+    <doc-ask id="content">
+      <p>Which entity types does a story link to?</p>
+      <label><input type="radio" name="content" value="three" checked> Companies, models and products</label>
+      <label><input type="radio" name="content" value="four"> Add people also <small>four facets, as AINews has</small></label>
+      <label><input type="radio" name="content" value="none"> Categories only <small>claims 1.2 and 1.4 go</small></label>
+    </doc-ask>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Each story shows its status, its key points and its sources.</p>
+    <doc-schema id="article" lang="ts" diff title="src/modules/editorial/domain/article.ts · Article" caption="The status words come from TestingCatalog.">
+<script type="text/plain">
+@@ -44,9 +44,13 @@
+   author: Author;
+   featured: boolean;
+   readingMinutes: number;
+   publishedAt: string | null;
+   scheduledFor: string | null;
+   createdAt: string;
+   updatedAt: string;
+   distribution: SocialChannel[];
++  claimStatus: ClaimStatus;   // confirmed | rollout | test | rumour | analysis
++  keyPoints: string[];        // 3 at most, shown before the body
++  sources: SourceNote[];      // { title, url, supports }: what each source proves
++  entities: EntityRef[];      // { kind, slug, name, isPrimary }
+ }
+</script>
+    </doc-schema>
+  </doc-claim>
+
+  <doc-claim>
+    <p>An entity page shows its timeline from rumour to release.</p>
+    <doc-mock frame="none" w="400" caption="No reference site has this page."><template>
+<div class="nw">
+  <div class="pad"><span class="chip an">Modello</span><span class="en">[azienda]</span><h3 style="margin:6px 0 2px;font-size:20px">[Nome del modello]</h3><span class="muted">[Una riga di descrizione] · 14 storie</span></div>
+  <div class="day">[Funzione X]</div>
+  <div class="tl"><small>3 ott</small><div><span class="chip ru">Rumor</span><b>[Prima indiscrezione]</b></div></div>
+  <div class="tl"><small>7 ott</small><div><span class="chip te">In test</span><b>[Vista in test]</b></div></div>
+  <div class="tl" data-ref="last"><small>9 ott</small><div><span class="chip ok">Confermato</span><b>[Annuncio ufficiale]</b></div></div>
+</div></template>
+      <doc-pin ref="last" anchor="r" title="Each step is one story"></doc-pin>
+    </doc-mock>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Agents and feed readers get each page as text.</p>
+    <doc-calls title="Machine surface of the site" caption="TestingCatalog has the first two only.">
+<script type="text/plain">
++ GET /llms.txt                                   @ src/app/llms.txt/route.ts:1          -- streams, entities, feeds
++ GET /{locale}/articles/{slug}.md                @ src/proxy.ts:1                       -- rewrite to a Markdown route
++ GET /{locale}/entities/{slug}.md                @ src/proxy.ts:1
+~ GET /{locale}/feed.xml                          @ src/app/[locale]/feed.xml/route.ts:1 -- adds content:encoded
++ GET /{locale}/feed.json                         @ src/app/[locale]/feed.json/route.ts:1
++ GET /{locale}/entities/{slug}/feed.xml          @ src/app/[locale]/(site)/entities/[slug]/feed.xml/route.ts:1
++ GET /news-sitemap.xml                           @ src/app/sitemap.ts:1
+~ robots()                                        @ src/app/robots.ts:1                  -- names the AI crawlers it allows
+</script>
+    </doc-calls>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ 2 ═════ -->
+<doc-claim>
+  <p>ChatGPT and Claude read the news through one plugin.</p>
+  <doc-mock frame="none" w="440"><template>
+<div class="chat">
+  <div class="me">Cosa è uscito questa settimana sugli agenti AI?</div>
+  <div class="tool" data-ref="tool">AtlasNews · search_articles</div>
+  <div data-ref="cards">
+  <div class="card"><span><span class="tag">Confermato</span> · Agenti</span><small>9 ott</small><b>Gli agenti AI entrano nel lavoro quotidiano</b></div>
+  <div class="card"><span><span class="tag">Analisi</span> · Modelli aperti</span><small>10 ott</small><b>Modelli aperti: la nuova corsa all’efficienza</b></div>
+  </div>
+  <div style="margin-top:8px">Due storie questa settimana. La prima spiega…</div>
+</div></template>
+    <doc-pin ref="tool" anchor="l" title="No sign-in for read tools"></doc-pin>
+    <doc-pin ref="cards" anchor="tr" title="The MCP App of pull request 1"></doc-pin>
+  </doc-mock>
+
+  <doc-claim>
+    <p>One MCP endpoint serves read tools and editor tools.</p>
+    <doc-calls title="One server" caption="OpenAI permits one MCP server for each plugin. Today the plugin has two.">
+<script type="text/plain">
+~ POST /api/mcp                                        @ src/app/api/mcp/route.ts:11
+~   handlePublicMcpRequest(request, ports)             @ src/modules/mcp/http.ts:116
++     **resolvePrincipal**(request, verifier)          @ src/modules/mcp/admin-auth.ts:13      -- anonymous or editor
++     **registerCapabilities**(server, catalogue)      @ src/modules/mcp/public-server.ts:172
+-       server.registerTool(…) × 42, by hand           @ src/modules/mcp/public-server.ts:178  -- the catalogue owns them
+
+- POST /api/mcp/admin                                  @ src/app/api/mcp/admin/route.ts:12     -- second server goes
+-   authorizeAdminMcpRequest(request)                  @ src/modules/mcp/admin-auth.ts:13
+</script>
+    </doc-calls>
+    <doc-claim at="src/modules/mcp/public-server.ts:172">
+      <p><b>public-server.ts:172</b> · createPublicMcpServer()</p>
+      <doc-code src="src/modules/mcp/public-server.ts" lines="172-196" hl="178-195">
+        <doc-pin line="178" title="One of 42 registrations">Tool names live in three places today.</doc-pin>
+      </doc-code>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p><code>search</code> and <code>fetch</code> make the news a ChatGPT knowledge source.</p>
+    <doc-code title="packages/contract/src/knowledge.ts · sketch" lang="ts" caption="Each result has an absolute URL.">
+<script type="text/plain">
+export const search = defineCapability({
+  name: "search",
+  title: "Search AtlasNews",
+  description: "Search published AI news. Returns ids, titles and URLs.",
+  input: z.object({ query: z.string().trim().min(2).max(160) }),
+  output: z.object({ results: z.array(z.object({
+    id: z.string(), title: z.string(), url: z.url() })) }),
+  annotations: readOnly,
+  scopes: [],
+  surfaces: ["mcp"],
+  run: async ({ articles, site }, { query }) => {
+    const page = await articles.listPublished({ locale: "en", query, limit: 10 });
+    return { results: page.items.map((a) => ({
+      id: `${a.locale}/${a.slug}`, title: a.title,
+      url: site.absolute(`/${a.locale}/articles/${a.slug}`) })) };
+  },
+});
+// fetch({ id }) → { id, title, text, url, metadata }: the story as Markdown
+</script>
+    </doc-code>
+  </doc-claim>
+
+  <doc-claim>
+    <p>The server answers <code>2026-07-28</code> clients and older clients.</p>
+    <doc-code src="src/modules/mcp/http.ts" lines="131-134" hl="132" caption="This code exists and stays.">
+      <doc-pin line="132" tone="ok" title="Old clients get the stateless path">The Claude docs for hosted connectors name 2025-11-25 at most.</doc-pin>
+    </doc-code>
+  </doc-claim>
+
+  <doc-claim>
+    <p>ChatGPT can watch one entity for new stories.</p>
+    <doc-schema id="eventfilter" lang="json" diff title="article.published · inputSchema of events/list" caption="Pull request 1 has the event and two filters. This plan adds two.">
+<script type="text/plain">
+ {
+   "type": "object",
+   "properties": {
+     "locale":   { "type": "string", "enum": ["en", "it"] },
+     "category": { "type": "string" },
++    "entity":   { "type": "string", "description": "Entity slug to watch." },
++    "claim_status": { "type": "string",
++      "enum": ["confirmed", "rollout", "test", "rumour", "analysis"] }
+   },
+   "additionalProperties": false
+ }
+</script>
+    </doc-schema>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ 3 ═════ -->
+<doc-claim>
+  <p>An editor runs the newsroom from the chat after one sign-in.</p>
+  <doc-machine name="link" caption="Read tools work in each state. Write tools work only in “linked”.">
+<script type="text/plain">
+machine link initial anonymous
+state anonymous   # No token. Read tools answer.
+state linking     # The host shows the sign-in page.
+state linked      # The token has editor scopes.
+state expired     # The token is too old.
+
+| anonymous | linking | linked |
+| .         | expired | .      |
+
+anonymous -write-> linking   : 401
+linking   -consent-> linked  : token
+linking   -deny-> anonymous  : cancel
+linked    -age-> expired     : exp
+expired   -refresh-> linked  : refresh
+linked    -revoke-> anonymous : revoke
+</script>
+    <div data-state="anonymous"><doc-mock frame="none" w="400"><template><div class="chat"><div class="me">Mostra le ultime notizie AI</div><div class="tool">AtlasNews · list_articles</div><div class="card"><span><span class="tag">Confermato</span> · Agenti</span><small>9 ott</small><b>Gli agenti AI entrano nel lavoro quotidiano</b></div></div></template></doc-mock></div>
+    <div data-state="linking"><doc-mock frame="none" w="400"><template><div class="chat"><div class="me">Pubblica la bozza sugli agenti</div><div class="box"><b>Collega AtlasNews</b><div style="color:#6b6a65;margin:4px 0 8px">Accedi con il tuo account di redazione per usare gli strumenti di scrittura.</div><span class="btn pri">Accedi</span><span class="btn">Annulla</span></div></div></template></doc-mock></div>
+    <div data-state="linked"><doc-mock frame="none" w="400"><template><div class="chat"><div class="me">Pubblica la bozza sugli agenti</div><div class="box"><b>Pubblicare “Gli agenti AI entrano nel lavoro quotidiano” su /it?</b><div style="margin-top:8px"><span class="btn pri">Pubblica ora</span><span class="btn">Annulla</span></div></div></div></template></doc-mock></div>
+    <div data-state="expired"><doc-mock frame="none" w="400"><template><div class="chat"><div class="box"><span class="warn">Sessione scaduta.</span> AtlasNews rinnova l’accesso e ripete la richiesta.</div></div></template></doc-mock></div>
+  </doc-machine>
+
+  <doc-claim>
+    <p>OAuth 2.1 replaces the shared API key.</p>
+    <doc-code title="apps/mcp/src/principal.ts · sketch" lang="ts" caption="A public plugin cannot use an API key.">
+<script type="text/plain">
+export async function resolvePrincipal(
+  request: Request,
+  verifier: AccessTokenVerifier,        // a port: the adapter checks sig, iss, aud, exp
+): Promise<Principal> {
+  const match = /^Bearer\s+([^\s]+)$/i.exec(request.headers.get("authorization") ?? "");
+  if (!match) return anonymous;         // read tools stay open
+  const claims = await verifier.verify(match[1], { audience: MCP_RESOURCE });
+  if (!claims) throw new Unauthorized(); // 401 + WWW-Authenticate: resource_metadata="…"
+  return { kind: "editor", sub: claims.sub, scopes: claims.scopes };
+}
+</script>
+      <doc-pin line="8" title="Claude needs a 401 here">A 200 with an error does not start the sign-in.</doc-pin>
+    </doc-code>
+    <doc-ask id="authz">
+      <p>Which server gives the OAuth tokens?</p>
+      <label><input type="radio" name="authz" value="supabase" checked> Supabase Auth <small>the editors are there; a spike must prove CIMD and PKCE</small></label>
+      <label><input type="radio" name="authz" value="vendor"> A hosted identity service <small>one more vendor and one more user list</small></label>
+      <label><input type="radio" name="authz" value="key"> Keep the API key <small>no public directory; claim 3 goes</small></label>
+    </doc-ask>
+    <doc-claim at="src/modules/mcp/admin-auth.ts:13">
+      <p><b>admin-auth.ts:13</b> · authorizeAdminMcpRequest()</p>
+      <doc-code src="src/modules/mcp/admin-auth.ts" lines="13-35" hl="31">
+        <doc-pin line="31" tone="warn" title="One key for all editors">No user, no scope and no expiry.</doc-pin>
+      </doc-code>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Each host finds the sign-in server from one document.</p>
+    <doc-schema id="prm" lang="json" title="GET /.well-known/oauth-protected-resource · sketch" caption="Claude uses only the first authorization server.">
+<script type="text/plain">
+{
+  "resource": "https://mcp.<domain>/mcp",
+  "authorization_servers": ["https://<project>.supabase.co/auth/v1"],
+  "scopes_supported": ["newsroom.read", "newsroom.write", "newsroom.publish"],
+  "bearer_methods_supported": ["header"]
+}
+</script>
+    </doc-schema>
+  </doc-claim>
+
+  <doc-claim>
+    <p>A tool that publishes or deletes asks the editor first.</p>
+    <doc-code title="publish_article, first round · sketch" lang="ts" caption="The briefing form of pull request 1 uses the same MRTR pattern.">
+<script type="text/plain">
+// tools/call publish_article: the arguments have no answer yet
+return {
+  resultType: "input_required",
+  inputRequests: { confirm: { method: "elicitation/create", params: {
+    mode: "form",
+    message: `Publish “${article.title}” on /${article.locale}?`,
+    requestedSchema: { type: "object", required: ["confirm"],
+      properties: { confirm: { type: "boolean", title: "Publish now" } } },
+  } } },
+  requestState: seal({ tool: "publish_article", id: article.id }),
+};
+// A host without MRTR sends confirm: true in the arguments, as it does today.
+</script>
+      <doc-pin line="3" tone="warn" title="Hosted Claude: not confirmed">The fallback on the last line stays.</doc-pin>
+    </doc-code>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ 4 ═════ -->
+<doc-claim>
+  <p>An agent in the browser uses the open page through site tools.</p>
+  <doc-mock frame="none" w="420" caption="The tools exist only while the page is open."><template>
+<div class="pop">
+  <div class="bar"><b>atlasnews…/it</b><span class="pill" data-ref="pill">Site tools · 5</span></div>
+  <div class="t"><span class="ro">read</span><code>search_articles</code><small>Search published stories. The page shows the results.</small></div>
+  <div class="t" data-ref="filter"><code>filter_feed</code><small>Set the entity, the status and the dates of the feed.</small></div>
+  <div class="t"><code>open_article</code><small>Open one story on this site.</small></div>
+  <div class="t"><span class="ro">read</span><code>read_open_article</code><small>Read the story that the reader sees now.</small></div>
+  <div class="t"><code>save_article</code><small>Save one story in the bookmarks of this browser.</small></div>
+</div></template>
+    <doc-pin ref="pill" anchor="tr" title="WebMCP in the ChatGPT desktop app"></doc-pin>
+    <doc-pin ref="filter" anchor="l" title="The reader and the agent see the same feed"></doc-pin>
+  </doc-mock>
+
+  <doc-claim>
+    <p>One catalogue defines each capability one time.</p>
+    <doc-code title="packages/contract/src/editorial.ts · sketch" lang="ts">
+<script type="text/plain">
+export const searchArticles = defineCapability({
+  name: "search_articles",
+  title: "Search published AI news",
+  description: "Search published stories by title, excerpt, body and entity.",
+  input: z.object({
+    locale: localeSchema,
+    query: z.string().trim().min(2).max(160),
+    limit: z.number().int().min(1).max(25).default(10),
+  }),
+  output: z.object({ items: z.array(storySummary) }),
+  annotations: { readOnlyHint: true, destructiveHint: false,
+                 idempotentHint: true, openWorldHint: false },
+  scopes: [],                           // anonymous
+  surfaces: ["mcp", "page"],
+  ui: NEWSROOM_APP_URI,                 // the MCP App of pull request 1
+  run: async ({ articles }, input) => {
+    const page = await articles.listPublished(input);
+    return { items: page.items.map(toStorySummary) };
+  },
+});
+</script>
+      <doc-pin line="14" title="Two surfaces, one definition"></doc-pin>
+    </doc-code>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Two thin adapters read the catalogue: MCP and WebMCP.</p>
+    <doc-flow caption="No adapter holds a tool name or a schema of its own.">
+<script type="text/plain">
++ cat = Capability catalogue / packages/contract [green]
+core  = Use cases and ports / packages/core
++ mcp = MCP adapter / apps/mcp
++ page = WebMCP adapter / site-tools.ts
+http  = HTTP routes / apps/web
+db    = Supabase [db]
+| mcp | cat  | page |
+| .   | core | http |
+| .   | db   | .    |
+mcp -> cat : reads
+page -> cat : reads
+mcp -> core : run()
+page -> http : fetch
+http -> core : run()
+core -> db : ports
+</script>
+    </doc-flow>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Site tools cover only the work that needs the open page.</p>
+    <doc-code title="apps/web/src/site-tools.ts · sketch" lang="ts" caption="ChatGPT reads no tools from HTML attributes or an iframe.">
+<script type="text/plain">
+"use client";
+import { pageCapabilities } from "@atlasnews/contract/page"; // text + JSON Schema, no server code
+
+const execute: Record<string, (input: never) => Promise<unknown>> = {
+  search_articles:   (i) => feed.search(i),        // GET /api/articles, then show the list
+  filter_feed:       (i) => feed.setFilter(i),
+  open_article:      (i) => router.push(`/${i.locale}/articles/${i.slug}`),
+  read_open_article: ()  => article.current(),
+  save_article:      (i) => bookmarks.add(i.id),
+};
+
+export async function registerSiteTools() {
+  if (typeof document.modelContext?.registerTool !== "function") return;
+  for (const c of pageCapabilities) {
+    await document.modelContext.registerTool({
+      name: c.name, description: c.description, inputSchema: c.inputSchema,
+      annotations: c.annotations, execute: execute[c.name],
+    });
+  }
+}
+</script>
+      <doc-pin line="13" title="A browser without WebMCP sees no change"></doc-pin>
+    </doc-code>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ 5 ═════ -->
+<doc-claim>
+  <p>Each part deploys alone, and the core imports no framework.</p>
+  <doc-tree caption="Three packages hold the rules. Three apps are adapters.">
+<script type="text/plain">
+~ package.json                 # adds "workspaces"
+packages/
+  + core/                      # domain + use cases, four contexts
+  + contract/                  # the capability catalogue
+  + adapters/                  # Supabase repositories, Resend, LinkedIn, X, WhatsApp
+apps/
+  + web/                       # Next.js: reader site and Studio → ChatGPT Sites
+  + mcp/                       # one fetch handler: MCP, OAuth metadata, UI resources
+  + jobs/                      # outbox workers and event delivery
+~ plugins/atlasnews/           # one portable plugin package
+- vercel.json                  # each app has its own host config
+</script>
+  </doc-tree>
+
+  <doc-claim>
+    <p>The reader site runs on ChatGPT Sites.</p>
+    <doc-tree caption="Sites takes these three build files.">
+<script type="text/plain">
+apps/web/
+  + .openai/hosting.json       # { "project_id": "…", "d1": null, "r2": null }
+  ~ next.config.ts             # the Vercel-only guard becomes a guard for each host
+  dist/                        # what Sites takes
+    client/index.html
+    server/index.js            # export default { fetch(request, env) }
+    .openai/hosting.json
+</script>
+    </doc-tree>
+    <doc-note tone="risk"><strong>Risk</strong> No OpenAI page says that Next.js runs on Sites. Sites permits no raw TCP, so Supabase stays on HTTPS.</doc-note>
+    <doc-ask id="sites">
+      <p>How does the reader site get to ChatGPT Sites?</p>
+      <label><input type="radio" name="sites" value="adapt" checked> Keep Next.js and adapt its build <small>one spike first; if it fails, use the next option</small></label>
+      <label><input type="radio" name="sites" value="starter"> Write the reader site again on the Sites starter <small>Vite, React, one Worker; Studio stays on Next.js</small></label>
+      <label><input type="radio" name="sites" value="vercel"> Stay on Vercel <small>claim 5.1 goes; the project goal changes</small></label>
+    </doc-ask>
+    <doc-claim at="next.config.ts:12">
+      <p><b>next.config.ts:12</b> · the Vercel guard</p>
+      <doc-code src="next.config.ts" lines="12-26" hl="12">
+        <doc-pin line="12" title="Only Vercel builds get these checks"></doc-pin>
+      </doc-code>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>The MCP server keeps one origin for all time.</p>
+    <doc-schema id="mcpjson" lang="json" title="plugins/atlasnews/mcp.json · sketch" caption="Today the plugin has two localhost servers.">
+<script type="text/plain">
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "atlasnews": {
+      "type": "streamable-http",
+      "url": "https://mcp.<domain>/mcp",
+      "extensions": { "com.openai": { "auth": {
+        "type": "mixed",
+        "client": { "mode": "cimd" },
+        "resource": "https://mcp.<domain>/mcp",
+        "defaultScopes": ["newsroom.write"]
+      } } }
+    }
+  }
+}
+</script>
+    </doc-schema>
+    <doc-note tone="warn"><strong>Rule</strong> For OpenAI, a new origin is a new plugin.</doc-note>
+    <doc-ask id="mcphost">
+      <p>Where does the MCP server run?</p>
+      <label><input type="radio" name="mcphost" value="own" checked> On its own subdomain <small>the public directories of OpenAI and Claude need this</small></label>
+      <label><input type="radio" name="mcphost" value="site"> In the Site <small>Sites makes the plugin; workspace use only</small></label>
+      <label><input type="radio" name="mcphost" value="both"> In the two places <small>the same handler; two plugins to keep</small></label>
+    </doc-ask>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Outbox workers run on a schedule outside the site.</p>
+    <doc-calls title="Schedules" caption="The database starts each run.">
+<script type="text/plain">
+- crons: 3 paths, each minute                       @ vercel.json:30
+~ /api/internal/social-outbox                       @ src/app/api/internal/social-outbox/route.ts:1          -- moves to apps/jobs
+~ /api/internal/newsletter-outbox                   @ src/app/api/internal/newsletter-outbox/route.ts:1      -- moves to apps/jobs
+~ /api/internal/comment-notifications               @ src/app/api/internal/comment-notifications/route.ts:1  -- moves to apps/jobs
+~ /api/internal/mcp-events                          @ src/app/api/internal/mcp-events/route.ts:1             -- from pull request 1; moves to apps/jobs
++ cron.schedule(…, net.http_post(jobs_url))         @ supabase/migrations/20261011090000_job_schedule.sql:1  -- pg_cron in Supabase
+</script>
+    </doc-calls>
+  </doc-claim>
+
+  <doc-claim>
+    <p>A lint rule stops a core import of Next.js or Supabase.</p>
+    <doc-code diff file="eslint.config.mjs" caption="Today only a document states this rule.">
+<script type="text/plain">
+@@ -12,5 +12,14 @@
+     "out/**",
+     "build/**",
+     "next-env.d.ts",
+   ]),
++  {
++    files: ["packages/core/**", "packages/contract/**"],
++    rules: {
++      "no-restricted-imports": ["error", { patterns: [
++        "next", "next/*", "react", "server-only", "@supabase/*",
++        "@atlasnews/adapters", "**/infrastructure/*", "@/*",
++      ] }],
++    },
++  },
+ ]);
+</script>
+    </doc-code>
+    <doc-claim at="src/modules/comments/application/admin-tools.ts:10">
+      <p><b>admin-tools.ts:10</b> · a use case imports infrastructure</p>
+      <doc-code src="src/modules/comments/application/admin-tools.ts" lines="8-12" hl="10">
+        <doc-pin line="10" tone="warn" title="The rule finds this line">Five domain files also import <code>@/i18n</code>.</doc-pin>
+      </doc-code>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>One plugin package serves ChatGPT, Codex and Claude.</p>
+    <doc-tree>
+<script type="text/plain">
+plugins/atlasnews/
+  ~ plugin.json                  # Agent Plugins schema + extensions["com.openai"]
+  + mcp.json                     # OpenAI and Codex: type "streamable-http"
+  ~ .mcp.json                    # Claude Code: type "http", the same URL
+  ~ .claude-plugin/plugin.json
+  - .codex-plugin/plugin.json    # the root manifest replaces it
+  + LICENSE                      # Claude checks this
+  ~ README.md                    # 40 words or more: Claude checks this
+  ~ assets/                      # adds logo and screenshots; light and dark
+  skills/
+    ~ newsroom/SKILL.md          # was neura-editorial; OAuth replaces the key text
+    onboarding/SKILL.md          # from pull request 1
+~ scripts/validate-plugin.mjs    # one server, public HTTPS URL, review fields
+</script>
+    </doc-tree>
+    <doc-note tone="info"><strong>Review</strong> OpenAI asks for four URLs, eight test prompts, one demo video and one test account.</doc-note>
+    <doc-ask id="brand">
+      <p>Which name goes on the site and in the plugin?</p>
+      <label><input type="radio" name="brand" value="atlasnews" checked> AtlasNews <small>the project name; the code changes from NEURA</small></label>
+      <label><input type="radio" name="brand" value="neura"> NEURA <small>the name in the code today; no rename</small></label>
+      <label>Other name <input type="text" name="brandother" placeholder="30 characters at most"></label>
+    </doc-ask>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ shared · not changing ═════ -->
+<doc-claim aux="shared">
+  <p>Shared: the <code>Capability</code> record that each adapter reads.</p>
+  <doc-schema id="capability" lang="ts" title="packages/contract/src/capability.ts · sketch">
+<script type="text/plain">
+export interface Capability<I, O> {
+  name: string;                   // verb_noun, 64 characters at most, unique
+  title: string;
+  description: string;            // no words about other plugins
+  input: z.ZodType<I>;            // one schema for MCP, WebMCP and HTTP
+  output: z.ZodType<O>;
+  annotations: {                  // OpenAI wants each one as a true or false value
+    readOnlyHint: boolean;
+    destructiveHint: boolean;
+    idempotentHint: boolean;
+    openWorldHint: boolean;
+  };
+  scopes: Scope[];                // [] = anonymous
+  surfaces: ("mcp" | "page")[];
+  confirm?: (input: I) => string; // the question of claim 3.3
+  ui?: `ui://${string}`;          // MCP Apps resource
+  run(ctx: Ports & { principal: Principal }, input: I): Promise<O>;
+}
+</script>
+  </doc-schema>
+</doc-claim>
+
+<doc-claim aux="scope">
+  <p>Not changing: the business rules, the stored data and the routes.</p>
+  <ul>
+    <li>The domain rules and their 187 tests stay. Files move. Their content stays.</li>
+    <li>The tables of comments, newsletter and social outbox stay as they are.</li>
+    <li>The routes <code>/en</code> and <code>/it</code> stay. English stays the default.</li>
+    <li>The tokens of <code>DESIGN.md</code> stay. Only the layout changes.</li>
+    <li>The 42 tool names that exist stay. <code>search</code> and <code>fetch</code> are new.</li>
+    <li>Pull request 1 stays: MCP App, sidebar app, panel, mentions, briefing form and MCP Events.</li>
+    <li>The plugin shows no advertisements and sells no subscriptions.</li>
+  </ul>
+</doc-claim>
+
+</doc-plan>
+</main>
+</body>
+</html>

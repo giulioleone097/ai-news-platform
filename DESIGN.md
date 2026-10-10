@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: NEURA
+name: AtlasNews
 description: Contemporary product-led editorial design for an international English-first AI publication and bilingual newsroom.
 colors:
   primary: "#151719"
@@ -16,6 +16,16 @@ colors:
   warning: "#c17a10"
   info: "#23759a"
   white: "#ffffff"
+  claim-confirmed: "#1e3a1c"
+  claim-confirmed-ink: "#9fd699"
+  claim-rollout: "#3d211d"
+  claim-rollout-ink: "#f0a497"
+  claim-test: "#1b3442"
+  claim-test-ink: "#93cbe6"
+  claim-rumour: "#43301a"
+  claim-rumour-ink: "#f0c27a"
+  claim-analysis: "#2a2e32"
+  claim-analysis-ink: "#c9ced3"
 typography:
   display-xl-mobile:
     fontFamily: Inter Variable
@@ -132,11 +142,36 @@ components:
   status-info:
     backgroundColor: "{colors.info}"
     textColor: "{colors.white}"
+  claim-chip-confirmed:
+    backgroundColor: "{colors.claim-confirmed}"
+    textColor: "{colors.claim-confirmed-ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.sm}"
+  claim-chip-rollout:
+    backgroundColor: "{colors.claim-rollout}"
+    textColor: "{colors.claim-rollout-ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.sm}"
+  claim-chip-test:
+    backgroundColor: "{colors.claim-test}"
+    textColor: "{colors.claim-test-ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.sm}"
+  claim-chip-rumour:
+    backgroundColor: "{colors.claim-rumour}"
+    textColor: "{colors.claim-rumour-ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.sm}"
+  claim-chip-analysis:
+    backgroundColor: "{colors.claim-analysis}"
+    textColor: "{colors.claim-analysis-ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.sm}"
 ---
 
 ## Overview
 
-NEURA is a contemporary AI intelligence product with editorial depth. The public experience must feel decisive, visual, fast, and authored without borrowing the visual codes of a printed newspaper. The studio translates the same identity into a dense newsroom tool without becoming a generic SaaS dashboard.
+AtlasNews is a contemporary AI intelligence product with editorial depth. The public experience must feel decisive, visual, fast, and authored without borrowing the visual codes of a printed newspaper. The studio translates the same identity into a dense newsroom tool without becoming a generic SaaS dashboard.
 
 Mobile is the base composition. Desktop adds columns and rails; it never changes content hierarchy. Public pages render useful HTML before client JavaScript.
 
@@ -144,11 +179,11 @@ Mobile is the base composition. Desktop adds columns and rails; it never changes
 
 The neutral palette is cool and precise, moving from silver-grey canvas to clean raised surfaces. Ink carries all primary text and large surfaces. Coral is the only expressive accent: primary actions, focus, selected state, and small editorial signals. Muted and rule tokens create hierarchy without glow or decorative gradients.
 
-Semantic colors appear only for operational status inside Studio. They never decorate public editorial surfaces.
+Semantic colors appear for operational status inside Studio. On public surfaces the only added colors are the five claim chips, which tell a reader how firmly a story stands: confirmed, rolling out, in test, rumour, analysis. Each chip is a dark pill with light text and keeps at least 4.5:1 contrast on both the light and the dark page; it always carries its word, never color alone. Nothing else on a public page uses them.
 
 ## Typography
 
-Barlow Condensed is reserved for the NEURA wordmark. Inter Variable owns display headlines, decks, navigation, metadata, controls, and Studio chrome. Source Serif 4 Variable is confined to long-form article body copy.
+Barlow Condensed is reserved for the wordmark when it is used. Inter Variable owns display headlines, decks, navigation, metadata, controls, and Studio chrome. Source Serif 4 Variable is confined to long-form article body copy.
 
 Display sizes scale fluidly between the mobile and desktop tokens. Reading measure stays between 58 and 72 characters. Control type is always explicit; browser-default typography is prohibited.
 
@@ -156,7 +191,7 @@ Display sizes scale fluidly between the mobile and desktop tokens. Reading measu
 
 The maximum public shell is 1536px. Gutters are 20px on mobile, 32px on tablet, and 40px on desktop. Public pages use asymmetric product grids, contained media, structured streams, and a small number of raised modules. Cards exist only where containment clarifies hierarchy.
 
-The home hierarchy is statement, image, feature copy, latest rail, spotlight, briefing, topics. Studio uses navigation rail, article list, and inspector; these become drawer, list, and full-screen sheet on mobile. Interactive targets are at least 44px.
+The home hierarchy is header, entity navigation, status filter, one static lead story, then one dated stream grouped by day, with the briefing and topics after it. At least seven stories show on a 375 by 812 phone before any scroll. Studio uses navigation rail, article list, and inspector; these become drawer, list, and full-screen sheet on mobile. Interactive targets are at least 44px.
 
 ## Elevation & Depth
 
@@ -168,7 +203,7 @@ Controls use 8px rounding, product modules use 12px, and editorial media uses 16
 
 ## Components
 
-Header contains brand, essential navigation, search, and one account action. Feature stories use one dominant local image, category, headline, deck, primary read action, save, and share. Story feeds read as compact product streams with stable media, clear metadata, and deliberate hover states.
+Header contains brand, essential navigation, search, and one account action. Feature stories use one dominant local image, category, headline, deck, primary read action, save, and share. Story feeds read as compact product streams: time, claim chip, primary entity and headline on every row, a thumbnail only on the lead, and deliberate hover states. The product pages (entities) show a timeline from oldest to newest so a reader sees a rumour become a release.
 
 Newsletter is one near-black band with a coral mail block and a single email action. Studio uses a real table/list and inspector; metrics remain secondary. Social distribution always offers preview and deliberate publish state, never silent automatic posting.
 

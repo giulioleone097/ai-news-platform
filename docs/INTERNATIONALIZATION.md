@@ -1,6 +1,6 @@
 # Internationalization
 
-NEURA is English-first and explicitly localized. English is the default content language; Italian has equal route and content support.
+AtlasNews is English-first and explicitly localized. English is the default content language; Italian has equal route and content support.
 
 ## Routing contract
 
@@ -28,8 +28,8 @@ The locale switcher resolves translated peers through shared translation identit
 Message catalogs live in:
 
 ```text
-src/i18n/messages/en.ts
-src/i18n/messages/it.ts
+apps/web/src/i18n/messages/en.ts
+apps/web/src/i18n/messages/it.ts
 ```
 
 English defines the message shape. Each additional catalog must satisfy the same TypeScript contract, keeping navigation, validation, empty states, studio copy, and accessibility labels complete.
@@ -64,13 +64,13 @@ Set `NEXT_PUBLIC_SITE_URL` to the canonical HTTPS origin before build so absolut
 
 ## MCP
 
-All public MCP tools accept `locale`; it defaults to `en`. Tool output includes locale and locale-prefixed paths. A missing article in the requested locale returns a not-found tool error rather than falling back.
+Every read tool accepts `locale`; it defaults to `en`. Tool output includes locale and locale-prefixed paths. A missing article in the requested locale returns a not-found tool error rather than falling back. The words of a story (claim statuses, entity kinds, section titles) come from one table in `packages/core/src/editorial/application/story-labels.ts`, which the site, the Markdown export, the feeds and the MCP presenters all read.
 
 ## Add a locale
 
 Adding a locale is a code-and-content change, not configuration-only:
 
-1. Add the locale to `src/i18n/index.ts` and provide a complete message catalog.
+1. Add the locale to `packages/core/src/locale.ts` and provide a complete message catalog in `apps/web/src/i18n/messages`.
 2. Add locale-aware date/time formatting and UI tests.
 3. Add translated categories with the existing `translation_key` values.
 4. Add translated articles with locale-specific slugs and alt text.

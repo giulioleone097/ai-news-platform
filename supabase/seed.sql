@@ -350,6 +350,91 @@ on conflict (translation_key, locale) do update set
   published_at = excluded.published_at,
   updated_at = excluded.updated_at;
 
+insert into public.entities (id, kind, slug, name, official_url)
+values
+  ('ed1c7e10-0000-4000-8000-000000000001', 'company', 'anthropic', 'Anthropic', 'https://www.anthropic.com'),
+  ('ed1c7e10-0000-4000-8000-000000000002', 'company', 'openai', 'OpenAI', 'https://openai.com'),
+  ('ed1c7e10-0000-4000-8000-000000000003', 'company', 'google', 'Google', 'https://ai.google'),
+  ('ed1c7e10-0000-4000-8000-000000000004', 'company', 'microsoft', 'Microsoft', 'https://www.microsoft.com'),
+  ('ed1c7e10-0000-4000-8000-000000000005', 'company', 'mistral-ai', 'Mistral AI', 'https://mistral.ai')
+on conflict (slug) do update set
+  kind = excluded.kind,
+  name = excluded.name,
+  official_url = excluded.official_url;
+
+insert into public.entities (id, kind, slug, name, official_url, parent_id)
+values
+  ('ed1c7e10-0000-4000-8000-000000000011', 'product', 'claude', 'Claude', 'https://claude.ai',
+    (select id from public.entities where slug = 'anthropic')),
+  ('ed1c7e10-0000-4000-8000-000000000012', 'product', 'chatgpt', 'ChatGPT', 'https://chatgpt.com',
+    (select id from public.entities where slug = 'openai')),
+  ('ed1c7e10-0000-4000-8000-000000000013', 'product', 'gemini', 'Gemini', 'https://gemini.google.com',
+    (select id from public.entities where slug = 'google')),
+  ('ed1c7e10-0000-4000-8000-000000000014', 'product', 'copilot', 'Copilot', 'https://copilot.microsoft.com',
+    (select id from public.entities where slug = 'microsoft')),
+  ('ed1c7e10-0000-4000-8000-000000000015', 'product', 'le-chat', 'Le Chat', 'https://chat.mistral.ai',
+    (select id from public.entities where slug = 'mistral-ai'))
+on conflict (slug) do update set
+  kind = excluded.kind,
+  name = excluded.name,
+  official_url = excluded.official_url,
+  parent_id = excluded.parent_id;
+
+insert into public.entity_descriptions (entity_id, locale, description)
+select entity.id, description.locale, description.description
+from (
+  values
+    ('anthropic', 'en', 'AI company that develops the Claude assistant.'),
+    ('anthropic', 'it', 'Azienda di AI che sviluppa l’assistente Claude.'),
+    ('openai', 'en', 'AI company that develops the ChatGPT assistant.'),
+    ('openai', 'it', 'Azienda di AI che sviluppa l’assistente ChatGPT.'),
+    ('google', 'en', 'Technology company whose AI assistant is Gemini.'),
+    ('google', 'it', 'Azienda tecnologica il cui assistente AI è Gemini.'),
+    ('microsoft', 'en', 'Technology company whose AI assistant is Copilot.'),
+    ('microsoft', 'it', 'Azienda tecnologica il cui assistente AI è Copilot.'),
+    ('mistral-ai', 'en', 'French AI company that develops the Le Chat assistant.'),
+    ('mistral-ai', 'it', 'Azienda francese di AI che sviluppa l’assistente Le Chat.'),
+    ('claude', 'en', 'The AI assistant from Anthropic.'),
+    ('claude', 'it', 'L’assistente AI di Anthropic.'),
+    ('chatgpt', 'en', 'The AI assistant from OpenAI.'),
+    ('chatgpt', 'it', 'L’assistente AI di OpenAI.'),
+    ('gemini', 'en', 'The AI assistant from Google.'),
+    ('gemini', 'it', 'L’assistente AI di Google.'),
+    ('copilot', 'en', 'The AI assistant from Microsoft.'),
+    ('copilot', 'it', 'L’assistente AI di Microsoft.'),
+    ('le-chat', 'en', 'The AI assistant from Mistral AI.'),
+    ('le-chat', 'it', 'L’assistente AI di Mistral AI.')
+) as description(slug, locale, description)
+join public.entities as entity on entity.slug = description.slug
+on conflict (entity_id, locale) do update set description = excluded.description;
+
+-- Demo stories are general analysis and name no company, so none links an entity.
+update public.articles as article
+set claim_status = story.claim_status,
+  key_points = story.key_points,
+  sources = story.sources::jsonb
+from (
+  values
+    ('agents-at-work', 'en', 'analysis', array['Agents are leaving the sandbox for operational workflows.', 'Value appears when an agent shows sources, keeps a trail and asks approval.', 'Failures come from incomplete context, excessive permissions and ambiguous goals.']::text[], '[]'),
+    ('agents-at-work', 'it', 'analysis', array['Gli agenti escono dai sandbox ed entrano nei flussi operativi.', 'Il valore emerge quando l’agente mostra le fonti, lascia una traccia e chiede conferma.', 'Gli errori nascono da contesto incompleto, permessi troppo ampi e obiettivi ambigui.']::text[], '[]'),
+    ('open-model-efficiency', 'en', 'analysis', array['Quality no longer improves through size alone.', 'Measure latency, accuracy on your domain and cost per successful outcome.']::text[], '[]'),
+    ('open-model-efficiency', 'it', 'analysis', array['La qualità non cresce più soltanto con la dimensione.', 'Misura latenza, accuratezza sul tuo dominio e costo per risultato.']::text[], '[]'),
+    ('europe-ai-rules', 'en', 'analysis', array['Compliance is becoming product work.', 'Organizations need an inventory of systems, clear ownership and checkable evidence.']::text[], '[]'),
+    ('europe-ai-rules', 'it', 'analysis', array['La conformità sta diventando lavoro di prodotto.', 'Servono un inventario dei sistemi, responsabilità chiare e prove verificabili.']::text[], '[]'),
+    ('five-ai-tools', 'en', 'analysis', array['Five tools tested on concrete tasks, with limits and costs stated.', 'Check export, permissions, deletion and traceability before adopting one.']::text[], '[]'),
+    ('five-ai-tools', 'it', 'analysis', array['Cinque strumenti provati su attività concrete, con limiti e costi dichiarati.', 'Controlla esportazione, permessi, cancellazione e tracciabilità prima di adottarne uno.']::text[], '[]'),
+    ('measuring-ai-roi', 'en', 'analysis', array['Useful return combines quality, speed, avoided risk and released capacity.', 'Measure the current process before introducing a model.']::text[], '[]'),
+    ('measuring-ai-roi', 'it', 'analysis', array['Il ritorno utile combina qualità, velocità, rischio evitato e capacità liberata.', 'Misura il processo attuale prima di introdurre un modello.']::text[], '[]'),
+    ('long-context-memory', 'en', 'analysis', array['Window length, retrieval and attention are different problems.', 'Huge contexts can increase latency and noise.']::text[], '[]'),
+    ('long-context-memory', 'it', 'analysis', array['Lunghezza, recupero e attenzione sono problemi diversi.', 'Un contesto enorme può aumentare latenza e rumore.']::text[], '[]'),
+    ('ai-act-business', 'en', 'analysis', array['Knowing where AI is used is the first control.', 'Controls should follow risk, not every automation needs the same documentation.']::text[], '[{"title":"Regulation (EU) 2024/1689 (AI Act), official text","url":"https://eur-lex.europa.eu/eli/reg/2024/1689/oj","supports":"The obligations the AI Act places on businesses."}]'),
+    ('ai-act-business', 'it', 'analysis', array['Sapere dove l’AI viene usata è il primo controllo.', 'I controlli seguono il rischio: non ogni automazione richiede la stessa documentazione.']::text[], '[{"title":"Regolamento (UE) 2024/1689 (AI Act), testo ufficiale","url":"https://eur-lex.europa.eu/eli/reg/2024/1689/oj","supports":"Gli obblighi che l’AI Act pone alle imprese."}]'),
+    ('practical-agent-guide', 'en', 'analysis', array['Goals, approved sources, permissions and stopping conditions come before the prompt.', 'Prove the complete workflow with a rollback plan before expanding access.']::text[], '[]'),
+    ('practical-agent-guide', 'it', 'analysis', array['Obiettivo, fonti approvate, permessi e condizioni di arresto vengono prima del prompt.', 'Prova il flusso completo con un piano di ripristino prima di ampliare gli accessi.']::text[], '[]')
+) as story(translation_key, locale, claim_status, key_points, sources)
+where article.translation_key = story.translation_key
+  and article.locale = story.locale;
+
 insert into public.social_publications (article_id, channel, status)
 select article.id, distribution_channel.channel, 'ready'
 from (

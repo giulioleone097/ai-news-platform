@@ -1,13 +1,15 @@
 {
-  "name": "neura-plugins",
+  "name": "atlasnews-plugins",
+  "description": "Plugins for AtlasNews.",
   "owner": {
-    "name": "NEURA"
+    "name": "AtlasNews"
   },
   "plugins": [
     {
-      "name": "neura-ai-news",
-      "source": "../plugins/neura-ai-news",
-      "description": "NEURA public news and authenticated newsroom MCP tools."
+      "name": "atlasnews",
+      "source": "./plugins/atlasnews",
+      "description": "Read AtlasNews stories on AI and, for signed-in editors, run the AtlasNews newsroom.",
+      "category": "productivity"
     }
   ]
 }

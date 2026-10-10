@@ -5,11 +5,11 @@ import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const target = new URL("../src/app/design.tokens.css", import.meta.url);
+const target = new URL("../apps/web/src/app/design.tokens.css", import.meta.url);
 const write = process.argv.includes("--write");
 const generated = spawnSync(
   "designmd",
-  ["export", "DESIGN.md", "--format", "css-vars", "--prefix", "neura"],
+  ["export", "DESIGN.md", "--format", "css-vars", "--prefix", "atlasnews"],
   { cwd: root, encoding: "utf8" },
 );
 
@@ -23,7 +23,7 @@ if (generated.status !== 0) {
 
   if (write) {
     await writeFile(target, expected);
-    process.stdout.write("Updated src/app/design.tokens.css from DESIGN.md.\n");
+    process.stdout.write("Updated apps/web/src/app/design.tokens.css from DESIGN.md.\n");
   } else {
     const current = await readFile(target, "utf8");
 

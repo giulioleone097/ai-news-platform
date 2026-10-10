@@ -1,47 +1,35 @@
 {
-  "name": "neura",
+  "name": "atlasnews",
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "engines": {
     "node": "24.x"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "npm run dev -w apps/web",
+    "build": "npm run build:next -w apps/web",
+    "build:sites": "npm run build -w apps/web && npm run typegen -w apps/web",
+    "start": "npm run start -w apps/web",
     "lint": "eslint . --max-warnings=0",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "design:lint": "designmd lint --format json DESIGN.md",
     "design:tokens:write": "node scripts/design-tokens.mjs --write",
     "design:tokens:check": "node scripts/design-tokens.mjs",
     "plugin:check": "node scripts/validate-plugin.mjs",
+    "plugin:release": "node scripts/validate-plugin.mjs --release",
     "perf:budget": "node scripts/performance-budget.mjs",
     "smoke:runtime": "node scripts/runtime-smoke.mjs",
     "supabase:start": "npx --no-install supabase start",
     "supabase:reset": "npx --no-install supabase db reset --local",
     "supabase:status": "npx --no-install supabase status",
-    "check": "npm run design:lint && npm run design:tokens:check && npm run plugin:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run perf:budget"
-  },
-  "dependencies": {
-    "@fontsource-variable/inter": "^5.3.0",
-    "@fontsource-variable/source-serif-4": "^5.3.0",
-    "@fontsource/barlow-condensed": "^5.3.0",
-    "@modelcontextprotocol/server": "2.0.0",
-    "@supabase/ssr": "^0.12.4",
-    "@supabase/supabase-js": "^2.112.2",
-    "lucide-react": "^1.30.0",
-    "next": "16.3.0",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "react-markdown": "10.1.0",
-    "remark-gfm": "4.0.1",
-    "remark-parse": "11.0.0",
-    "server-only": "^0.0.1",
-    "unified": "11.0.5",
-    "zod": "^4.4.3"
+    "check": "npm run design:lint && npm run design:tokens:check && npm run plugin:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run perf:budget && npm run build:sites"
   },
   "devDependencies": {
     "@google/design.md": "0.4.0",

@@ -1,19 +1,29 @@
 # Model Context Protocol
 
-NEURA exposes two stateless Streamable HTTP servers: a public read-only surface for published content and approved comments, plus a separate API-key-protected operations surface.
+AtlasNews exposes one stateless Streamable HTTP endpoint, `POST /mcp`, served by the standalone `apps/mcp` process (`npm run start -w apps/mcp`, port `PORT`, default `8787`). Anonymous callers read published content and approved comments. A signed-in editor also gets the newsroom tools. OpenAI allows one MCP server for each plugin, so both live behind the same URL and the caller's token decides what runs.
+
+## Where tools are defined
+
+Every data capability is defined once, in `packages/contract` (`@atlasnews/contract`): name, title, description, zod input and output, the four annotation hints, required scopes, surfaces, an optional confirmation question, an optional UI resource, and the handler. Adapters read that catalogue and declare nothing of their own:
+
+- `apps/mcp/src/adapter.ts` registers every capability whose surfaces include `mcp`. It is the only generic `registerTool` call. `/info` and `tools/list` derive from the same list.
+- `@atlasnews/contract/page` is the browser-safe view for capabilities whose surfaces include `page`: plain data (name, title, description, JSON Schema of the input, annotations). It imports no handler, use case or Node API, and a test enforces that. The site registers these as WebMCP tools.
+- The MCP Apps entrypoints (`open_newsroom`, `open_news_panel`, `build_briefing`, `search_mentions`) are MCP Apps specific and stay in `apps/mcp/src/apps`.
+
+To add a capability: define a spec in `packages/contract/src/specs`, implement it in `packages/contract/src/handlers`, and add it to the list there. The MCP endpoint, `/info` and the tests pick it up.
 
 ## Endpoints
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
-| `/api/mcp/info` | `GET` | Human- and machine-readable server metadata |
-| `/api/mcp` | `POST` | MCP JSON-RPC over Streamable HTTP |
-| `/api/mcp` | `OPTIONS` | CORS preflight |
-| `/api/mcp/admin` | `POST` | Authenticated newsroom MCP JSON-RPC |
+| `/mcp` | `POST` | MCP JSON-RPC over Streamable HTTP, anonymous or with a Bearer token |
+| `/mcp` | `OPTIONS` | CORS preflight |
+| `/info` | `GET` | Machine-readable server metadata, derived from the catalogue |
+| `/.well-known/oauth-protected-resource` | `GET` | RFC 9728 resource metadata that the Bearer challenge points at; names the authorization server |
 
-`GET /api/mcp` intentionally returns 405. Use the info route for discovery and POST for protocol requests.
+`GET /mcp` returns 405. `/mcp/admin` no longer exists. Below, `$MCP` is the base URL of `apps/mcp` (`http://localhost:8787` locally).
 
-Current protocol version: `2026-07-28`, served by the stable MCP TypeScript server SDK v2. Ordinary modern responses are JSON and protocol streams can upgrade to SSE. Stateless 2025-era clients remain supported and may receive SSE.
+Current protocol version: `2026-07-28`, served by the stable MCP TypeScript server SDK v2. Ordinary modern responses are JSON and protocol streams can upgrade to SSE. Stateless 2025-era clients (`initialize` with `2025-11-25`) are served through the SDK's `legacy: "stateless"` path and may receive SSE.
 
 ## Required headers
 
@@ -25,38 +35,12 @@ MCP-Method: <JSON-RPC method>
 MCP-Name: <tool name, required for tools/call>
 ```
 
-Use `MCP-Protocol-Version: 2026-07-28`. Every modern request also carries the protocol version, client information, and client capabilities in `params._meta`.
+Every modern request also carries the protocol version, client information and client capabilities in `params._meta`. The server is stateless and issues no session ID.
 
-The server is stateless and does not issue an MCP session ID. Every call is independently retryable when the tool annotation marks it idempotent.
-
-## Discover
+## Discover and list tools
 
 ```bash
-curl --request POST "$SITE/api/mcp" \
-  --header 'Content-Type: application/json' \
-  --header 'Accept: application/json, text/event-stream' \
-  --header 'MCP-Protocol-Version: 2026-07-28' \
-  --header 'MCP-Method: server/discover' \
-  --data '{
-    "jsonrpc":"2.0",
-    "id":1,
-    "method":"server/discover",
-    "params":{
-      "_meta":{
-        "io.modelcontextprotocol/protocolVersion":"2026-07-28",
-        "io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},
-        "io.modelcontextprotocol/clientCapabilities":{}
-      }
-    }
-  }'
-```
-
-The result advertises `supportedVersions`, capabilities, and server identity. Modern MCP does not use the legacy initialize handshake.
-
-## List tools
-
-```bash
-curl --request POST "$SITE/api/mcp" \
+curl --request POST "$MCP/mcp" \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json, text/event-stream' \
   --header 'MCP-Protocol-Version: 2026-07-28' \
@@ -64,82 +48,165 @@ curl --request POST "$SITE/api/mcp" \
   --data '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
 ```
 
-Legacy clients using `initialize` with `2025-11-25` are routed through the SDK's stateless compatibility path. New clients should always use `server/discover` and the per-request metadata envelope above.
+Use `MCP-Method: server/discover` with `method: "server/discover"` for the server identity and capabilities. `tools/list` returns all 50 tools to every caller, so a host can find the editor tools and start sign-in. Each tool carries all four annotation hints and its security scheme in `_meta.securitySchemes`.
+
+## Authentication
+
+The caller is resolved once per request from the `Authorization` header:
+
+| Header | Caller | Result |
+| --- | --- | --- |
+| none | anonymous | read tools, `tools/list` and discovery work; a `tools/call` for a scoped tool is answered with HTTP 401 and a Bearer challenge (below) |
+| `Bearer <valid token>` | editor with the token's scopes | tools inside those scopes run |
+| anything else | rejected | HTTP 401 with `WWW-Authenticate: Bearer realm="atlasnews", resource_metadata="…", error="invalid_token"` |
+
+Token checking sits behind the `AccessTokenVerifier` port (`apps/mcp/src/auth.ts`). Two verifiers are tried in this order:
+
+1. **Supabase OAuth access tokens** (`apps/mcp/src/auth/`), when sign-in is configured (see [Sign-in](#sign-in-with-supabase-auth)). The signature is checked against the project's JWKS (cached ten minutes; an unknown `kid` reloads it, at most every 30 seconds, so a rotated key is picked up), then issuer, audience, expiry and not-before. Only ES256 and RS256 are accepted; `alg: none` and HS256 are refused. The token must carry a `client_id` claim, which only the OAuth server sets, so an ordinary Studio session token cannot be replayed here. The subject must have a `public.profiles` row with role `editor` or `admin` (read with the service-role key, answers cached 30 seconds); it then gets every newsroom scope, and its `author_id` is carried on the principal. A valid token for anyone else is accepted as a caller with no newsroom scope, so scoped tools answer with the sign-in error.
+2. **The shared API key** `ATLASNEWS_MCP_ADMIN_API_KEY` (at least 32 characters, constant-time comparison), for the CI smoke and the self-hosted CLI. It maps to one editor with every scope.
+
+If the key set or the profile table cannot be reached the request fails with HTTP 500, not 401, so a host does not discard a good token during an outage.
+
+Scopes:
+
+| Scope | Allows |
+| --- | --- |
+| `newsroom.read` | Admin reads: drafts, moderation queue, subscriber data, campaigns, social outbox, previews |
+| `newsroom.write` | Create and update articles, workflow, media and drafts; moderate comments; queue, requeue, cancel and retry social jobs; cancel campaigns |
+| `newsroom.publish` | Publish and delete articles and media; send or schedule campaigns; erase subscribers; process any outbox (anything that emails or posts externally) |
+
+A tool declares `[{ "type": "noauth" }]` or `[{ "type": "oauth2", "scopes": [...] }]` in `_meta.securitySchemes`. What happens when a scoped tool is called without the scope depends on who calls:
+
+- **Anonymous caller: HTTP 401, before the SDK runs.** Claude starts sign-in only on a real `401` with `WWW-Authenticate: Bearer resource_metadata="…"`, which a tool handler cannot produce (whatever it returns is wrapped in a `200`). OpenAI's apps SDK accepts the same challenge. `handleMcpRequest` therefore decides in `apps/mcp/src/http.ts`, from the already-read request body, whether the request would run a tool whose capability has scopes, and answers `401` with `Bearer realm="atlasnews", resource_metadata="…", error="invalid_token", error_description="Authentication required for this tool", scope="…"` (the scopes of the called tools, or the ones Supabase can grant). The 401 carries the public CORS headers, since it reveals nothing but the metadata URL, and `WWW-Authenticate` is in `Access-Control-Expose-Headers`.
+- **Signed-in caller without the scope (such as a user with no editor profile): HTTP 200 with a tool error**, not data, whose `_meta["mcp/www_authenticate"]` holds a Bearer challenge with `error="insufficient_scope"` and the `scope` it needs. That is OpenAI's tool-level trigger for account linking, and a fresh `401` would only loop a host that already holds a token.
+
+How the gate reads a request: the JSON-RPC body is what the SDK executes, so every `tools/call` in it counts, for 2026-07-28 and 2025-era requests alike and for each message of a batch. The `MCP-Name` header (2026-07-28 requests carry `MCP-Method` and `MCP-Name`) can only add to that, never lower it: if the header names a scoped tool the request is challenged even when the body says otherwise, and the other way round. A body that is not JSON contributes nothing and the SDK rejects it. `initialize`, `server/discover`, `tools/list`, resources, the events methods and anonymous tools never reach the gate. The body is read once (limit 256 KiB, `413` above it, before any parsing) and the SDK receives that same body.
+
+The challenge's `resource_metadata` points at `/.well-known/oauth-protected-resource`, which lists `authorization_servers` (Supabase Auth, first) once sign-in is configured.
+
+Supabase Auth cannot grant custom scopes; it rejects an authorization request for a scope it does not define. The `newsroom.*` scopes are therefore a server-side decision taken from the profile role (`scopesForRole` in `apps/mcp/src/auth/editors.ts`, the only place), and with sign-in configured the metadata, the challenges and `_meta.securitySchemes` offer hosts only the scopes Supabase grants (`email`). Without sign-in configured they show the `newsroom.*` scopes as before.
+
+Responses to a signed-in editor are `Cache-Control: no-store` and carry no CORS headers. Anonymous responses keep today's CORS behaviour: `*` unless `MCP_ALLOWED_ORIGINS` is set. `Authorization` is not in the allowed preflight headers, so browsers cannot call the editor tools cross-origin.
+
+## Sign-in with Supabase Auth
+
+Supabase Auth is the OAuth 2.1 authorization server; `apps/mcp` is only the resource server. Editors are the `auth.users` that have an editor or admin `public.profiles` row ([DEPLOYMENT.md](DEPLOYMENT.md), "Bootstrap the first editor").
+
+```text
+host -> POST /mcp without token         -> tools/list and public tools answer; a scoped tools/call answers 401 + WWW-Authenticate
+host -> GET  /.well-known/oauth-protected-resource   -> authorization_servers[0] = https://<ref>.supabase.co/auth/v1
+host -> GET  <issuer>/.well-known/openid-configuration (or oauth-authorization-server)
+host -> POST <issuer>/oauth/clients/register          (dynamic registration, once per host)
+host -> browser: <issuer>/oauth/authorize?...&code_challenge_method=S256&resource=<mcp url>
+Supabase -> browser: <site>/oauth/consent?authorization_id=...     (apps/web/src/app/oauth/consent)
+editor signs in, sees which application asks, allows or cancels
+Supabase -> host redirect with ?code=...  ->  POST <issuer>/oauth/token  ->  access token (ES256 JWT) + refresh token
+host -> POST /mcp with Authorization: Bearer <access token>
+```
+
+What Supabase gives and does not give (checked against `supabase.com/docs/guides/auth/oauth-server` and the `supabase/auth` source, v2.197):
+
+| Topic | Supabase Auth |
+| --- | --- |
+| Enable | Dashboard, Authentication, OAuth Server; locally `[auth.oauth_server]` in `supabase/config.toml` (`enabled`, `authorization_url_path`, `allow_dynamic_registration`) |
+| Endpoints | `/auth/v1/oauth/authorize`, `/oauth/token`, `/oauth/userinfo`, `/.well-known/jwks.json`; discovery at `/auth/v1/.well-known/openid-configuration`, `/auth/v1/.well-known/oauth-authorization-server`, and on the hosted platform `/.well-known/oauth-authorization-server/auth/v1` |
+| Registration | Pre-registered clients (dashboard, OAuth Apps) and dynamic registration (`registration_endpoint`, public, rate limited). No Client ID Metadata Documents |
+| PKCE | Mandatory; `S256` and `plain` accepted (`plain` is advertised too) |
+| `resource` (RFC 8707) | Validated (absolute URI, no fragment or query) and bound to the authorization code, but **not copied into `aud`**: the access token `aud` stays `authenticated` |
+| `iss` response parameter (RFC 9207) | **Not returned**, and `authorization_response_iss_parameter_supported` is not advertised |
+| Scopes | Only `openid`, `profile`, `email`, `phone`, `offline_access`; custom scopes are not supported. Default `email` |
+| Token | ES256 or RS256 JWT with `sub`, `role`, `aud`, `iss`, `client_id`, `scope`, `session_id`; lifetime `jwt_expiry` (default 3600 s); refresh tokens rotate (`offline_access` accepted) |
+| Keys | JWKS lists asymmetric public keys only. A project still on the legacy HS256 secret has an empty JWKS: migrate to asymmetric signing keys first (a local stack from CLI 2.117 already has an ES256 key) |
+| Consent | The app must host the consent page (`authorization_url_path`), see below |
+| Revocation | No RFC 7009 endpoint. A user revokes a client's grant (`auth.oauth.revokeGrant`), which deletes its refresh tokens; an issued access token stays valid until it expires |
+
+The consent page is `apps/web/src/app/oauth/consent`, in English and Italian (chosen from `Accept-Language`). A visitor who is not signed in sees a sign-in form (email and password, the same Supabase call as the Studio login) and returns to the same request. A signed-in editor sees the application's name, the address it returns to, the permissions, and chooses Allow or Cancel; an account without an editor profile can only cancel. It calls `getAuthorizationDetails`, then `approveAuthorization` or `denyAuthorization`, and redirects to the URL Supabase returns. Set Authorization Path to `/oauth/consent` and the Site URL to the web origin in the dashboard.
+
+### Hosts
+
+| Host | Registers as | Redirect URI |
+| --- | --- | --- |
+| Claude (claude.ai, Desktop, mobile) | Dynamic registration | `https://claude.ai/api/mcp/auth_callback` |
+| Claude Code | Dynamic registration | `http://localhost/callback`, `http://127.0.0.1/callback` (port ignored) |
+| ChatGPT | Dynamic registration, or a client pre-registered in the dashboard | `https://chatgpt.com/connector/oauth/{callback_id}` (copy it from the connector page). The stable `connector_platform_oauth_redirect` needs RFC 9207 `iss`, which Supabase does not send |
+
+Anyone can register a client when dynamic registration is on, and the editor's consent is the only gate. For production, pre-register the hosts you use in the dashboard (OAuth Apps), turn dynamic registration off, and review the client list regularly.
+
+### Environment
+
+| Variable | Used by | Meaning |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | `apps/mcp`, `apps/web` | Sign-in is on when all three are set (the service role key, at least 32 characters, reads the editor profile). The issuer is `<url>/auth/v1` and the key set `<issuer>/.well-known/jwks.json`. Unset means no OAuth: only the API key |
+| `NEXT_PUBLIC_MCP_URL` | `apps/mcp`, `apps/web` | Public origin of the MCP server (`https://mcp.news.example.com`). Set it behind a proxy: the `resource` in the metadata and the challenge must be the exact URL hosts were given, and the request URL seen by Node is not. `apps/web` links to it from the footer |
+| `ATLASNEWS_MCP_OAUTH_ISSUER` | `apps/mcp` | Optional. Issuer when it differs from `<url>/auth/v1`, such as a Supabase custom domain |
+| `ATLASNEWS_MCP_OAUTH_AUDIENCE` | `apps/mcp` | Optional. Required `aud`. Unset accepts `authenticated`. Set it to the MCP URL once a custom access token hook sets that audience (below) |
+| `ATLASNEWS_MCP_ADMIN_API_KEY`, `ATLASNEWS_MCP_ADMIN_AUTHOR_ID` | `apps/mcp` | The API key path. Its writes are attributed to `ATLASNEWS_MCP_ADMIN_AUTHOR_ID`; a signed-in editor's are attributed to their own `author_id` |
+| `ATLASNEWS_REVALIDATE_SECRET` | `apps/mcp`, `apps/web` | Shared secret (at least 32 characters, the same value on both) for cache invalidation after a write, see [Cache invalidation](#cache-invalidation) |
+
+The sign-in variables are listed in `.env.example`, with the app that reads each.
+
+Because `aud` is `authenticated` and the `resource` is not bound to it, a token that Supabase issued to another client of the same project is accepted here if its subject is an editor. The `client_id` requirement keeps ordinary session tokens out, but only a custom access token hook closes the gap: for tokens that carry `client_id`, return `aud` set to the MCP URL, then set `ATLASNEWS_MCP_OAUTH_AUDIENCE` to the same value.
+
+### Verify a deployment
+
+1. `curl https://<ref>.supabase.co/auth/v1/.well-known/openid-configuration`: `registration_endpoint` is present when dynamic registration is on, and `jwks_uri` returns at least one key.
+2. `curl $MCP/.well-known/oauth-protected-resource`: `resource` is exactly the URL you give hosts, and `authorization_servers[0]` is the issuer.
+3. Call a scoped tool without a token (`tools/call` with `admin_list_articles`): HTTP 401 with `WWW-Authenticate: Bearer … resource_metadata="…"`. Call a public tool or `tools/list` without a token: HTTP 200. Call any tool with a made-up bearer: HTTP 401 with `error="invalid_token"`.
+4. Add the connector in Claude (Settings, Connectors, URL `$MCP/mcp`) and in ChatGPT (developer mode, same URL). Sign in as an editor on the consent page, ask for `admin_list_articles`, then a write, and check that the article's author is the signed-in editor.
+5. Sign in as a user without an editor profile: the consent page offers only Cancel; a token obtained another way sees only the anonymous tools.
+6. Revoke the grant, then wait for `jwt_expiry`: the access token stops working.
 
 ## Tools
 
+Anonymous (`noauth`, read-only, idempotent, closed-world):
+
 | Tool | Required arguments | Optional arguments | Result |
 | --- | --- | --- | --- |
+| `search` | `query` (2–160 chars) | None | `{results:[{id,title,url}]}` across both languages; the standard ChatGPT knowledge-source tool |
+| `fetch` | `id` (from `search`, such as `en/some-slug`) | None | `{id,title,text,url,metadata}` with the article as Markdown |
 | `list_articles` | None | `locale=en`, `category`, `limit=10` (1–25), `cursor` | Published article summaries and opaque `nextCursor` |
-| `search_articles` | `query` (2–160 chars) | `locale=en`, `limit=10` (1–25) | Matching published summaries |
+| `search_articles` | `query` (2–160 chars) | `locale=en`, `limit=10` (1–25) | Matching published summaries; also a page tool |
 | `get_article` | `slug` | `locale=en` | Full published article and public author metadata |
 | `list_categories` | None | `locale=en` | Localized categories |
 | `list_comments` | `slug` | `locale=en`, `parentId`, `limit=12` (1–24), `cursor` | Approved top-level comments or replies and opaque `nextCursor` |
-| `build_briefing` | None | `locale=en`, `topics` (category slugs), `storiesPerTopic=3` (1–5) | Latest stories grouped by topic; asks through an OpenAI form when `topics` is omitted and the host supports it |
-| `open_newsroom` | None | `locale=en`, `category` | App-only ChatGPT sidebar entrypoint |
-| `open_news_panel` | None | `locale=en`, `category` | App-only ChatGPT conversation-panel entrypoint |
+| `build_briefing` | None | `locale=en`, `topics`, `storiesPerTopic=3` (1–5) | Latest stories by topic; asks through an OpenAI form when `topics` is omitted and the host supports it |
+| `open_newsroom`, `open_news_panel` | None | `locale=en`, `category` | App-only ChatGPT sidebar and conversation-panel entrypoints |
 | `search_mentions` | `query` (may be empty) | None | App-only composer mention search returning article resource links |
 
-Supported locales are `en` and `it`; English is the default. All tools are read-only, non-destructive, idempotent, and closed-world.
+`search` and `fetch` follow OpenAI's knowledge-source shapes (developers.openai.com/api/docs/mcp): the result object is returned as `structuredContent` and as the JSON string in `content[0].text`, and `url` is an absolute link built from `NEXT_PUBLIC_SITE_URL`, which ChatGPT uses for citations.
+
+Editor tools (`oauth2`), all names unchanged from the former `/mcp/admin` server:
+
+| Scope | Tools |
+| --- | --- |
+| `newsroom.read` | `admin_list_articles`, `admin_get_article`, `admin_list_categories`, `admin_list_distribution`, `admin_list_newsletter_subscriptions`, `admin_list_media`, `admin_list_comments`, `admin_list_comment_reports`, `admin_list_comment_audit`, `admin_newsletter_list_campaigns`, `admin_newsletter_get_campaign`, `admin_newsletter_list_recipients`, `admin_social_preview`, `admin_social_list`, `admin_social_get` |
+| `newsroom.write` | `admin_create_article`, `admin_update_article`, `admin_update_distribution`, `admin_update_newsletter_subscription`, `admin_upload_media`, `admin_moderate_comment`, `admin_newsletter_save_campaign_draft`, `admin_newsletter_cancel_campaign`, `admin_social_enqueue`, `admin_social_requeue`, `admin_social_cancel`, `admin_social_retry` |
+| `newsroom.publish` | `admin_publish_article`, `admin_delete_article`, `admin_delete_media`, `admin_comment_process_notifications`, `admin_newsletter_send_campaign`, `admin_newsletter_schedule_campaign`, `admin_newsletter_request_subscription`, `admin_newsletter_erase_subscription`, `admin_newsletter_process_outbox`, `admin_social_process_outbox` |
+
+Production persistence for the editor tools additionally requires `SUPABASE_SERVICE_ROLE_KEY`, and `ATLASNEWS_MCP_ADMIN_AUTHOR_ID` for the API key (a signed-in editor is attributed to their own `author_id`, taken from the principal by `createRuntimePorts` and passed to the editorial repository and the newsletter services). In demo mode (no Supabase, outside production) the editorial tools work on the in-memory repository; comment moderation, newsletter and social tools answer with a generic "not configured" tool error. Generate the API key with `openssl rand -hex 32` and rotate it on both ends together.
+
+Supported locales are `en` and `it`; English is the default.
+
+## Confirmation
+
+Tools that publish, delete, email or post externally ask before they run: `admin_publish_article`, `admin_delete_article`, `admin_delete_media`, `admin_moderate_comment`, `admin_comment_process_notifications`, all newsletter send, schedule, cancel, request, erase and process tools, and all social enqueue, requeue, cancel, retry and process tools.
+
+- Hosts that support MRTR forms (MCP `2026-07-28` plus `elicitation.form`) get an `input_required` result with a confirmation form. With the `openai/elicitation` extension the schema travels in `_meta` like the briefing form; without it the form is a plain core form. The tool runs only after the user accepts. A form-capable host is always asked, even when the arguments already say `confirm: true`.
+- Other hosts keep the argument: without `confirm: true` the tool answers with an error and does nothing. The description of each such tool says so.
+
+The `confirm` argument is optional in the advertised schema (it used to be a required `true`). Queueing never sends inline, and workers use leases and idempotency before calling providers.
 
 ## Resources, MCP Apps and events
 
-- `ui://neura/newsroom-v1.html` is an MCP Apps UI resource (`text/html;profile=mcp-app`). `list_articles`, `search_articles`, `get_article`, `build_briefing` and both entrypoints render it in hosts that support MCP Apps, such as ChatGPT and Claude; text clients still get the same structured results.
-- `neura://articles/{locale}/{slug}` returns a published article as Markdown. Mentions and other resource links resolve through it; a miss answers `-32602` with `data.uri`, as the 2026-07-28 revision requires.
-- `server/discover` advertises `extensions["openai/mentions"]` and, when service-role persistence is configured, the `events` capability with `events/list`, `events/subscribe` and `events/unsubscribe` for `article.published`.
+- `ui://atlasnews/newsroom-v1.html` is an MCP Apps UI resource (`text/html;profile=mcp-app`). `list_articles`, `search_articles`, `get_article`, `build_briefing` and both entrypoints render it in hosts that support MCP Apps.
+- `atlasnews://articles/{locale}/{slug}` returns a published article as Markdown; a miss answers `-32602` with `data.uri`.
+- `server/discover` advertises `extensions["openai/mentions"]` and, when service-role persistence is configured, the `events` capability for `article.published`.
 
 [OPENAI_EXTENSIONS.md](OPENAI_EXTENSIONS.md) maps every OpenAI extension and the MCP Events contract to this implementation.
 
-### List articles
+## Cache invalidation
 
-```bash
-curl --request POST "$SITE/api/mcp" \
-  --header 'Content-Type: application/json' \
-  --header 'Accept: application/json, text/event-stream' \
-  --header 'MCP-Protocol-Version: 2026-07-28' \
-  --header 'MCP-Method: tools/call' \
-  --header 'MCP-Name: list_articles' \
-  --data '{
-    "jsonrpc":"2.0",
-    "id":3,
-    "method":"tools/call",
-    "params":{
-      "name":"list_articles",
-      "arguments":{"locale":"en","category":"research","limit":5},
-      "_meta":{
-        "io.modelcontextprotocol/protocolVersion":"2026-07-28",
-        "io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},
-        "io.modelcontextprotocol/clientCapabilities":{}
-      }
-    }
-  }'
-```
-
-Pass the returned `nextCursor` unchanged as `cursor` for the next page. Do not decode or construct cursors in clients.
-
-### Search
-
-```bash
-curl --request POST "$SITE/api/mcp" \
-  --header 'Content-Type: application/json' \
-  --header 'Accept: application/json, text/event-stream' \
-  --header 'MCP-Protocol-Version: 2026-07-28' \
-  --header 'MCP-Method: tools/call' \
-  --header 'MCP-Name: search_articles' \
-  --data '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"search_articles","arguments":{"locale":"en","query":"agents","limit":5},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
-```
-
-### Get one article
-
-```bash
-curl --request POST "$SITE/api/mcp" \
-  --header 'Content-Type: application/json' \
-  --header 'Accept: application/json, text/event-stream' \
-  --header 'MCP-Protocol-Version: 2026-07-28' \
-  --header 'MCP-Method: tools/call' \
-  --header 'MCP-Name: get_article' \
-  --data '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_article","arguments":{"locale":"en","slug":"ai-agents-enter-everyday-work"},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
-```
+The MCP process cannot purge the reader site's Next cache directly. After an editorial write it calls `POST {NEXT_PUBLIC_SITE_URL}/api/revalidate` with `Authorization: Bearer $ATLASNEWS_REVALIDATE_SECRET` and `{ "locale": "en", "slugs": ["…"] }`. The route compares the secret in constant time and answers 503 to everyone when `ATLASNEWS_REVALIDATE_SECRET` (at least 32 characters) is unset on the site. Set the same value on both processes. Without it on the MCP process the call is skipped, and a failed call never fails the edit; the site then refreshes on its own revalidate windows. The two processes share articles only through Supabase, so the demo in-memory store of one is not visible to the other.
 
 ## Client configuration
 
@@ -148,53 +215,22 @@ For clients that accept remote HTTP servers, use the canonical HTTPS endpoint:
 ```json
 {
   "mcpServers": {
-    "neura": {
+    "atlasnews": {
       "type": "http",
-      "url": "https://news.example.com/api/mcp"
+      "url": "https://mcp.news.example.com/mcp"
     }
   }
 }
 ```
 
-The exact configuration envelope is client-specific; the endpoint and transport are standard MCP Streamable HTTP.
-
-## Access and CORS
-
-- Authentication: none.
-- Data scope: published articles, categories and approved comments only.
-- `MCP_ALLOWED_ORIGINS`: optional comma-separated browser-origin allow-list.
-- Empty allow-list: wildcard CORS for a deliberately public read surface.
-- Non-browser agents normally omit `Origin` and remain supported.
-- Responses use `Cache-Control: no-store`; clients decide their own bounded caching.
-
-Do not add mutation tools to this public server. Editorial mutations live only on the separate authenticated endpoint below.
-
-## Authenticated newsroom server
-
-`POST /api/mcp/admin` requires `Authorization: Bearer <NEURA_MCP_ADMIN_API_KEY>`. It has no browser CORS surface and authenticates before parsing the body or resolving the service-role repository. Missing or incorrect credentials return `401`; missing server configuration returns `503`.
-
-The server exposes these authenticated groups:
-
-| Group | Tools | Purpose |
-| --- | --- | --- |
-| Editorial | `admin_list_articles`, `admin_get_article`, `admin_list_categories`, `admin_create_article`, `admin_update_article`, `admin_publish_article`, `admin_delete_article` | Full article lifecycle; permanent delete requires `confirm: true` |
-| Workflow/media | `admin_list_distribution`, `admin_update_distribution`, `admin_list_media`, `admin_upload_media`, `admin_delete_media` | Editorial workflow state and immutable Storage assets |
-| Comment moderation | `admin_list_comments`, `admin_list_comment_reports`, `admin_moderate_comment`, `admin_list_comment_audit`, `admin_comment_process_notifications` | Moderation queue, private reports, audit and real notification worker |
-| Consent registry | `admin_list_newsletter_subscriptions`, `admin_update_newsletter_subscription` | Search consent state and unsubscribe; reactivation always uses double opt-in |
-| Campaigns | `admin_newsletter_list_campaigns`, `admin_newsletter_get_campaign`, `admin_newsletter_list_recipients`, `admin_newsletter_save_campaign_draft`, `admin_newsletter_send_campaign`, `admin_newsletter_schedule_campaign`, `admin_newsletter_cancel_campaign`, `admin_newsletter_request_subscription`, `admin_newsletter_erase_subscription`, `admin_newsletter_process_outbox` | Draft CRUD, consent-safe audience snapshot, queue, Resend delivery and erasure |
-| Social publishing | `admin_social_preview`, `admin_social_enqueue`, `admin_social_requeue`, `admin_social_list`, `admin_social_get`, `admin_social_cancel`, `admin_social_retry`, `admin_social_process_outbox` | Real LinkedIn/X/WhatsApp outbox lifecycle with corrected safe requeue, redacted recipients and provider receipts |
-
-Production persistence additionally requires `SUPABASE_SERVICE_ROLE_KEY` and `NEURA_MCP_ADMIN_AUTHOR_ID`. All three values are server-only. Generate the API key with `openssl rand -hex 32`, store it in Vercel secrets and the authorized client environment, and rotate both ends together.
-
-The admin response can contain unpublished copy, moderation evidence and email addresses. It is always `no-store`; clients must apply the same confidentiality boundary. Queueing never sends inline. Tools that can delete, email or publish externally require `confirm: true`, and workers use leases/idempotency before calling providers. The public MCP remains anonymous and strictly read-only.
-
-The repository-local plugin under `plugins/neura-ai-news` configures both servers for Codex/OpenAI, Claude Code, and GitHub Copilot CLI. See [AGENT_PLUGIN.md](AGENT_PLUGIN.md).
+Clients that sign in (see [Sign-in](#sign-in-with-supabase-auth)) send the token as `Authorization: Bearer …`; the repository-local plugin under `plugins/` is documented in [AGENT_PLUGIN.md](AGENT_PLUGIN.md).
 
 ## Error behavior
 
-- Invalid JSON-RPC or arguments: protocol error with a non-2xx or tool error result.
+- Invalid JSON-RPC or arguments: protocol error or a tool error result (`Input validation error`).
 - Missing localized article: tool error, no cross-language fallback.
-- Upstream repository unavailable: bounded generic error; database details are not exposed.
-- Unsupported public HTTP method: 405 with `Allow: POST, OPTIONS`; the admin endpoint allows only `POST`.
+- Scoped tool called anonymously, or an invalid token: HTTP 401 with a Bearer challenge. Signed in without the scope: tool error with `_meta["mcp/www_authenticate"]`.
+- Upstream repository unavailable: bounded generic tool error; database details are not exposed.
+- Unsupported HTTP method: 405 with `Allow: POST, OPTIONS`.
 
-Production checks should assert both the HTTP status and the JSON-RPC `error`/`isError` fields.
+Production checks should assert both the HTTP status and the JSON-RPC `error` and `isError` fields.
