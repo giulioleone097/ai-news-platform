@@ -3,8 +3,11 @@ import type {
   ArticleStatus,
   Author,
   Category,
+  ClaimStatus,
   SocialChannel,
+  SourceNote,
 } from "@atlasnews/core/editorial/domain/article";
+import type { Entity } from "@atlasnews/core/editorial/domain/entity";
 import { locales, type Locale } from "@atlasnews/core/locale";
 
 interface LocalizedCategorySeed {
@@ -116,6 +119,168 @@ interface ArticleSeed {
   distribution: SocialChannel[];
   translations: Record<Locale, LocalizedArticleSeed>;
 }
+
+/**
+ * Real companies and the assistants they publish, with their official pages. The
+ * descriptions state only what each name is; no release, model or date is claimed.
+ */
+export interface SeedEntity extends Omit<Entity, "id" | "parent"> {
+  id: string;
+  parent: string | null;
+  description: Record<Locale, string>;
+}
+
+export const seedEntities: SeedEntity[] = [
+  { id: "ed1c7e10-0000-4000-8000-000000000001", kind: "company", slug: "anthropic", name: "Anthropic", officialUrl: "https://www.anthropic.com", parent: null,
+    description: { en: "AI company that develops the Claude assistant.", it: "Azienda di AI che sviluppa l’assistente Claude." } },
+  { id: "ed1c7e10-0000-4000-8000-000000000002", kind: "company", slug: "openai", name: "OpenAI", officialUrl: "https://openai.com", parent: null,
+    description: { en: "AI company that develops the ChatGPT assistant.", it: "Azienda di AI che sviluppa l’assistente ChatGPT." } },
+  { id: "ed1c7e10-0000-4000-8000-000000000003", kind: "company", slug: "google", name: "Google", officialUrl: "https://ai.google", parent: null,
+    description: { en: "Technology company whose AI assistant is Gemini.", it: "Azienda tecnologica il cui assistente AI è Gemini." } },
+  { id: "ed1c7e10-0000-4000-8000-000000000004", kind: "company", slug: "microsoft", name: "Microsoft", officialUrl: "https://www.microsoft.com", parent: null,
+    description: { en: "Technology company whose AI assistant is Copilot.", it: "Azienda tecnologica il cui assistente AI è Copilot." } },
+  { id: "ed1c7e10-0000-4000-8000-000000000005", kind: "company", slug: "mistral-ai", name: "Mistral AI", officialUrl: "https://mistral.ai", parent: null,
+    description: { en: "French AI company that develops the Le Chat assistant.", it: "Azienda francese di AI che sviluppa l’assistente Le Chat." } },
+  { id: "ed1c7e10-0000-4000-8000-000000000011", kind: "product", slug: "claude", name: "Claude", officialUrl: "https://claude.ai", parent: "anthropic",
+    description: { en: "The AI assistant from Anthropic.", it: "L’assistente AI di Anthropic." } },
+  { id: "ed1c7e10-0000-4000-8000-000000000012", kind: "product", slug: "chatgpt", name: "ChatGPT", officialUrl: "https://chatgpt.com", parent: "openai",
+    description: { en: "The AI assistant from OpenAI.", it: "L’assistente AI di OpenAI." } },
+  { id: "ed1c7e10-0000-4000-8000-000000000013", kind: "product", slug: "gemini", name: "Gemini", officialUrl: "https://gemini.google.com", parent: "google",
+    description: { en: "The AI assistant from Google.", it: "L’assistente AI di Google." } },
+  { id: "ed1c7e10-0000-4000-8000-000000000014", kind: "product", slug: "copilot", name: "Copilot", officialUrl: "https://copilot.microsoft.com", parent: "microsoft",
+    description: { en: "The AI assistant from Microsoft.", it: "L’assistente AI di Microsoft." } },
+  { id: "ed1c7e10-0000-4000-8000-000000000015", kind: "product", slug: "le-chat", name: "Le Chat", officialUrl: "https://chat.mistral.ai", parent: "mistral-ai",
+    description: { en: "The AI assistant from Mistral AI.", it: "L’assistente AI di Mistral AI." } },
+];
+
+/**
+ * What each demo story says about itself. The demo texts are general analysis and name no
+ * company, so none links an entity. Key points restate the text; the only source is the
+ * official text of the regulation that "AI Act: what changes for businesses" is about.
+ */
+const storyNotes: Record<
+  string,
+  { claimStatus: ClaimStatus; keyPoints: Record<Locale, string[]>; sources?: Record<Locale, SourceNote[]> }
+> = {
+  "agents-at-work": {
+    claimStatus: "analysis",
+    keyPoints: {
+      en: [
+        "Agents are leaving the sandbox for operational workflows.",
+        "Value appears when an agent shows sources, keeps a trail and asks approval.",
+        "Failures come from incomplete context, excessive permissions and ambiguous goals.",
+      ],
+      it: [
+        "Gli agenti escono dai sandbox ed entrano nei flussi operativi.",
+        "Il valore emerge quando l’agente mostra le fonti, lascia una traccia e chiede conferma.",
+        "Gli errori nascono da contesto incompleto, permessi troppo ampi e obiettivi ambigui.",
+      ],
+    },
+  },
+  "open-model-efficiency": {
+    claimStatus: "analysis",
+    keyPoints: {
+      en: [
+        "Quality no longer improves through size alone.",
+        "Measure latency, accuracy on your domain and cost per successful outcome.",
+      ],
+      it: [
+        "La qualità non cresce più soltanto con la dimensione.",
+        "Misura latenza, accuratezza sul tuo dominio e costo per risultato.",
+      ],
+    },
+  },
+  "europe-ai-rules": {
+    claimStatus: "analysis",
+    keyPoints: {
+      en: [
+        "Compliance is becoming product work.",
+        "Organizations need an inventory of systems, clear ownership and checkable evidence.",
+      ],
+      it: [
+        "La conformità sta diventando lavoro di prodotto.",
+        "Servono un inventario dei sistemi, responsabilità chiare e prove verificabili.",
+      ],
+    },
+  },
+  "five-ai-tools": {
+    claimStatus: "analysis",
+    keyPoints: {
+      en: [
+        "Five tools tested on concrete tasks, with limits and costs stated.",
+        "Check export, permissions, deletion and traceability before adopting one.",
+      ],
+      it: [
+        "Cinque strumenti provati su attività concrete, con limiti e costi dichiarati.",
+        "Controlla esportazione, permessi, cancellazione e tracciabilità prima di adottarne uno.",
+      ],
+    },
+  },
+  "measuring-ai-roi": {
+    claimStatus: "analysis",
+    keyPoints: {
+      en: [
+        "Useful return combines quality, speed, avoided risk and released capacity.",
+        "Measure the current process before introducing a model.",
+      ],
+      it: [
+        "Il ritorno utile combina qualità, velocità, rischio evitato e capacità liberata.",
+        "Misura il processo attuale prima di introdurre un modello.",
+      ],
+    },
+  },
+  "long-context-memory": {
+    claimStatus: "analysis",
+    keyPoints: {
+      en: [
+        "Window length, retrieval and attention are different problems.",
+        "Huge contexts can increase latency and noise.",
+      ],
+      it: [
+        "Lunghezza, recupero e attenzione sono problemi diversi.",
+        "Un contesto enorme può aumentare latenza e rumore.",
+      ],
+    },
+  },
+  "ai-act-business": {
+    claimStatus: "analysis",
+    keyPoints: {
+      en: [
+        "Knowing where AI is used is the first control.",
+        "Controls should follow risk, not every automation needs the same documentation.",
+      ],
+      it: [
+        "Sapere dove l’AI viene usata è il primo controllo.",
+        "I controlli seguono il rischio: non ogni automazione richiede la stessa documentazione.",
+      ],
+    },
+    sources: {
+      en: [{
+        title: "Regulation (EU) 2024/1689 (AI Act), official text",
+        url: "https://eur-lex.europa.eu/eli/reg/2024/1689/oj",
+        supports: "The obligations the AI Act places on businesses.",
+      }],
+      it: [{
+        title: "Regolamento (UE) 2024/1689 (AI Act), testo ufficiale",
+        url: "https://eur-lex.europa.eu/eli/reg/2024/1689/oj",
+        supports: "Gli obblighi che l’AI Act pone alle imprese.",
+      }],
+    },
+  },
+  "practical-agent-guide": {
+    claimStatus: "analysis",
+    keyPoints: {
+      en: [
+        "Goals, approved sources, permissions and stopping conditions come before the prompt.",
+        "Prove the complete workflow with a rollback plan before expanding access.",
+      ],
+      it: [
+        "Obiettivo, fonti approvate, permessi e condizioni di arresto vengono prima del prompt.",
+        "Prova il flusso completo con un piano di ripristino prima di ampliare gli accessi.",
+      ],
+    },
+  },
+};
 
 const hero = "/media/neura-agents-hero.webp";
 
@@ -512,6 +677,10 @@ export const seedArticles: Article[] = stories.flatMap((story) =>
       createdAt: story.createdAt,
       updatedAt: story.updatedAt,
       distribution: [...story.distribution],
+      claimStatus: storyNotes[story.translationKey].claimStatus,
+      keyPoints: [...storyNotes[story.translationKey].keyPoints[locale]],
+      sources: structuredClone(storyNotes[story.translationKey].sources?.[locale] ?? []),
+      entities: [],
     };
   }),
 );

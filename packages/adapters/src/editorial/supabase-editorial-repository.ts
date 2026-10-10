@@ -2,7 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
   articleStatuses,
+  claimStatuses,
   estimateReadingMinutes,
+  normalizeStoryFields,
+  orderEntityRefs,
   slugify,
   socialChannels,
   type Article,
@@ -10,6 +13,14 @@ import {
   type ArticleQuery,
   type SocialChannel,
 } from "@atlasnews/core/editorial/domain/article";
+import { entityKinds } from "@atlasnews/core/editorial/domain/entity";
+import type {
+  EntityDetail,
+  EntityKind,
+  EntityRepository,
+  EntitySummary,
+  EntityTimelineItem,
+} from "@atlasnews/core/editorial/domain/entity";
 import type {
   ArticleRepository,
   DistributionRepository,
@@ -44,6 +55,18 @@ const authorSchema = z.object({
   avatar_url: z.string().nullable(),
 });
 
+const linkedEntitySchema = z.object({
+  kind: z.enum(entityKinds),
+  slug: z.string(),
+  name: z.string(),
+});
+
+const sourceNoteSchema = z.object({
+  title: z.string(),
+  url: z.string(),
+  supports: z.string(),
+});
+
 const rawArticleSchema = z.object({
   id: z.string(),
   translation_key: z.string(),
@@ -67,6 +90,16 @@ const rawArticleSchema = z.object({
     .array(z.object({ channel: z.enum(socialChannels) }))
     .nullable()
     .optional(),
+  claim_status: z.enum(claimStatuses),
+  key_points: z.array(z.string()),
+  sources: z.array(sourceNoteSchema),
+  entities: z
+    .array(z.object({
+      is_primary: z.boolean(),
+      entity: z.union([linkedEntitySchema, z.array(linkedEntitySchema)]),
+    }))
+    .nullable()
+    .optional(),
 });
 
 const articleSelect = `
@@ -74,7 +107,31 @@ const articleSelect = `
   featured, reading_minutes, published_at, scheduled_for, created_at, updated_at,
   category:categories!inner(id, translation_key, locale, slug, name, description),
   author:authors!inner(id, name, role, initials, avatar_url),
-  distribution:social_publications(channel)
+  distribution:social_publications(channel),
+  claim_status, key_points, sources,
+  entities:article_entities(is_primary, entity:entities(kind, slug, name))
+`;
+
+// An inner join on a second embed keeps the articles of one entity without narrowing `entities`.
+const entityFilterSelect = `${articleSelect}, entity_filter:article_entities!inner(entity:entities!inner(slug))`;
+
+const entityRowSchema = z.object({
+  id: z.string(),
+  kind: z.enum(entityKinds),
+  slug: z.string(),
+  name: z.string(),
+  official_url: z.string().nullable(),
+  parent: z.union([
+    z.object({ slug: z.string(), name: z.string() }),
+    z.array(z.object({ slug: z.string(), name: z.string() })),
+  ]).nullable(),
+  descriptions: z.array(z.object({ locale: z.enum(locales), description: z.string() })),
+});
+
+const entitySelect = `
+  id, kind, slug, name, official_url,
+  parent:parent_id(slug, name),
+  descriptions:entity_descriptions(locale, description)
 `;
 
 const supabaseCursorSchema = z.object({
@@ -162,6 +219,26 @@ function mapArticle(value: unknown): Article {
       avatarUrl: author.avatar_url ?? undefined,
     },
     distribution: row.distribution?.map((item) => item.channel) ?? [],
+    claimStatus: row.claim_status,
+    keyPoints: row.key_points,
+    sources: row.sources,
+    entities: orderEntityRefs(
+      (row.entities ?? []).map((link) => ({ ...relationOne(link.entity), isPrimary: link.is_primary })),
+    ),
+  };
+}
+
+function mapEntity(value: unknown, locale: Locale): EntityDetail {
+  const row = entityRowSchema.parse(value);
+  const parent = row.parent ? relationOne(row.parent) : null;
+  return {
+    id: row.id,
+    kind: row.kind,
+    slug: row.slug,
+    name: row.name,
+    officialUrl: row.official_url,
+    parent: parent ? { slug: parent.slug, name: parent.name } : null,
+    description: row.descriptions.find((item) => item.locale === locale)?.description ?? "",
   };
 }
 
@@ -189,7 +266,7 @@ function throwIfError(error: { message: string } | null, context: string): asser
 }
 
 export class SupabaseEditorialRepository
-  implements ArticleRepository, NewsletterRepository, DistributionRepository, MediaRepository
+  implements ArticleRepository, EntityRepository, NewsletterRepository, DistributionRepository, MediaRepository
 {
   readonly writable = true;
 
@@ -218,7 +295,7 @@ export class SupabaseEditorialRepository
     const limit = Math.min(Math.max(input.limit ?? 20, 1), 50);
     let query = this.client
       .from("articles")
-      .select(articleSelect)
+      .select(input.entity ? entityFilterSelect : articleSelect)
       .eq("locale", input.locale)
       .eq("status", "published")
       .lte("published_at", new Date().toISOString())
@@ -227,6 +304,8 @@ export class SupabaseEditorialRepository
       .limit(limit + 1);
 
     if (input.category) query = query.eq("category.slug", input.category);
+    if (input.entity) query = query.eq("entity_filter.entity.slug", input.entity);
+    if (input.claimStatus) query = query.eq("claim_status", input.claimStatus);
     if (input.query?.trim()) {
       query = query.textSearch("search_vector", input.query.trim(), {
         config: input.locale === "it" ? "italian" : "english",
@@ -321,6 +400,8 @@ export class SupabaseEditorialRepository
     if (input.id && !existing) {
       throw new Error(`Article ${input.id} does not exist in locale ${input.locale}`);
     }
+    const story = normalizeStoryFields(input);
+    const entityLinks = story.entities ?? existing?.entities.map(({ slug, isPrimary }) => ({ slug, isPrimary })) ?? [];
     const timestamp = new Date().toISOString();
     const payload = {
       translation_key: existing?.translationKey ?? input.translationKey ?? crypto.randomUUID(),
@@ -362,12 +443,70 @@ export class SupabaseEditorialRepository
       p_published_at: payload.published_at ?? null,
       p_scheduled_for: payload.scheduled_for,
       p_distribution: input.distribution ?? [],
+      p_claim_status: story.claimStatus ?? existing?.claimStatus ?? "analysis",
+      p_key_points: story.keyPoints ?? existing?.keyPoints ?? [],
+      p_sources: story.sources ?? existing?.sources ?? [],
+      p_entities: entityLinks.map((link) => ({ slug: link.slug, is_primary: link.isPrimary })),
     });
     throwIfError(error, "Unable to save article");
     const articleId = z.string().uuid().parse(data);
     const article = await this.findById(articleId, input.locale);
     if (!article) throw new Error("Saved article could not be read back");
     return article;
+  }
+
+  async listEntities(locale: Locale, kind?: EntityKind): Promise<EntitySummary[]> {
+    let query = this.client.from("entities").select(entitySelect).order("name");
+    if (kind) query = query.eq("kind", kind);
+    const [{ data, error }, counts] = await Promise.all([query, this.publishedStoryCounts(locale)]);
+    throwIfError(error, "Unable to list entities");
+    return (data ?? []).map((row) => {
+      const entity = mapEntity(row, locale);
+      return { ...entity, storyCount: counts.get(entity.id) ?? 0 };
+    });
+  }
+
+  private async publishedStoryCounts(locale: Locale) {
+    const { data, error } = await this.client.rpc("entity_story_counts", { p_locale: locale });
+    throwIfError(error, "Unable to count entity stories");
+    return new Map(
+      z.array(z.object({ entity_id: z.string(), story_count: z.coerce.number() })).parse(data ?? [])
+        .map((row) => [row.entity_id, row.story_count]),
+    );
+  }
+
+  async findEntityBySlug(slug: string, locale: Locale) {
+    const { data, error } = await this.client
+      .from("entities")
+      .select(entitySelect)
+      .eq("slug", slug)
+      .maybeSingle();
+    throwIfError(error, "Unable to read entity");
+    return data ? mapEntity(data, locale) : null;
+  }
+
+  async listEntityTimeline(slug: string, locale: Locale): Promise<EntityTimelineItem[]> {
+    const { data, error } = await this.client
+      .from("articles")
+      .select("slug, title, claim_status, published_at, entity_filter:article_entities!inner(entity:entities!inner(slug))")
+      .eq("entity_filter.entity.slug", slug)
+      .eq("locale", locale)
+      .eq("status", "published")
+      .lte("published_at", new Date().toISOString())
+      .order("published_at", { ascending: true })
+      .order("id", { ascending: true });
+    throwIfError(error, "Unable to read entity timeline");
+    return z.array(z.object({
+      slug: z.string(),
+      title: z.string(),
+      claim_status: z.enum(claimStatuses),
+      published_at: z.string(),
+    })).parse(data ?? []).map((row) => ({
+      slug: row.slug,
+      title: row.title,
+      claimStatus: row.claim_status,
+      publishedAt: row.published_at,
+    }));
   }
 
   async delete(id: string) {

@@ -6,12 +6,14 @@ import { Check, ChevronLeft } from "lucide-react";
 import type { Locale, Messages } from "@/i18n";
 import { toUtcDateTimeInput } from "@/lib/editorial-datetime";
 import type { Article, Category } from "@atlasnews/core/editorial/domain/article";
+import type { EntitySummary } from "@atlasnews/core/editorial/domain/entity";
 import type { MediaAsset } from "@atlasnews/core/editorial/domain/editorial-operations";
 import {
   articleStatuses,
   socialChannels,
 } from "@atlasnews/core/editorial/domain/article";
 import { saveArticleAction } from "@/app/[locale]/(studio)/studio/actions";
+import { StoryFields } from "@/app/[locale]/(studio)/studio/articles/story-fields";
 import { idleStudioActionState } from "./action-state";
 import { DeleteArticleButton } from "./delete-article-button";
 import { MarkdownEditor } from "./markdown-editor";
@@ -21,12 +23,14 @@ import { StudioSubmitButton } from "./studio-submit-button";
 export function ArticleForm({
   article,
   categories,
+  entities,
   locale,
   media,
   messages,
 }: {
   article?: Article;
   categories: Record<Locale, Category[]>;
+  entities: EntitySummary[];
   locale: Locale;
   media: MediaAsset[];
   messages: Messages;
@@ -186,6 +190,13 @@ export function ArticleForm({
               {fieldError("coverAlt")}
             </label>
           </section>
+
+          <StoryFields
+            article={article}
+            entities={entities}
+            errors={state.fieldErrors}
+            messages={messages}
+          />
         </div>
 
         <aside className="studio-editor__aside">

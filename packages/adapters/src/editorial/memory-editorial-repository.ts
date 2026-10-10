@@ -1,11 +1,20 @@
 import {
   estimateReadingMinutes,
+  normalizeStoryFields,
+  orderEntityRefs,
   slugify,
   type Article,
   type ArticleDraftInput,
   type ArticleQuery,
   type SocialChannel,
 } from "@atlasnews/core/editorial/domain/article";
+import type {
+  EntityDetail,
+  EntityKind,
+  EntityRepository,
+  EntitySummary,
+  EntityTimelineItem,
+} from "@atlasnews/core/editorial/domain/entity";
 import type {
   ArticleRepository,
   DistributionRepository,
@@ -22,12 +31,13 @@ import type {
 } from "@atlasnews/core/editorial/domain/editorial-operations";
 import type { Locale } from "@atlasnews/core/locale";
 import { getEditorialMediaReferenceKey } from "@atlasnews/core/editorial/domain/editorial-image";
-import { seedArticles, seedAuthor, seedCategories } from "./seed";
+import { seedArticles, seedAuthor, seedCategories, seedEntities, type SeedEntity } from "./seed";
 
 export class MemoryEditorialRepository
-  implements ArticleRepository, NewsletterRepository, DistributionRepository, MediaRepository
+  implements ArticleRepository, EntityRepository, NewsletterRepository, DistributionRepository, MediaRepository
 {
   private articles = structuredClone(seedArticles);
+  private entities = new Map(seedEntities.map((entity) => [entity.slug, entity]));
   private subscribers = new Map<string, NewsletterSubscription>();
   private publications = new Map<string, DistributionPublication>();
   readonly writable = false;
@@ -73,6 +83,14 @@ export class MemoryEditorialRepository
 
     if (query.category) {
       items = items.filter((article) => article.category.slug === query.category);
+    }
+
+    if (query.entity) {
+      items = items.filter((article) => article.entities.some((entity) => entity.slug === query.entity));
+    }
+
+    if (query.claimStatus) {
+      items = items.filter((article) => article.claimStatus === query.claimStatus);
     }
 
     if (normalizedQuery) {
@@ -157,6 +175,14 @@ export class MemoryEditorialRepository
         `Unknown article category ${input.categorySlug} for locale ${input.locale}`,
       );
     }
+    const story = normalizeStoryFields(input);
+    const entities = story.entities
+      ? orderEntityRefs(story.entities.map((link) => {
+          const entity = this.entities.get(link.slug);
+          if (!entity) throw new Error(`Unknown entity ${link.slug}`);
+          return { kind: entity.kind, slug: entity.slug, name: entity.name, isPrimary: link.isPrimary };
+        }))
+      : existing?.entities ?? [];
     const timestamp = new Date().toISOString();
     const status = input.status;
     const slug = slugify(input.slug || input.title);
@@ -196,6 +222,10 @@ export class MemoryEditorialRepository
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp,
       distribution: input.distribution ?? existing?.distribution ?? [],
+      claimStatus: story.claimStatus ?? existing?.claimStatus ?? "analysis",
+      keyPoints: story.keyPoints ?? existing?.keyPoints ?? [],
+      sources: story.sources ?? existing?.sources ?? [],
+      entities,
     };
 
     if (existingIndex >= 0) this.articles[existingIndex] = article;
@@ -203,6 +233,55 @@ export class MemoryEditorialRepository
     await this.setDistributionChannels(article.id, article.distribution);
 
     return structuredClone(article);
+  }
+
+  private publishedStories(slug: string, locale: Locale) {
+    return this.articles
+      .filter(
+        (article) =>
+          article.locale === locale
+          && article.status === "published"
+          && article.publishedAt
+          && article.entities.some((entity) => entity.slug === slug),
+      )
+      .sort((left, right) => (left.publishedAt ?? "").localeCompare(right.publishedAt ?? "") || left.id.localeCompare(right.id));
+  }
+
+  private toEntityDetail(entity: SeedEntity, locale: Locale): EntityDetail {
+    const parent = entity.parent ? this.entities.get(entity.parent) : undefined;
+    return {
+      id: entity.id,
+      kind: entity.kind,
+      slug: entity.slug,
+      name: entity.name,
+      officialUrl: entity.officialUrl,
+      parent: parent ? { slug: parent.slug, name: parent.name } : null,
+      description: entity.description[locale],
+    };
+  }
+
+  async listEntities(locale: Locale, kind?: EntityKind): Promise<EntitySummary[]> {
+    return [...this.entities.values()]
+      .filter((entity) => !kind || entity.kind === kind)
+      .map((entity) => ({
+        ...this.toEntityDetail(entity, locale),
+        storyCount: this.publishedStories(entity.slug, locale).length,
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  async findEntityBySlug(slug: string, locale: Locale) {
+    const entity = this.entities.get(slug);
+    return entity ? this.toEntityDetail(entity, locale) : null;
+  }
+
+  async listEntityTimeline(slug: string, locale: Locale): Promise<EntityTimelineItem[]> {
+    return this.publishedStories(slug, locale).map((article) => ({
+      slug: article.slug,
+      title: article.title,
+      claimStatus: article.claimStatus,
+      publishedAt: article.publishedAt ?? "",
+    }));
   }
 
   async delete(id: string) {

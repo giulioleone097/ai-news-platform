@@ -21,6 +21,7 @@ export function getPublicEditorialRepositories(): EditorialRepositories {
   if (mode === "demo") {
     return {
       articles: memoryRepository,
+      entities: memoryRepository,
       newsletter: memoryRepository,
       distribution: memoryRepository,
       media: memoryRepository,
@@ -36,6 +37,7 @@ export function getPublicEditorialRepositories(): EditorialRepositories {
   const repository = new SupabaseEditorialRepository(client);
   return {
     articles: repository,
+    entities: repository,
     newsletter: repository,
     distribution: repository,
     media: repository,
@@ -52,6 +54,7 @@ export async function getStudioEditorialRepositories(
     if (!isDemoStudioEnabled()) throw new Error("Studio persistence is not configured.");
     return {
       articles: memoryRepository,
+      entities: memoryRepository,
       newsletter: memoryRepository,
       distribution: memoryRepository,
       media: memoryRepository,
@@ -67,6 +70,7 @@ export async function getStudioEditorialRepositories(
   const repository = new SupabaseEditorialRepository(client);
   return {
     articles: repository,
+    entities: repository,
     newsletter: repository,
     distribution: repository,
     media: repository,

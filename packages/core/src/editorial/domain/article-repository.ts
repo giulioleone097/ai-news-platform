@@ -6,6 +6,7 @@ import type {
   Category,
   SocialChannel,
 } from "./article";
+import type { EntityRepository } from "./entity";
 import type { Locale } from "../../locale";
 import type {
   DistributionPublication,
@@ -53,6 +54,7 @@ export interface MediaRepository {
 
 export interface EditorialRepositories {
   articles: ArticleRepository;
+  entities: EntityRepository;
   newsletter: NewsletterRepository;
   distribution: DistributionRepository;
   media: MediaRepository;
@@ -60,6 +62,7 @@ export interface EditorialRepositories {
 }
 
 export type AdminEditorialRepository = ArticleRepository
+  & EntityRepository
   & NewsletterRepository
   & DistributionRepository
   & MediaRepository;

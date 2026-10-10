@@ -1,5 +1,10 @@
 import type { Article, ArticleDraftInput } from "../domain/article";
-import { articleStatuses, slugPattern, socialChannels } from "../domain/article";
+import {
+  articleStatuses,
+  normalizeStoryFields,
+  slugPattern,
+  socialChannels,
+} from "../domain/article";
 import type { ArticleRepository } from "../domain/article-repository";
 
 export function assertArticleDraft(input: ArticleDraftInput) {
@@ -21,6 +26,7 @@ export function assertArticleDraft(input: ArticleDraftInput) {
   if (input.distribution?.some((channel) => !socialChannels.includes(channel))) {
     throw new Error("Invalid distribution channel");
   }
+  normalizeStoryFields(input);
 }
 
 export class ArticleCommandService {
@@ -47,6 +53,10 @@ export class ArticleCommandService {
       coverAlt: article.coverAlt,
       scheduledFor: null,
       distribution: article.distribution,
+      claimStatus: article.claimStatus,
+      keyPoints: article.keyPoints,
+      sources: article.sources,
+      entities: article.entities.map(({ slug, isPrimary }) => ({ slug, isPrimary })),
     });
   }
 

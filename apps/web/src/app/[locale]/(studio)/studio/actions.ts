@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { StudioActionState } from "@/components/studio/action-state";
 import { studioSupplementalCopy } from "@/components/studio/studio-copy";
-import { locales } from "@/i18n";
+import { getMessages, locales } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { parseUtcDateTimeInput } from "@/lib/editorial-datetime";
 import {
@@ -14,7 +14,10 @@ import {
 } from "@atlasnews/core/editorial/domain/editorial-image";
 import {
   articleStatuses,
+  claimStatuses,
+  normalizeStoryFields,
   socialChannels,
+  StoryFieldError,
 } from "@atlasnews/core/editorial/domain/article";
 import {
   distributionStatuses,
@@ -56,6 +59,7 @@ const articleDraftSchema = z
       .array(z.enum(socialChannels))
       .max(socialChannels.length)
       .transform((channels) => Array.from(new Set(channels))),
+    claimStatus: z.enum(claimStatuses),
   })
   .superRefine((value, context) => {
     if (value.status !== "scheduled") return;
@@ -141,6 +145,20 @@ function revalidateEditorialPaths(locale: (typeof locales)[number], slug?: strin
   revalidatePath("/sitemap.xml");
 }
 
+/** The story fields as the form posts them: blank key points and blank source rows are dropped. */
+function readStoryFields(formData: FormData) {
+  const text = (name: string) => formData.getAll(name).map((value) => String(value).trim());
+  const [titles, urls, supports] = [text("sourceTitle"), text("sourceUrl"), text("sourceSupports")];
+  const primary = formData.get("primaryEntity");
+  return {
+    keyPoints: text("keyPoints").filter(Boolean),
+    sources: titles
+      .map((title, index) => ({ title, url: urls[index] ?? "", supports: supports[index] ?? "" }))
+      .filter((source) => source.title || source.url || source.supports),
+    entities: text("entity").map((slug) => ({ slug, isPrimary: slug === primary })),
+  };
+}
+
 export async function saveArticleAction(
   _previousState: StudioActionState,
   formData: FormData,
@@ -159,15 +177,33 @@ export async function saveArticleAction(
     coverAlt: formData.get("coverAlt"),
     scheduledFor: formData.get("scheduledFor") || undefined,
     distribution: formData.getAll("distribution"),
+    claimStatus: formData.get("claimStatus"),
   });
 
-  if (!parsed.success) {
+  const story = readStoryFields(formData);
+  let storyErrors: Record<string, string[]> = {};
+  try {
+    normalizeStoryFields(story);
+  } catch (error) {
+    if (!(error instanceof StoryFieldError)) throw error;
+    const studio = getMessages(z.enum(locales).catch("en").parse(formData.get("locale"))).studio;
+    storyErrors = {
+      [error.field]: [{
+        claimStatus: studio.claimStatusHelp,
+        keyPoints: studio.keyPointsInvalid,
+        sources: studio.sourcesInvalid,
+        entities: studio.entitiesInvalid,
+      }[error.field]],
+    };
+  }
+
+  if (!parsed.success || Object.keys(storyErrors).length) {
     const localeResult = z.enum(locales).safeParse(formData.get("locale"));
     const locale = localeResult.success ? localeResult.data : "en";
     return {
       status: "error",
       message: studioSupplementalCopy[locale].validationError,
-      fieldErrors: getFieldErrors(parsed.error),
+      fieldErrors: { ...(parsed.success ? {} : getFieldErrors(parsed.error)), ...storyErrors },
     };
   }
 
@@ -195,6 +231,8 @@ export async function saveArticleAction(
       coverAlt: input.coverAlt,
       scheduledFor: input.status === "scheduled" ? scheduledFor : null,
       distribution: input.distribution,
+      claimStatus: input.claimStatus,
+      ...story,
     });
   } catch {
     return { status: "error", message: studioSupplementalCopy[input.locale].saveError };
