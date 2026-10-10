@@ -1,9 +1,15 @@
+export const publicMcpServerVersion = "2.1.0";
+
 export const publicMcpTools = [
   "list_articles",
   "search_articles",
   "get_article",
   "list_categories",
   "list_comments",
+  "open_newsroom",
+  "open_news_panel",
+  "build_briefing",
+  "search_mentions",
 ] as const;
 
 export const adminMcpTools = [

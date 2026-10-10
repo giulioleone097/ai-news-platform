@@ -2,8 +2,11 @@ import { defaultLocale, locales } from "@/i18n";
 import {
   adminMcpTools,
   publicMcpProtocolVersion,
+  publicMcpServerVersion,
   publicMcpTools,
 } from "@/modules/mcp/metadata";
+import { newsroomUiUri } from "@/modules/mcp/apps/ui-resource";
+import { mcpEventNames } from "@/modules/mcp-events";
 
 export const dynamic = "force-static";
 
@@ -11,7 +14,7 @@ export function GET() {
   return Response.json(
     {
       name: "neura-ai-news",
-      version: "2.0.0",
+      version: publicMcpServerVersion,
       description:
         "Read-only access to NEURA's published AI news and approved comments in English and Italian.",
       protocol: {
@@ -39,8 +42,18 @@ export function GET() {
       },
       capabilities: {
         tools: publicMcpTools,
-        resources: false,
+        resources: ["neura://articles/{locale}/{slug}", newsroomUiUri],
         prompts: false,
+        events: {
+          names: mcpEventNames,
+          delivery: "webhook",
+          availability: "requires service-role persistence",
+        },
+      },
+      apps: {
+        uiResource: newsroomUiUri,
+        entrypoints: { global: "open_newsroom", thread: "open_news_panel" },
+        openaiExtensions: ["openai/ui", "openai/mentions", "openai/elicitation", "openai/message", "openai/modelContext", "openai/deepLink"],
       },
       administration: {
         endpoint: "/api/mcp/admin",

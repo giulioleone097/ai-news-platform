@@ -5,7 +5,7 @@ description: Read NEURA AI news and approved comments or manage articles, modera
 
 # NEURA editorial workflow
 
-Use `neura-public` for research, published content, and approved comments. It is anonymous and read-only.
+Use `neura-public` for research, published content, and approved comments. It is anonymous and read-only. Prefer `build_briefing` for topic digests; `list_articles`, `search_articles` and `get_article` also render the NEURA newsroom app in hosts that support MCP Apps, so keep text replies short when the app is shown.
 
 Use `neura-admin` only when the user explicitly asks to create, update, publish, moderate, queue, export, or delete newsroom data. It covers article CRUD, comment moderation and audit, newsletter consent and campaigns, immutable media, and social outbox lifecycle. The host must provide `NEURA_MCP_ADMIN_API_KEY`; never print or persist its value.
 

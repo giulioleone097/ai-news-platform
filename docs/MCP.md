@@ -75,8 +75,20 @@ Legacy clients using `initialize` with `2025-11-25` are routed through the SDK's
 | `get_article` | `slug` | `locale=en` | Full published article and public author metadata |
 | `list_categories` | None | `locale=en` | Localized categories |
 | `list_comments` | `slug` | `locale=en`, `parentId`, `limit=12` (1–24), `cursor` | Approved top-level comments or replies and opaque `nextCursor` |
+| `build_briefing` | None | `locale=en`, `topics` (category slugs), `storiesPerTopic=3` (1–5) | Latest stories grouped by topic; asks through an OpenAI form when `topics` is omitted and the host supports it |
+| `open_newsroom` | None | `locale=en`, `category` | App-only ChatGPT sidebar entrypoint |
+| `open_news_panel` | None | `locale=en`, `category` | App-only ChatGPT conversation-panel entrypoint |
+| `search_mentions` | `query` (may be empty) | None | App-only composer mention search returning article resource links |
 
 Supported locales are `en` and `it`; English is the default. All tools are read-only, non-destructive, idempotent, and closed-world.
+
+## Resources, MCP Apps and events
+
+- `ui://neura/newsroom-v1.html` is an MCP Apps UI resource (`text/html;profile=mcp-app`). `list_articles`, `search_articles`, `get_article`, `build_briefing` and both entrypoints render it in hosts that support MCP Apps, such as ChatGPT and Claude; text clients still get the same structured results.
+- `neura://articles/{locale}/{slug}` returns a published article as Markdown. Mentions and other resource links resolve through it; a miss answers `-32602` with `data.uri`, as the 2026-07-28 revision requires.
+- `server/discover` advertises `extensions["openai/mentions"]` and, when service-role persistence is configured, the `events` capability with `events/list`, `events/subscribe` and `events/unsubscribe` for `article.published`.
+
+[OPENAI_EXTENSIONS.md](OPENAI_EXTENSIONS.md) maps every OpenAI extension and the MCP Events contract to this implementation.
 
 ### List articles
 

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = process.cwd();
@@ -20,13 +20,24 @@ const [codex, claude, copilot, mcp, codexMarket, claudeMarket, copilotMarket, sk
 ]);
 
 for (const manifest of [codex, claude, copilot]) {
-  if (manifest.name !== "neura-ai-news" || manifest.version !== "2.0.0") {
+  if (manifest.name !== "neura-ai-news" || manifest.version !== "2.1.0") {
     throw new Error("Plugin manifests must share the canonical name and version.");
   }
 }
 if (codex.mcpServers !== "./.mcp.json") throw new Error("Codex MCP bundle path is invalid.");
 if (codex.skills !== "./skills/" || !codex.author?.name) {
   throw new Error("Codex plugin must declare its skills and publisher.");
+}
+const onboardingSkill = codex.extensions?.["com.openai"]?.onboardingSkill;
+if (typeof onboardingSkill !== "string" || !onboardingSkill.startsWith("./skills/")) {
+  throw new Error("Codex plugin must declare a packaged OpenAI onboarding skill.");
+}
+const onboarding = await readFile(resolve(pluginRoot, onboardingSkill), "utf8");
+if (!onboarding.startsWith("---\nname: onboarding\n")) {
+  throw new Error("Onboarding skill frontmatter is invalid.");
+}
+for (const asset of [codex.interface?.composerIcon, codex.interface?.logo].filter(Boolean)) {
+  await access(resolve(pluginRoot, asset));
 }
 for (const field of ["displayName", "shortDescription", "longDescription", "developerName", "category"]) {
   if (typeof codex.interface?.[field] !== "string" || !codex.interface[field].trim()) {

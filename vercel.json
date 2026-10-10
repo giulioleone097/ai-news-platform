@@ -20,6 +20,9 @@
     "src/app/api/internal/comment-notifications/route.ts": {
       "maxDuration": 60
     },
+    "src/app/api/internal/mcp-events/route.ts": {
+      "maxDuration": 60
+    },
     "src/app/api/webhooks/social/whatsapp/route.ts": {
       "maxDuration": 20
     },
@@ -38,6 +41,10 @@
     },
     {
       "path": "/api/internal/comment-notifications",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/internal/mcp-events",
       "schedule": "* * * * *"
     }
   ]

@@ -1,8 +1,6 @@
 import type { Article, ArticleDraftInput } from "../domain/article";
-import { articleStatuses, socialChannels } from "../domain/article";
+import { articleStatuses, slugPattern, socialChannels } from "../domain/article";
 import type { ArticleRepository } from "../domain/article-repository";
-
-const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export function assertArticleDraft(input: ArticleDraftInput) {
   const titleLength = input.title.trim().length;

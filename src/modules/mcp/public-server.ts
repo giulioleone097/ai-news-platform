@@ -1,16 +1,13 @@
-import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
+import { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 
-import type {
-  Article,
-  Category,
-} from "@/modules/editorial/domain/article";
+import { getPublicSiteUrl, getSupabaseEnvironment } from "@/config/env";
+import { locales } from "@/i18n";
 import type { ArticleRepository } from "@/modules/editorial/domain/article-repository";
 import {
   decodeArticleCursor,
   encodeArticleCursor,
 } from "@/modules/editorial/application/public-feed";
-import { defaultLocale, locales } from "@/i18n";
 import { decodeCommentCursor } from "@/modules/comments/infrastructure/cursor";
 import type {
   PublicCommentPage,
@@ -18,6 +15,45 @@ import type {
 import type {
   PublicCommentQuery,
 } from "@/modules/comments/application/comment-repository";
+
+import {
+  createMcpEventsService,
+  registerMcpEvents,
+  type McpEventsService,
+} from "@/modules/mcp-events";
+
+import { registerMcpApps, type McpAppsOptions } from "./apps";
+import { newsroomToolMeta } from "./apps/ui-resource";
+import { publicMcpServerVersion } from "./metadata";
+import {
+  articleOutputSchema,
+  articleSlugSchema,
+  articleSummaryOutputSchema,
+  categoryOutputSchema,
+  categorySlugSchema,
+  encodedCursorSchema,
+  failure,
+  localeSchema,
+  readOnlyAnnotations,
+  safely,
+  sourceUnavailableMessage,
+  success,
+  toArticle,
+  toArticleSummary,
+  toCategory,
+} from "./public-presenters";
+
+const publicCommentOutputSchema = z.object({
+  id: z.string().uuid(),
+  articleId: z.string().uuid(),
+  locale: z.enum(locales),
+  parentId: z.string().uuid().nullable(),
+  body: z.string(),
+  displayName: z.string(),
+  createdAt: z.string(),
+  editedAt: z.string().nullable(),
+  replyCount: z.number().int().nonnegative(),
+});
 
 export type PublicEditorialReader = Pick<
   ArticleRepository,
@@ -46,133 +82,31 @@ export async function listPublishedArticleComments(
   });
 }
 
-const localeSchema = z
-  .enum(locales)
-  .default(defaultLocale)
-  .describe("Content locale. Defaults to English (en).");
-
-const categorySlugSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(80)
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-  .describe("Locale-specific category slug.");
-
-const encodedCursorSchema = z
-  .string()
-  .min(1)
-  .max(512)
-  .refine((value) => decodeArticleCursor(value) !== null, "Invalid article cursor.")
-  .describe("Opaque cursor returned by a previous list_articles call.");
-
-const categoryOutputSchema = z.object({
-  slug: z.string(),
-  name: z.string(),
-  description: z.string(),
-});
-
-const articleSummaryOutputSchema = z.object({
-  locale: z.enum(locales),
-  slug: z.string(),
-  title: z.string(),
-  excerpt: z.string(),
-  category: z.object({ slug: z.string(), name: z.string() }),
-  publishedAt: z.string(),
-  readingMinutes: z.number().int().positive(),
-  path: z.string(),
-});
-
-const articleOutputSchema = articleSummaryOutputSchema.extend({
-  content: z.string(),
-  coverImage: z.string(),
-  coverAlt: z.string(),
-  author: z.object({ name: z.string(), role: z.string() }),
-  updatedAt: z.string(),
-});
-
-const publicCommentOutputSchema = z.object({
-  id: z.string().uuid(),
-  articleId: z.string().uuid(),
-  locale: z.enum(locales),
-  parentId: z.string().uuid().nullable(),
-  body: z.string(),
-  displayName: z.string(),
-  createdAt: z.string(),
-  editedAt: z.string().nullable(),
-  replyCount: z.number().int().nonnegative(),
-});
-
-const readOnlyAnnotations = {
-  readOnlyHint: true,
-  destructiveHint: false,
-  idempotentHint: true,
-  openWorldHint: false,
-} as const;
-
-function toArticleSummary(article: Article) {
+export function defaultMcpAppsOptions(): McpAppsOptions {
+  const supabase = getSupabaseEnvironment();
   return {
-    locale: article.locale,
-    slug: article.slug,
-    title: article.title,
-    excerpt: article.excerpt,
-    category: {
-      slug: article.category.slug,
-      name: article.category.name,
-    },
-    publishedAt: article.publishedAt ?? article.updatedAt,
-    readingMinutes: article.readingMinutes,
-    path: `/${article.locale}/articles/${article.slug}`,
+    siteUrl: getPublicSiteUrl(),
+    assetOrigins: supabase ? [new URL(supabase.url).origin] : [],
+    version: publicMcpServerVersion,
   };
 }
 
-function toArticle(article: Article) {
-  return {
-    ...toArticleSummary(article),
-    content: article.content,
-    coverImage: article.coverImage,
-    coverAlt: article.coverAlt,
-    author: { name: article.author.name, role: article.author.role },
-    updatedAt: article.updatedAt,
+export function createPublicMcpServer(
+  reader: PublicEditorialReader,
+  options: McpAppsOptions = defaultMcpAppsOptions(),
+  events: McpEventsService | null = createMcpEventsService(),
+) {
+  const icon = {
+    src: new URL("/mcp/neura-icon.svg", options.siteUrl).href,
+    mimeType: "image/svg+xml",
+    sizes: ["any"],
   };
-}
-
-function toCategory(category: Category) {
-  return {
-    slug: category.slug,
-    name: category.name,
-    description: category.description,
-  };
-}
-
-function success(payload: Record<string, unknown>): CallToolResult {
-  return {
-    content: [{ type: "text", text: JSON.stringify(payload) }],
-    structuredContent: payload,
-  };
-}
-
-function failure(message: string): CallToolResult {
-  return {
-    content: [{ type: "text", text: message }],
-    isError: true,
-  };
-}
-
-async function safely(
-  operation: () => Promise<Record<string, unknown>>,
-): Promise<CallToolResult> {
-  try {
-    return success(await operation());
-  } catch {
-    return failure("The editorial source is temporarily unavailable.");
-  }
-}
-
-export function createPublicMcpServer(reader: PublicEditorialReader) {
   const server = new McpServer({
     name: "neura-ai-news",
-    version: "2.0.0",
+    title: "NEURA AI News",
+    version: publicMcpServerVersion,
+    websiteUrl: options.siteUrl.origin,
+    icons: [icon],
   });
 
   server.registerTool(
@@ -192,6 +126,7 @@ export function createPublicMcpServer(reader: PublicEditorialReader) {
         nextCursor: z.string().nullable(),
       },
       annotations: readOnlyAnnotations,
+      _meta: newsroomToolMeta(),
     },
     async ({ locale, category, limit, cursor }) =>
       safely(async () => {
@@ -225,6 +160,7 @@ export function createPublicMcpServer(reader: PublicEditorialReader) {
         items: z.array(articleSummaryOutputSchema),
       },
       annotations: readOnlyAnnotations,
+      _meta: newsroomToolMeta(),
     },
     async ({ locale, query, limit }) =>
       safely(async () => {
@@ -241,15 +177,11 @@ export function createPublicMcpServer(reader: PublicEditorialReader) {
         "Get the complete body and public metadata for one published NEURA article.",
       inputSchema: {
         locale: localeSchema,
-        slug: z
-          .string()
-          .trim()
-          .min(1)
-          .max(160)
-          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+        slug: articleSlugSchema,
       },
       outputSchema: { article: articleOutputSchema },
       annotations: readOnlyAnnotations,
+      _meta: newsroomToolMeta(),
     },
     async ({ locale, slug }) => {
       try {
@@ -259,7 +191,7 @@ export function createPublicMcpServer(reader: PublicEditorialReader) {
         }
         return success({ article: toArticle(article) });
       } catch {
-        return failure("The editorial source is temporarily unavailable.");
+        return failure(sourceUnavailableMessage);
       }
     },
   );
@@ -288,12 +220,7 @@ export function createPublicMcpServer(reader: PublicEditorialReader) {
       description:
         "List approved top-level comments or replies for a published article with keyset pagination.",
       inputSchema: {
-        slug: z
-          .string()
-          .trim()
-          .min(1)
-          .max(160)
-          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+        slug: articleSlugSchema,
         locale: localeSchema,
         parentId: z.string().uuid().nullable().optional(),
         cursor: z.string().trim().min(1).max(512).optional(),
@@ -323,6 +250,9 @@ export function createPublicMcpServer(reader: PublicEditorialReader) {
         });
       }),
   );
+
+  registerMcpApps(server, reader, options, [icon]);
+  registerMcpEvents(server, { service: events });
 
   return server;
 }
