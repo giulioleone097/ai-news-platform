@@ -2,15 +2,13 @@ import type { CallToolResult } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 
 import { defaultLocale, locales } from "@/i18n";
-import type { Article, Category } from "@/modules/editorial/domain/article";
+import { slugPattern, type Article, type Category } from "@/modules/editorial/domain/article";
 import { decodeArticleCursor } from "@/modules/editorial/application/public-feed";
 
 export const localeSchema = z
   .enum(locales)
   .default(defaultLocale)
   .describe("Content locale. Defaults to English (en).");
-
-export const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const categorySlugSchema = z
   .string()

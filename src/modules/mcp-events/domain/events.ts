@@ -1,6 +1,7 @@
 import * as z from "zod/v4";
 
 import { locales } from "@/i18n";
+import { slugPattern } from "@/modules/editorial/domain/article";
 
 /** Events cover published (public) data only, so every subscriber is the same principal. */
 export const mcpEventPrincipal = "public";
@@ -23,7 +24,7 @@ export const articlePublishedArgumentsSchema = z
       .trim()
       .min(1)
       .max(80)
-      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .regex(slugPattern)
       .optional()
       .describe(
         "Only notify for articles in this locale-specific category slug, as returned by list_categories. Omit to receive every category.",

@@ -86,6 +86,9 @@ export interface ArticleQuery {
   cursor?: ArticleCursor;
 }
 
+/** Lowercase kebab-case slug shared by articles and categories. */
+export const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 export function slugify(value: string) {
   return value
     .normalize("NFD")

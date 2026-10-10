@@ -5,10 +5,10 @@ import {
 } from "@modelcontextprotocol/server";
 
 import { isLocale, locales } from "@/i18n";
-import type { Article } from "@/modules/editorial/domain/article";
+import { slugPattern, type Article } from "@/modules/editorial/domain/article";
 import type { ArticleRepository } from "@/modules/editorial/domain/article-repository";
 
-import { articlePath, slugPattern } from "../public-presenters";
+import { articlePath } from "../public-presenters";
 
 type ArticleResourceReader = Pick<ArticleRepository, "listPublished" | "findBySlug">;
 
