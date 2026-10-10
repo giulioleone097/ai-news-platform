@@ -1,7 +1,7 @@
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { getAllowedMcpOrigins } from "@atlasnews/adapters/config/env";
 
-import type { CapabilityPorts } from "@atlasnews/contract";
+import { mcpCapabilities, type CapabilityPorts, type Scope } from "@atlasnews/contract";
 import type { McpEventsService } from "@atlasnews/core/mcp-events/application/mcp-events-service";
 
 import type { McpAppsOptions } from "./apps";
@@ -10,6 +10,7 @@ import {
   resolvePrincipal,
   Unauthorized,
   type AccessTokenVerifier,
+  type AuthenticatedPrincipal,
 } from "./auth";
 import { createAtlasNewsServer } from "./server";
 
@@ -17,7 +18,7 @@ const baseHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers":
     "Content-Type, Accept, MCP-Protocol-Version, MCP-Method, MCP-Name, MCP-Session-Id, Last-Event-ID",
-  "Access-Control-Expose-Headers": "MCP-Protocol-Version, MCP-Session-Id",
+  "Access-Control-Expose-Headers": "MCP-Protocol-Version, MCP-Session-Id, WWW-Authenticate",
   "Cache-Control": "no-store",
 } as const;
 
@@ -62,12 +63,13 @@ function jsonRpcError(status: number, code: number, message: string, request?: R
   );
 }
 
-export async function readBoundedMcpRequest(request: Request): Promise<Request | null> {
+/** Reads the body once, up to the limit. `null` means too large; an empty array means no body. */
+async function readBoundedBody(request: Request): Promise<Uint8Array<ArrayBuffer> | null> {
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (Number.isFinite(contentLength) && contentLength > maximumRequestBodyBytes) {
     return null;
   }
-  if (!request.body) return request;
+  if (!request.body) return new Uint8Array();
 
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -95,16 +97,37 @@ export async function readBoundedMcpRequest(request: Request): Promise<Request |
     body.set(chunk, offset);
     offset += chunk.byteLength;
   }
+  return body;
+}
 
+/** The same request with its body already read, for the SDK handler. */
+function withBody(request: Request, body: Uint8Array<ArrayBuffer>) {
+  if (!body.byteLength) return request;
   const headers = new Headers(request.headers);
   headers.delete("content-length");
+  return new Request(request.url, { method: request.method, headers, body, signal: request.signal });
+}
 
-  return new Request(request.url, {
-    method: request.method,
-    headers,
-    body,
-    signal: request.signal,
-  });
+const scopesByTool = new Map(mcpCapabilities.map((capability) => [capability.name, capability.scopes]));
+
+/**
+ * The scopes of every tool this request would run. The JSON-RPC body is what the SDK executes, so it
+ * decides; the `MCP-Name` header (2026-07-28 requests) is only ever added, never trusted to lower the
+ * result: a header and a body that disagree are treated as the stricter of the two. Batches are read
+ * message by message, and a body that does not parse contributes nothing (the SDK rejects it).
+ */
+function scopesRequiredByCall(headers: Headers, body: Uint8Array<ArrayBuffer>): Scope[] {
+  const names: unknown[] = [headers.get("mcp-name")];
+  try {
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(body));
+    for (const message of Array.isArray(parsed) ? parsed : [parsed]) {
+      const { method, params } = (message ?? {}) as { method?: unknown; params?: { name?: unknown } };
+      if (method === "tools/call") names.push(params?.name);
+    }
+  } catch {
+    // Not JSON: nothing in the body can run a tool.
+  }
+  return [...new Set(names.flatMap((name) => (typeof name === "string" ? scopesByTool.get(name) ?? [] : [])))];
 }
 
 export function mcpOptionsResponse(request?: Request) {
@@ -124,24 +147,41 @@ export function mcpMethodNotAllowedResponse(request?: Request) {
 
 export interface McpEndpointDependencies {
   verifier: AccessTokenVerifier;
-  createPorts(): CapabilityPorts;
+  /** Receives the caller, so that writes can be attributed to the signed-in editor. */
+  createPorts(principal: AuthenticatedPrincipal): CapabilityPorts;
   apps?: McpAppsOptions;
   events?: McpEventsService | null;
 }
 
-function unauthorizedResponse(request: Request) {
-  const response = jsonRpcError(401, -32001, "Valid Bearer authentication required.", request, false);
+/**
+ * HTTP 401 with a Bearer challenge. With `required` scopes it answers an anonymous call to a scoped
+ * tool: Claude and ChatGPT start sign-in only on a real 401, which a tool handler cannot produce, so
+ * this runs before the SDK. That answer is public (CORS as for any anonymous caller) so browser hosts
+ * can read it; a rejected token gets none.
+ */
+function unauthorizedResponse(request: Request, required?: readonly Scope[]) {
+  const response = jsonRpcError(
+    401,
+    -32001,
+    required ? "Sign in to use this tool." : "Valid Bearer authentication required.",
+    request,
+    required !== undefined,
+  );
   response.headers.set(
     "WWW-Authenticate",
-    bearerChallenge(request, { error: "invalid_token", description: "The access token is missing, expired or invalid" }),
+    bearerChallenge(request, {
+      error: "invalid_token",
+      description: required ? "Authentication required for this tool" : "The access token is missing, expired or invalid",
+      scope: required,
+    }),
   );
   return response;
 }
 
 /**
  * The single MCP endpoint. The caller is resolved once, from the Authorization header:
- * none means anonymous (read tools only), a valid token means an editor with its scopes,
- * and a token that does not verify is a 401 with a Bearer challenge.
+ * none means anonymous (read tools only; a call to a scoped tool is a 401 with a Bearer challenge),
+ * a valid token means an editor with its scopes, and a token that does not verify is a 401 too.
  */
 export async function handleMcpRequest(request: Request, deps: McpEndpointDependencies) {
   let principal;
@@ -154,17 +194,22 @@ export async function handleMcpRequest(request: Request, deps: McpEndpointDepend
   }
   const cors = principal.kind === "anonymous";
 
-  let boundedRequest: Request | null;
+  let body: Uint8Array<ArrayBuffer> | null;
   try {
-    boundedRequest = await readBoundedMcpRequest(request);
+    body = await readBoundedBody(request);
   } catch {
     return jsonRpcError(400, -32700, "Invalid request body.", request, cors);
   }
-  if (!boundedRequest) return jsonRpcError(413, -32001, "Request body too large.", request, cors);
+  if (!body) return jsonRpcError(413, -32001, "Request body too large.", request, cors);
+
+  if (principal.kind === "anonymous") {
+    const required = scopesRequiredByCall(request.headers, body);
+    if (required.length) return unauthorizedResponse(request, required);
+  }
 
   let ports: CapabilityPorts;
   try {
-    ports = deps.createPorts();
+    ports = deps.createPorts(principal);
   } catch {
     return jsonRpcError(503, -32003, "The editorial source is not configured.", request, cors);
   }
@@ -185,7 +230,7 @@ export async function handleMcpRequest(request: Request, deps: McpEndpointDepend
   );
 
   try {
-    const response = await handler.fetch(boundedRequest);
+    const response = await handler.fetch(withBody(request, body));
     await handler.close().catch(() => undefined);
     return withPublicHeaders(response, request, cors);
   } catch {

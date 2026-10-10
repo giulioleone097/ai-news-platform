@@ -2,12 +2,18 @@ import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
 import { getAdminEditorialRepository, getPublicEditorialRepositories } from "@atlasnews/adapters/editorial/container";
 import { CapabilityFailure, siteLinks, type CapabilityPorts } from "@atlasnews/contract";
 
+import type { AuthenticatedPrincipal } from "./auth";
 import { createWebCacheInvalidator } from "./revalidate";
 
 const invalidateCache = createWebCacheInvalidator();
 
-/** Builds the ports from the configured adapters; heavy or optional ones load on first use. */
-export function createRuntimePorts(): CapabilityPorts {
+/**
+ * Builds the ports from the configured adapters; heavy or optional ones load on first use.
+ * Writes are attributed to the signed-in editor's author id; the API key, which names no editor,
+ * keeps `NEURA_MCP_ADMIN_AUTHOR_ID`.
+ */
+export function createRuntimePorts(principal?: AuthenticatedPrincipal): CapabilityPorts {
+  const actorAuthorId = principal?.authorId;
   return {
     site: siteLinks(getPublicSiteUrl()),
     articles: getPublicEditorialRepositories().articles,
@@ -23,7 +29,7 @@ export function createRuntimePorts(): CapabilityPorts {
 
     async editorial() {
       try {
-        return getAdminEditorialRepository();
+        return getAdminEditorialRepository(actorAuthorId);
       } catch {
         throw new CapabilityFailure("Newsroom persistence is not configured.");
       }
@@ -49,7 +55,7 @@ export function createRuntimePorts(): CapabilityPorts {
           import("@atlasnews/adapters/newsletter/container"),
           import("@atlasnews/adapters/config/env"),
         ]);
-      const admin = getSupabaseAdminEnvironment();
+      const admin = getSupabaseAdminEnvironment(actorAuthorId);
       if (!admin) throw new Error("Newsletter administration is not configured.");
       return {
         campaign: getAdminNewsletterCampaignService(),

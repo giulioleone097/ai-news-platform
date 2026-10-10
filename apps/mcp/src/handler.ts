@@ -8,6 +8,8 @@ const routes: Record<string, Route> = {
   "/mcp": mcp,
   "/info": info,
   "/.well-known/oauth-protected-resource": oauthMetadata,
+  // Path-suffixed form (RFC 9728) that some hosts try before the root document.
+  "/.well-known/oauth-protected-resource/mcp": oauthMetadata,
 };
 
 /** Web-standard handler for the standalone MCP server: `/mcp`, `/info` and the OAuth resource metadata. */

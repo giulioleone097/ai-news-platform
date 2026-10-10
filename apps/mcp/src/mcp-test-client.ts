@@ -8,7 +8,7 @@ import { MemoryEditorialRepository } from "@atlasnews/adapters/editorial/memory-
 import { siteLinks, type CapabilityPorts } from "@atlasnews/contract";
 import type { EditorialCacheInvalidator } from "@atlasnews/core/editorial/application/cache-port";
 
-import { apiKeyVerifier } from "./auth";
+import { apiKeyVerifier, type AccessTokenVerifier } from "./auth";
 import { handleMcpRequest } from "./http";
 import { mcpProtocolVersion } from "./metadata";
 
@@ -64,11 +64,11 @@ export function rpcRequest(body: unknown, version = mcpProtocolVersion, authoriz
 export async function sendRpc(
   body: unknown,
   version = mcpProtocolVersion,
-  options: { authorization?: string; ports?: CapabilityPorts } = {},
+  options: { authorization?: string; ports?: CapabilityPorts; verifier?: AccessTokenVerifier } = {},
 ) {
   const ports = options.ports ?? memoryPorts();
   const response = await handleMcpRequest(rpcRequest(body, version, options.authorization), {
-    verifier: apiKeyVerifier(() => testApiKey),
+    verifier: options.verifier ?? apiKeyVerifier(() => testApiKey),
     createPorts: () => ports,
   });
   const text = await response.text();

@@ -3,11 +3,10 @@ import {
   mcpMethodNotAllowedResponse,
   mcpOptionsResponse,
 } from "../http";
-import { apiKeyVerifier } from "../auth";
+import { defaultAccessTokenVerifier } from "../auth";
 import { createRuntimePorts } from "../runtime-ports";
 
-// The shared API key is the only verifier today; an OAuth JWT verifier joins it behind the same port.
-const verifier = apiKeyVerifier();
+const verifier = defaultAccessTokenVerifier();
 
 export function POST(request: Request) {
   return handleMcpRequest(request, { verifier, createPorts: createRuntimePorts });

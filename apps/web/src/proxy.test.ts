@@ -41,6 +41,16 @@ describe("proxy authentication refresh", () => {
     expect(mocks.getClaims).toHaveBeenCalledOnce();
   });
 
+  it("leaves the OAuth consent page where it is and refreshes the session for it", async () => {
+    const response = await proxy(new NextRequest("https://neura.test/oauth/consent?authorization_id=x"));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    expect(isRewrite(response)).toBe(false);
+    expect(mocks.createServerClient).toHaveBeenCalledOnce();
+    expect(mocks.getClaims).toHaveBeenCalledOnce();
+  });
+
   it("does not swallow a claims verification failure", async () => {
     mocks.getClaims.mockRejectedValueOnce(new Error("claims verification unavailable"));
 

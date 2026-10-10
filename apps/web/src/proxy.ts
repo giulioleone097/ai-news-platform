@@ -30,14 +30,21 @@ function agentRewritePath(pathname: string) {
   return null;
 }
 
+/** The OAuth consent page is a fixed address that Supabase Auth redirects to; it picks its own language. */
+function isOAuthPath(pathname: string) {
+  return pathname === "/oauth" || pathname.startsWith("/oauth/");
+}
+
 function shouldLocalize(pathname: string) {
   return !pathname.startsWith("/api/")
     && pathname !== "/api"
+    && !isOAuthPath(pathname)
     && !pathname.startsWith("/_next/")
     && !PUBLIC_FILE.test(pathname);
 }
 
 function isAuthSensitivePath(pathname: string) {
+  if (isOAuthPath(pathname)) return true;
   const [, localeSegment, section] = pathname.split("/");
   return isLocale(localeSegment)
     && (section === "studio" || section === "login" || section === "auth");

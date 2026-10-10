@@ -78,8 +78,9 @@ export async function getStudioEditorialRepositories(
   };
 }
 
-export function getAdminEditorialRepository(): AdminEditorialRepository {
-  const admin = createAdminSupabaseClient();
+/** `actorAuthorId` is the signed-in editor's author; without it the configured admin author is used. */
+export function getAdminEditorialRepository(actorAuthorId?: string): AdminEditorialRepository {
+  const admin = createAdminSupabaseClient(actorAuthorId);
   if (admin) return new SupabaseEditorialRepository(admin.client, { audience: "editorial", authorId: admin.authorId });
 
   if (isDemoStudioEnabled()) return memoryRepository;

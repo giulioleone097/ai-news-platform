@@ -148,7 +148,7 @@ describe("MCP endpoint", () => {
     }
   });
 
-  it("answers a scoped tool called anonymously with a sign-in challenge, not data", async () => {
+  it("answers a scoped tool called anonymously with 401 and a challenge, before anything runs", async () => {
     const repository = new MemoryEditorialRepository();
     const before = (await repository.listForStudio("en")).length;
     const ports = memoryPorts(repository);
@@ -168,14 +168,114 @@ describe("MCP endpoint", () => {
       }),
     }, mcpProtocolVersion, { ports });
 
-    expect(response.status).toBe(200);
-    expect(payload.result.isError).toBe(true);
-    expect(payload.result.structuredContent).toBeUndefined();
-    const [challenge] = payload.result._meta["mcp/www_authenticate"];
+    expect(response.status).toBe(401);
+    expect(payload.error.code).toBe(-32001);
+    expect(payload.result).toBeUndefined();
+    const challenge = response.headers.get("www-authenticate")!;
+    expect(challenge).toMatch(/^Bearer /);
     expect(challenge).toContain('resource_metadata="http://localhost:8787/.well-known/oauth-protected-resource"');
-    expect(challenge).toContain('error="insufficient_scope"');
+    expect(challenge).toContain('error="invalid_token"');
     expect(challenge).toContain('scope="newsroom.write"');
+    expect(response.headers.get("access-control-expose-headers")).toContain("WWW-Authenticate");
     expect((await repository.listForStudio("en")).length).toBe(before);
+  });
+
+  describe("anonymous calls and the 401 gate", () => {
+    const legacyVersion = "2025-11-25";
+    const scopedCall = (id = 1) => ({
+      jsonrpc: "2.0", id, method: "tools/call", params: { name: "admin_list_articles", arguments: { locale: "en" } },
+    });
+    const publicCall = { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "list_articles", arguments: { locale: "en" } } };
+    const send = (request: Request) =>
+      handleMcpRequest(request, { verifier: apiKeyVerifier(() => testApiKey), createPorts: () => memoryPorts() });
+
+    it("challenges a 2025-era client, which sends the tool name only in the body", async () => {
+      const request = rpcRequest(scopedCall(), legacyVersion);
+      expect(request.headers.get("mcp-name")).toBeNull();
+      const response = await send(request);
+      expect(response.status).toBe(401);
+      expect(response.headers.get("www-authenticate")).toContain('scope="newsroom.read"');
+    });
+
+    it("challenges a batch that contains one scoped call, and asks for every scope the batch needs", async () => {
+      const response = await send(rpcRequest([
+        publicCall,
+        scopedCall(3),
+        { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "admin_publish_article", arguments: {} } },
+      ] as never, legacyVersion));
+      expect(response.status).toBe(401);
+      expect(response.headers.get("www-authenticate")).toContain('scope="newsroom.read newsroom.publish"');
+    });
+
+    it("treats a request whose header and body disagree as the stricter of the two", async () => {
+      const cases: Array<[string, Request]> = [];
+      for (const [label, body, name] of [
+        ["header names a public tool, body a scoped one", scopedCall(), "list_articles"],
+        ["header names a scoped tool, body a public one", publicCall, "admin_list_articles"],
+        ["header names a scoped tool, body lists tools", { jsonrpc: "2.0", id: 5, method: "tools/list", params: modernParams() }, "admin_list_articles"],
+        ["header says tools/list, body calls a scoped tool", scopedCall(), undefined],
+      ] as const) {
+        const request = rpcRequest(body, mcpProtocolVersion);
+        if (name) request.headers.set("MCP-Name", name);
+        else request.headers.set("MCP-Method", "tools/list");
+        cases.push([label, request]);
+      }
+      for (const [label, request] of cases) {
+        const response = await send(request);
+        expect(response.status, label).toBe(401);
+        expect(response.headers.get("www-authenticate"), label).toContain("resource_metadata=");
+      }
+    });
+
+    it("does not challenge a body that is not JSON-RPC or a name that is no capability", async () => {
+      const garbled = new Request("http://localhost:8787/mcp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", "MCP-Name": "no_such_tool" },
+        body: "{not json",
+      });
+      expect((await send(garbled)).status).not.toBe(401);
+    });
+
+    it("still serves everything that needs no sign-in", async () => {
+      for (const [label, request] of [
+        ["public tool, 2026 style", rpcRequest({ ...publicCall, params: modernParams(publicCall.params) })],
+        ["public tool, 2025 style", rpcRequest(publicCall, legacyVersion)],
+        ["tools/list", rpcRequest({ jsonrpc: "2.0", id: 6, method: "tools/list", params: modernParams() })],
+        ["server/discover", rpcRequest({ jsonrpc: "2.0", id: 7, method: "server/discover", params: modernParams() })],
+        ["legacy initialize", rpcRequest({
+          jsonrpc: "2.0", id: 8, method: "initialize",
+          params: { protocolVersion: legacyVersion, capabilities: {}, clientInfo: { name: "legacy", version: "1" } },
+        }, legacyVersion)],
+      ] as const) {
+        const response = await send(request);
+        expect(response.status, label).toBe(200);
+        expect(response.headers.get("www-authenticate"), label).toBeNull();
+        expect(JSON.parse((await response.text()).replace(/^[^{]*data: /, "").split("\n")[0]).error, label).toBeUndefined();
+      }
+    });
+
+    it("leaves a signed-in caller who lacks a scope with the tool-level error, not a 401", async () => {
+      const verifier = { verify: async () => ({ subject: "reader", scopes: [] }) };
+      const { response, payload } = await sendRpc({
+        ...scopedCall(), params: modernParams(scopedCall().params),
+      }, mcpProtocolVersion, { authorization: "Bearer any", verifier });
+      expect(response.status).toBe(200);
+      expect(payload.result.isError).toBe(true);
+      expect(payload.result.structuredContent).toBeUndefined();
+      expect(payload.result._meta["mcp/www_authenticate"][0]).toContain('error="insufficient_scope"');
+    });
+
+    it("hands the caller to the port factory, so writes can be attributed", async () => {
+      const authorId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+      const createPorts = vi.fn(() => memoryPorts());
+      const verifier = { verify: async () => ({ subject: "editor", scopes, authorId }) };
+      const response = await handleMcpRequest(
+        rpcRequest({ ...scopedCall(), params: modernParams(scopedCall().params) }, mcpProtocolVersion, "Bearer any"),
+        { verifier, createPorts },
+      );
+      expect(response.status).toBe(200);
+      expect(createPorts).toHaveBeenCalledWith({ kind: "editor", subject: "editor", scopes, authorId });
+    });
   });
 
   it("runs the same tool for the API key, without CORS headers and never cached", async () => {

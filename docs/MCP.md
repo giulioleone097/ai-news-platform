@@ -48,7 +48,7 @@ curl --request POST "$MCP/mcp" \
   --data '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
 ```
 
-Use `MCP-Method: server/discover` with `method: "server/discover"` for the server identity and capabilities. `tools/list` returns all 48 tools to every caller, so a host can find the editor tools and start sign-in. Each tool carries all four annotation hints and its security scheme in `_meta.securitySchemes`.
+Use `MCP-Method: server/discover` with `method: "server/discover"` for the server identity and capabilities. `tools/list` returns all 50 tools to every caller, so a host can find the editor tools and start sign-in. Each tool carries all four annotation hints and its security scheme in `_meta.securitySchemes`.
 
 ## Authentication
 
@@ -56,7 +56,7 @@ The caller is resolved once per request from the `Authorization` header:
 
 | Header | Caller | Result |
 | --- | --- | --- |
-| none | anonymous | read tools work; scoped tools return a sign-in error |
+| none | anonymous | read tools, `tools/list` and discovery work; a `tools/call` for a scoped tool is answered with HTTP 401 and a Bearer challenge (below) |
 | `Bearer <valid token>` | editor with the token's scopes | tools inside those scopes run |
 | anything else | rejected | HTTP 401 with `WWW-Authenticate: Bearer realm="atlasnews", resource_metadata="…", error="invalid_token"` |
 
@@ -75,7 +75,14 @@ Scopes:
 | `newsroom.write` | Create and update articles, workflow, media and drafts; moderate comments; queue, requeue, cancel and retry social jobs; cancel campaigns |
 | `newsroom.publish` | Publish and delete articles and media; send or schedule campaigns; erase subscribers; process any outbox (anything that emails or posts externally) |
 
-A tool declares `[{ "type": "noauth" }]` or `[{ "type": "oauth2", "scopes": [...] }]` in `_meta.securitySchemes`. Calling a scoped tool without the scope returns a tool error (not data) with `_meta["mcp/www_authenticate"]` holding a Bearer challenge with `error="insufficient_scope"` and the `scope` it needs. That is OpenAI's documented trigger for account linking. The challenge's `resource_metadata` points at `/.well-known/oauth-protected-resource`, which lists `authorization_servers` (Supabase Auth, first) once sign-in is configured.
+A tool declares `[{ "type": "noauth" }]` or `[{ "type": "oauth2", "scopes": [...] }]` in `_meta.securitySchemes`. What happens when a scoped tool is called without the scope depends on who calls:
+
+- **Anonymous caller: HTTP 401, before the SDK runs.** Claude starts sign-in only on a real `401` with `WWW-Authenticate: Bearer resource_metadata="…"`, which a tool handler cannot produce (whatever it returns is wrapped in a `200`). OpenAI's apps SDK accepts the same challenge. `handleMcpRequest` therefore decides in `apps/mcp/src/http.ts`, from the already-read request body, whether the request would run a tool whose capability has scopes, and answers `401` with `Bearer realm="atlasnews", resource_metadata="…", error="invalid_token", error_description="Authentication required for this tool", scope="…"` (the scopes of the called tools, or the ones Supabase can grant). The 401 carries the public CORS headers, since it reveals nothing but the metadata URL, and `WWW-Authenticate` is in `Access-Control-Expose-Headers`.
+- **Signed-in caller without the scope (such as a user with no editor profile): HTTP 200 with a tool error**, not data, whose `_meta["mcp/www_authenticate"]` holds a Bearer challenge with `error="insufficient_scope"` and the `scope` it needs. That is OpenAI's tool-level trigger for account linking, and a fresh `401` would only loop a host that already holds a token.
+
+How the gate reads a request: the JSON-RPC body is what the SDK executes, so every `tools/call` in it counts, for 2026-07-28 and 2025-era requests alike and for each message of a batch. The `MCP-Name` header (2026-07-28 requests carry `MCP-Method` and `MCP-Name`) can only add to that, never lower it: if the header names a scoped tool the request is challenged even when the body says otherwise, and the other way round. A body that is not JSON contributes nothing and the SDK rejects it. `initialize`, `server/discover`, `tools/list`, resources, the events methods and anonymous tools never reach the gate. The body is read once (limit 256 KiB, `413` above it, before any parsing) and the SDK receives that same body.
+
+The challenge's `resource_metadata` points at `/.well-known/oauth-protected-resource`, which lists `authorization_servers` (Supabase Auth, first) once sign-in is configured.
 
 Supabase Auth cannot grant custom scopes; it rejects an authorization request for a scope it does not define. The `newsroom.*` scopes are therefore a server-side decision taken from the profile role (`scopesForRole` in `apps/mcp/src/auth/editors.ts`, the only place), and with sign-in configured the metadata, the challenges and `_meta.securitySchemes` offer hosts only the scopes Supabase grants (`email`). Without sign-in configured they show the `newsroom.*` scopes as before.
 
@@ -86,7 +93,7 @@ Responses to a signed-in editor are `Cache-Control: no-store` and carry no CORS 
 Supabase Auth is the OAuth 2.1 authorization server; `apps/mcp` is only the resource server. Editors are the `auth.users` that have an editor or admin `public.profiles` row ([DEPLOYMENT.md](DEPLOYMENT.md), "Bootstrap the first editor").
 
 ```text
-host -> POST /mcp without token         -> 200, tool error with _meta["mcp/www_authenticate"] (or 401 for a bad token)
+host -> POST /mcp without token         -> tools/list and public tools answer; a scoped tools/call answers 401 + WWW-Authenticate
 host -> GET  /.well-known/oauth-protected-resource   -> authorization_servers[0] = https://<ref>.supabase.co/auth/v1
 host -> GET  <issuer>/.well-known/openid-configuration (or oauth-authorization-server)
 host -> POST <issuer>/oauth/clients/register          (dynamic registration, once per host)
@@ -130,10 +137,13 @@ Anyone can register a client when dynamic registration is on, and the editor's c
 | Variable | Used by | Meaning |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | `apps/mcp`, `apps/web` | Sign-in is on when all three are set (the service role key, at least 32 characters, reads the editor profile). The issuer is `<url>/auth/v1` and the key set `<issuer>/.well-known/jwks.json`. Unset means no OAuth: only the API key |
-| `NEXT_PUBLIC_MCP_URL` | `apps/mcp` | Public origin of the MCP server (`https://mcp.news.example.com`). Set it behind a proxy: the `resource` in the metadata and the challenge must be the exact URL hosts were given, and the request URL seen by Node is not |
+| `NEXT_PUBLIC_MCP_URL` | `apps/mcp`, `apps/web` | Public origin of the MCP server (`https://mcp.news.example.com`). Set it behind a proxy: the `resource` in the metadata and the challenge must be the exact URL hosts were given, and the request URL seen by Node is not. `apps/web` links to it from the footer |
 | `NEURA_MCP_OAUTH_ISSUER` | `apps/mcp` | Optional. Issuer when it differs from `<url>/auth/v1`, such as a Supabase custom domain |
 | `NEURA_MCP_OAUTH_AUDIENCE` | `apps/mcp` | Optional. Required `aud`. Unset accepts `authenticated`. Set it to the MCP URL once a custom access token hook sets that audience (below) |
-| `NEURA_MCP_ADMIN_API_KEY`, `NEURA_MCP_ADMIN_AUTHOR_ID` | `apps/mcp` | The API key path, unchanged |
+| `NEURA_MCP_ADMIN_API_KEY`, `NEURA_MCP_ADMIN_AUTHOR_ID` | `apps/mcp` | The API key path. Its writes are attributed to `NEURA_MCP_ADMIN_AUTHOR_ID`; a signed-in editor's are attributed to their own `author_id` |
+| `NEURA_REVALIDATE_SECRET` | `apps/mcp`, `apps/web` | Shared secret (at least 32 characters, the same value on both) for cache invalidation after a write, see [Cache invalidation](#cache-invalidation) |
+
+The sign-in variables are listed in `.env.example`, with the app that reads each.
 
 Because `aud` is `authenticated` and the `resource` is not bound to it, a token that Supabase issued to another client of the same project is accepted here if its subject is an editor. The `client_id` requirement keeps ordinary session tokens out, but only a custom access token hook closes the gap: for tokens that carry `client_id`, return `aud` set to the MCP URL, then set `NEURA_MCP_OAUTH_AUDIENCE` to the same value.
 
@@ -141,7 +151,7 @@ Because `aud` is `authenticated` and the `resource` is not bound to it, a token 
 
 1. `curl https://<ref>.supabase.co/auth/v1/.well-known/openid-configuration`: `registration_endpoint` is present when dynamic registration is on, and `jwks_uri` returns at least one key.
 2. `curl $MCP/.well-known/oauth-protected-resource`: `resource` is exactly the URL you give hosts, and `authorization_servers[0]` is the issuer.
-3. Call a scoped tool without a token: the tool error carries `_meta["mcp/www_authenticate"]` with `resource_metadata`. Call any tool with a made-up bearer: HTTP 401 with `WWW-Authenticate`.
+3. Call a scoped tool without a token (`tools/call` with `admin_list_articles`): HTTP 401 with `WWW-Authenticate: Bearer … resource_metadata="…"`. Call a public tool or `tools/list` without a token: HTTP 200. Call any tool with a made-up bearer: HTTP 401 with `error="invalid_token"`.
 4. Add the connector in Claude (Settings, Connectors, URL `$MCP/mcp`) and in ChatGPT (developer mode, same URL). Sign in as an editor on the consent page, ask for `admin_list_articles`, then a write, and check that the article's author is the signed-in editor.
 5. Sign in as a user without an editor profile: the consent page offers only Cancel; a token obtained another way sees only the anonymous tools.
 6. Revoke the grant, then wait for `jwt_expiry`: the access token stops working.
@@ -173,7 +183,7 @@ Editor tools (`oauth2`), all names unchanged from the former `/mcp/admin` server
 | `newsroom.write` | `admin_create_article`, `admin_update_article`, `admin_update_distribution`, `admin_update_newsletter_subscription`, `admin_upload_media`, `admin_moderate_comment`, `admin_newsletter_save_campaign_draft`, `admin_newsletter_cancel_campaign`, `admin_social_enqueue`, `admin_social_requeue`, `admin_social_cancel`, `admin_social_retry` |
 | `newsroom.publish` | `admin_publish_article`, `admin_delete_article`, `admin_delete_media`, `admin_comment_process_notifications`, `admin_newsletter_send_campaign`, `admin_newsletter_schedule_campaign`, `admin_newsletter_request_subscription`, `admin_newsletter_erase_subscription`, `admin_newsletter_process_outbox`, `admin_social_process_outbox` |
 
-Production persistence for the editor tools additionally requires `SUPABASE_SERVICE_ROLE_KEY`, and `NEURA_MCP_ADMIN_AUTHOR_ID` for the API key (a signed-in editor is attributed to their own `author_id`). In demo mode (no Supabase, outside production) the editorial tools work on the in-memory repository; comment moderation, newsletter and social tools answer with a generic "not configured" tool error. Generate the API key with `openssl rand -hex 32` and rotate it on both ends together.
+Production persistence for the editor tools additionally requires `SUPABASE_SERVICE_ROLE_KEY`, and `NEURA_MCP_ADMIN_AUTHOR_ID` for the API key (a signed-in editor is attributed to their own `author_id`, taken from the principal by `createRuntimePorts` and passed to the editorial repository and the newsletter services). In demo mode (no Supabase, outside production) the editorial tools work on the in-memory repository; comment moderation, newsletter and social tools answer with a generic "not configured" tool error. Generate the API key with `openssl rand -hex 32` and rotate it on both ends together.
 
 Supported locales are `en` and `it`; English is the default.
 
@@ -219,7 +229,7 @@ Clients that sign in (see [Sign-in](#sign-in-with-supabase-auth)) send the token
 
 - Invalid JSON-RPC or arguments: protocol error or a tool error result (`Input validation error`).
 - Missing localized article: tool error, no cross-language fallback.
-- Missing scope: tool error with `_meta["mcp/www_authenticate"]`; invalid token: HTTP 401.
+- Scoped tool called anonymously, or an invalid token: HTTP 401 with a Bearer challenge. Signed in without the scope: tool error with `_meta["mcp/www_authenticate"]`.
 - Upstream repository unavailable: bounded generic tool error; database details are not exposed.
 - Unsupported HTTP method: 405 with `Allow: POST, OPTIONS`.
 
