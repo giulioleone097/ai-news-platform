@@ -161,6 +161,15 @@ Check database region alignment, query indexes, Vercel cold-start logs, and resu
 
 The lockfile and `package.json` differ. Regenerate the lockfile intentionally with the supported npm/Node version, review the dependency diff, and commit them together. Do not replace `npm ci` with `npm install` in CI.
 
+### Workers do not run
+
+Outbox rows stay `pending`, newsletters are not sent, or MCP event deliveries do not arrive. Work from the database outward, on the affected Supabase project:
+
+1. `select jobname, active from cron.job where jobname like 'atlasnews-%';` must show `atlasnews-jobs-dispatch` as active, and `select status, return_message from cron.job_run_details order by runid desc limit 5;` must show recent `succeeded` runs. Otherwise `pg_cron` is disabled or the migration was not applied.
+2. `select private.dispatch_jobs();` returning `0` means a Vault secret is missing: set `jobs_base_url` and `jobs_cron_secret` as in [Deployment](DEPLOYMENT.md#schedule-the-workers).
+3. `select status_code, left(content, 100), error_msg from net._http_response order by id desc limit 8;`: `401` is a secret mismatch with `CRON_SECRET`, a connection or DNS error is a wrong `jobs_base_url` or a stopped `apps/jobs`, a not-configured `503` names a missing environment value on `apps/jobs`.
+4. Only then read the `apps/jobs` process logs.
+
 ### Supabase migration history differs
 
 Run `npx --no-install supabase migration list` and inspect local/remote versions. Do not run `migration repair`, `db reset --linked`, or destructive SQL until the exact history mismatch and target project are proven.
@@ -182,6 +191,10 @@ Application rollback does not undo database migrations.
 - For destructive schema changes, use expand/migrate/contract across separate releases so the previous app remains compatible during rollout.
 - Restore from backup only with an explicit recovery plan and accepted data-loss window.
 - Never use `supabase db reset --linked` on Production.
+
+### Worker schedule
+
+The schedule is database state, not application state, so an application rollback leaves it running. To stop it: `select cron.unschedule('atlasnews-jobs-dispatch');` (pausing instead: `cron.alter_job(..., active := false)`, see [Deployment](DEPLOYMENT.md#schedule-the-workers)). To remove it completely, also run `select cron.unschedule('atlasnews-job-run-details-cleanup');` and `delete from vault.secrets where name in ('jobs_base_url', 'jobs_cron_secret');`; the function `private.dispatch_jobs()` is then inert. To bring the schedule back, run the two `cron.schedule(...)` statements from the migration. Falling back to Vercel crons means restoring `apps/jobs/vercel.json` from Git history (`git log --diff-filter=D -- apps/jobs/vercel.json`) in a Vercel project rooted at `apps/jobs`, after unscheduling the database job so two schedulers never run at once (they would be safe, but wasteful).
 
 ### Environment
 

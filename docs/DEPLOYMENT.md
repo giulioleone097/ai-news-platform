@@ -24,7 +24,7 @@ Never point a Preview deployment at the production database.
 | `SUPABASE_SERVICE_ROLE_KEY` | Empty | Local service-role key for operational testing | Preview project service-role key | Production project service-role key | Server-only, comments, workers and admin MCP |
 | `NEURA_MCP_ADMIN_AUTHOR_ID` | Empty | Existing `public.authors` UUID | Existing preview author UUID | Existing production author UUID | Server-only, admin MCP only |
 | `NEURA_MCP_ADMIN_API_KEY` | Empty | High-entropy local key | Unique preview key | Unique production key | Server-only |
-| `CRON_SECRET` | Empty | Disposable local key | Unique preview key | Unique production key | Server-only, Vercel injects it into cron requests |
+| `CRON_SECRET` | Empty | Disposable local key | Unique preview key | Unique production key | Server-only (`apps/jobs`); the same value is stored in the project's Vault as `jobs_cron_secret` |
 | `NEURA_COMMENT_GUEST_SECRET` | Empty | Independent random value | Independent preview value | Independent production value | Server-only, signed guest/comment capabilities |
 | `RESEND_API_KEY` | Empty | Resend test key | Preview provider key | Production provider key | Server-only |
 | `RESEND_WEBHOOK_SECRET` | Empty | Signed test webhook secret | Preview endpoint secret | Production endpoint secret | Server-only |
@@ -181,7 +181,7 @@ Add environment variables separately for Preview and Production. Keep Preview de
 
 `apps/web` serves only the reader site, Studio, the comments/articles/health API and the provider webhooks. The MCP server (`apps/mcp`, `npm run start -w apps/mcp`, default port 8787) and the workers (`apps/jobs`, `npm run start -w apps/jobs`, default port 8788) are separate deployables that run under plain Node through `tsx`; they read their configuration from the process environment, not from `.env` files. Set `NEXT_PUBLIC_MCP_URL` on `apps/web` so the footer links to the MCP server's `/info`, and point MCP clients at `https://<mcp-host>/mcp`. `/mcp` calls should finish well under 10 seconds.
 
-The cron schedule is owned by `apps/jobs/vercel.json`: it invokes `/internal/social-outbox`, `/internal/newsletter-outbox`, `/internal/comment-notifications` and `/internal/mcp-events` every minute. Workers are expected to finish within 60 seconds, authenticate `Authorization: Bearer $CRON_SECRET`, lease rows with `SKIP LOCKED`, and are safe when Vercel delivers a cron more than once. Confirm that the selected Vercel plan supports per-minute crons. Register these provider callbacks at their exact production origins:
+The worker schedule is not owned by Vercel; see [Schedule the workers](#schedule-the-workers). Register these provider callbacks at their exact production origins:
 
 ```text
 POST https://<canonical-host>/api/webhooks/newsletter
@@ -192,14 +192,56 @@ Resend must sign the raw payload with the configured webhook secret. WhatsApp mu
 
 `GET /api/health` is the deployment-readiness boundary. In production it returns `200` only when content mode is Supabase and the canonical origin is non-local HTTPS; it reports bounded check names and never credentials.
 
+## Schedule the workers
+
+`apps/jobs` is a plain fetch handler with no scheduler of its own, so it runs on any host. Its schedule lives in each Supabase project: migration `20261012100000_job_schedule.sql` creates a `pg_cron` job, `atlasnews-jobs-dispatch`, that runs `private.dispatch_jobs()` every minute. The function reads two Supabase Vault secrets and asks `pg_net` to `POST` `/internal/social-outbox`, `/internal/newsletter-outbox`, `/internal/comment-notifications` and `/internal/mcp-events` with `Authorization: Bearer <secret>`. Until both secrets exist it does nothing, so the migration is safe to apply before `apps/jobs` is deployed. A second job, `atlasnews-job-run-details-cleanup`, prunes `cron.job_run_details` daily.
+
+| Vault secret | Local Supabase | Preview | Production |
+| --- | --- | --- | --- |
+| `jobs_base_url` (origin only: scheme and host, optional port, no path or trailing slash) | `http://host.docker.internal:<free port>` (the database container reaches the host through it) | HTTPS origin of the preview `apps/jobs` | HTTPS origin of the production `apps/jobs` |
+| `jobs_cron_secret` | Same value as `CRON_SECRET` in the local `apps/jobs` process | Same value as the preview `CRON_SECRET` | Same value as the production `CRON_SECRET` |
+
+Vault is per project, so every environment sets its own values after the migration has run. The values are not in any migration and `anon` and `authenticated` cannot read Vault, `cron` or `private.dispatch_jobs()`. `service_role` can read Vault, as it can read every other table.
+
+Setup, once per environment (SQL Editor or `psql` as `postgres`; deploy `apps/jobs` with the matching `CRON_SECRET` first, and never paste the real secret into a file or a ticket):
+
+```sql
+select vault.create_secret('https://jobs.example.com', 'jobs_base_url');
+select vault.create_secret('<the CRON_SECRET of that apps/jobs>', 'jobs_cron_secret');
+```
+
+Rotate or repoint by updating the existing secrets, then change `CRON_SECRET` on `apps/jobs` in the same window (a request in between gets `401`, and the next minute recovers):
+
+```sql
+select vault.update_secret((select id from vault.secrets where name = 'jobs_cron_secret'), '<new secret>');
+select vault.update_secret((select id from vault.secrets where name = 'jobs_base_url'), 'https://jobs.example.com');
+```
+
+Verify without waiting a minute:
+
+```sql
+select jobname, schedule, active from cron.job where jobname like 'atlasnews-%';
+select private.dispatch_jobs();   -- 4 when configured, 0 when a secret is missing
+select id, status_code, left(content, 100) as body, error_msg, created
+from net._http_response order by id desc limit 8;   -- pg_net keeps responses for 6 hours
+select status, return_message, start_time from cron.job_run_details order by runid desc limit 5;
+```
+
+Expected answers per endpoint: `200` with a JSON result, or the documented not-configured `503` (`cron_not_configured`/`not_configured` before `CRON_SECRET` is set on `apps/jobs`, `not_configured` for the newsletter without Resend settings, `comment_notifications_unavailable` and `mcp_events_not_configured` without the service-role key). `401` means the Vault secret differs from `CRON_SECRET`; `error_msg` of `Couldn't connect to server` or `Couldn't resolve host name` means `jobs_base_url` is wrong or `apps/jobs` is down.
+
+Overlap is safe. `pg_net` calls are asynchronous and a minute can start before the previous one ended. Social, newsletter and comment rows are claimed with `FOR UPDATE SKIP LOCKED` and a lease; MCP event deliveries are claimed the same way and are unique per subscription and article, so duplicate or concurrent triggers do no extra work.
+
+Stop the schedule without losing the settings: `select cron.alter_job((select jobid from cron.job where jobname = 'atlasnews-jobs-dispatch'), active := false);` and the same with `active := true` to resume.
+
 ## Release order
 
 1. `npm ci && npm run check` at the release commit.
 2. Supabase backup/readiness check.
 3. `supabase db push --dry-run`, then `supabase db push`.
-4. Vercel deployment with environment-specific variables.
-5. Post-deploy smoke checks below.
-6. Publish editorial content only after the platform checks pass.
+4. Vercel deployment with environment-specific variables; `apps/mcp` and `apps/jobs` deployed with theirs.
+5. Vault secrets for the worker schedule ([Schedule the workers](#schedule-the-workers)).
+6. Post-deploy smoke checks below.
+7. Publish editorial content only after the platform checks pass.
 
 ## Post-deploy smoke checks
 
