@@ -44,6 +44,9 @@ const eslintConfig = defineConfig([
     "apps/*/out/**",
     "apps/*/build/**",
     "apps/*/next-env.d.ts",
+    // Sites (vinext/wrangler) build output:
+    "apps/*/dist/**",
+    "apps/*/.wrangler/**",
   ]),
 ]);
 
