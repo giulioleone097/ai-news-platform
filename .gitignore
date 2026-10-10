@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -19,6 +19,11 @@ out/
 
 # production
 /build
+
+# ChatGPT Sites artifact and its local runtime state
+/apps/web/dist/
+/apps/web/.wrangler/
+/apps/web/.sites-runtime/
 
 # misc
 .DS_Store

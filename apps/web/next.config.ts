@@ -8,20 +8,26 @@ const configuredSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const configuredSupabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
 const parsedSupabaseUrl = parseHttpUrl(configuredSupabaseUrl);
+const siteUrl = parseHttpUrl(configuredSiteUrl);
+const hostedSite = siteUrl !== null && isSecureProductionOrigin(siteUrl);
+const hostedSupabase = parsedSupabaseUrl !== null && isSecureProductionOrigin(parsedSupabaseUrl);
 
-if (process.env.VERCEL === "1") {
+// A production build aimed at a public origin or a hosted Supabase project must be complete: real
+// content, a hosted HTTPS Supabase project and a public HTTPS canonical origin, never demo data or
+// localhost metadata. Demo builds (CI, local review) and local-Supabase builds are unaffected, and
+// /api/health stays the runtime check that the deployed environment is ready.
+if (process.env.NODE_ENV === "production" && (hostedSite || hostedSupabase)) {
   if (process.env.NEURA_CONTENT_MODE?.trim() !== "supabase") {
-    throw new Error("Vercel builds require NEURA_CONTENT_MODE=supabase.");
+    throw new Error("Public builds require NEURA_CONTENT_MODE=supabase.");
   }
   if (!parsedSupabaseUrl || !configuredSupabaseKey) {
-    throw new Error("Vercel builds require a valid Supabase URL and public key.");
+    throw new Error("Public builds require a valid Supabase URL and public key.");
   }
-  if (!isSecureProductionOrigin(parsedSupabaseUrl)) {
-    throw new Error("Vercel builds require a non-local HTTPS Supabase origin.");
+  if (!hostedSupabase) {
+    throw new Error("Public builds require a non-local HTTPS Supabase origin.");
   }
-  const siteUrl = parseHttpUrl(configuredSiteUrl);
-  if (!siteUrl || !isSecureProductionOrigin(siteUrl)) {
-    throw new Error("Vercel builds require a non-local HTTPS canonical origin.");
+  if (!hostedSite) {
+    throw new Error("Public builds require a non-local HTTPS canonical origin.");
   }
 }
 
@@ -41,6 +47,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   experimental: {
     inlineCss: true,
+    globalNotFound: true,
     serverActions: {
       bodySizeLimit: "9mb",
     },
