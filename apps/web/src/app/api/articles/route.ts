@@ -2,22 +2,26 @@ import { NextResponse, type NextRequest } from "next/server";
 import * as z from "zod/v4";
 import { locales } from "@/i18n";
 import { searchPublishedArticles } from "@/lib/editorial-queries";
+import { toFeedItem } from "@/components/site/feed-item";
 import {
   decodeArticleCursor,
   encodeArticleCursor,
-  publicArchivePageSize,
-  toArticleListItem,
 } from "@atlasnews/core/editorial/application/public-feed";
+import { claimStatuses } from "@atlasnews/core/editorial/domain/article";
+import { feedPageSize } from "@atlasnews/core/editorial/domain/editorial-service";
+
+const slug = z
+  .string()
+  .trim()
+  .min(1)
+  .max(80)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
 const querySchema = z.object({
   locale: z.enum(locales),
-  category: z
-    .string()
-    .trim()
-    .min(1)
-    .max(80)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-    .optional(),
+  category: slug.optional(),
+  entity: slug.optional(),
+  status: z.enum(claimStatuses).optional(),
   query: z.string().trim().min(1).max(120).optional(),
   cursor: z.string().min(1).max(512).optional(),
 });
@@ -27,6 +31,8 @@ export async function GET(request: NextRequest) {
   const result = querySchema.safeParse({
     locale: searchParams.get("locale"),
     category: searchParams.get("category") || undefined,
+    entity: searchParams.get("entity") || undefined,
+    status: searchParams.get("status") || undefined,
     query: searchParams.get("q") || undefined,
     cursor: searchParams.get("cursor") || undefined,
   });
@@ -45,14 +51,16 @@ export async function GET(request: NextRequest) {
   const page = await searchPublishedArticles({
     locale: result.data.locale,
     category: result.data.category,
+    entity: result.data.entity,
+    claimStatus: result.data.status,
     query: result.data.query,
     cursor: decodedCursor ?? undefined,
-    limit: publicArchivePageSize,
+    limit: feedPageSize,
   });
 
   return NextResponse.json(
     {
-      items: page.items.map(toArticleListItem),
+      items: page.items.map(toFeedItem),
       nextCursor: encodeArticleCursor(page.nextCursor),
     },
     {

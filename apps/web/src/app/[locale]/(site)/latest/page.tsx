@@ -7,7 +7,7 @@ import {
   getPublicCategories,
   searchPublishedArticles,
 } from "@/lib/editorial-queries";
-import { publicArchivePageSize } from "@atlasnews/core/editorial/application/public-feed";
+import { feedPageSize } from "@atlasnews/core/editorial/domain/editorial-service";
 
 export const revalidate = 60;
 
@@ -35,7 +35,7 @@ export default async function LatestPage({
   if (!isLocale(locale)) notFound();
   const messages = getMessages(locale);
   const [page, categories] = await Promise.all([
-    searchPublishedArticles({ locale, limit: publicArchivePageSize }),
+    searchPublishedArticles({ locale, limit: feedPageSize }),
     getPublicCategories(locale),
   ]);
 

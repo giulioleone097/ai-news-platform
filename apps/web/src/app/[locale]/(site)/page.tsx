@@ -1,17 +1,16 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
-import { BookmarkButton } from "@/components/site/bookmark-button";
-import { EditorialCover } from "@/components/site/editorial-cover";
+import { EntityLeaderboard } from "@/components/site/entity-leaderboard";
+import { FeedLead } from "@/components/site/feed-lead";
+import { toFeedItem } from "@/components/site/feed-item";
+import { formatTime } from "@/components/site/feed-format";
+import { InfiniteArticleList } from "@/components/site/infinite-article-list";
 import { NewsletterForm } from "@/components/site/newsletter-form";
-import { SectionHeader } from "@/components/site/section-header";
-import { ShareActions } from "@/components/site/share-actions";
-import { StoryRow } from "@/components/site/story-row";
+import { StatusFilter } from "@/components/site/status-filter";
 import { TopicRail } from "@/components/site/topic-rail";
-import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
 import { getMessages, isLocale, localizedPath } from "@/i18n";
-import { formatArticleTime } from "@/lib/format";
-import { getCachedHomeFeed } from "@/lib/editorial-queries";
+import { getCachedEntities, getCachedHomeFeed } from "@/lib/editorial-queries";
+import { encodeArticleCursor } from "@atlasnews/core/editorial/application/public-feed";
 
 export const revalidate = 60;
 
@@ -24,91 +23,48 @@ export default async function Home({
   if (!isLocale(locale)) notFound();
 
   const messages = getMessages(locale);
-  const feed = await getCachedHomeFeed(locale);
-  const featurePath = localizedPath(`/articles/${feed.feature.slug}`, locale);
-  const featureUrl = new URL(featurePath, getPublicSiteUrl()).toString();
+  const [feed, entities] = await Promise.all([getCachedHomeFeed(locale), getCachedEntities(locale)]);
 
   return (
     <main id="main-content" className="site-shell home-main">
-      <section className="home-hero" aria-labelledby="home-title">
-        <div className="home-statement">
-          <h1 id="home-title">{messages.home.heroTitle}</h1>
-          <p>{messages.home.heroDescription}</p>
-        </div>
+      <div className="feed-layout">
+        <section className="feed" aria-labelledby="feed-title">
+          <header className="feed__head">
+            <h1 id="feed-title">{messages.feed.title}</h1>
+            <StatusFilter locale={locale} />
+            {feed.updatedAt ? (
+              <p className="feed__updated">
+                {messages.feed.updated}{" "}
+                <time dateTime={feed.updatedAt}>{formatTime(feed.updatedAt, locale)} UTC</time>
+              </p>
+            ) : null}
+          </header>
 
-        <article className="feature-story">
-          <Link className="feature-story__image" href={featurePath} prefetch>
-            <EditorialCover
-              src={feed.feature.coverImage}
-              alt={feed.feature.coverAlt}
-              sizes="(max-width: 900px) 100vw, 48vw"
-              quality={75}
-            />
-          </Link>
-          <Link
-            className="category-label"
-            href={localizedPath(`/categories/${feed.feature.category.slug}`, locale)}
-            prefetch={false}
-          >
-            {feed.feature.category.name}
-          </Link>
-          <h2><Link href={featurePath} prefetch>{feed.feature.title}</Link></h2>
-          <p>{feed.feature.excerpt}</p>
-          <div className="feature-story__actions">
-            <Link className="button button--primary" href={featurePath} prefetch>
-              {messages.home.readAnalysis}
-            </Link>
-            <BookmarkButton articleId={feed.feature.id} copy={messages.bookmark} />
-            <ShareActions
-              url={featureUrl}
-              title={feed.feature.title}
-              labels={messages.share}
-            />
-          </div>
-        </article>
+          {feed.lead ? (
+            <>
+              <FeedLead article={feed.lead} locale={locale} statusLabels={messages.story.claimStatus} />
+              <InfiniteArticleList
+                initialItems={feed.days.flatMap((day) => day.items.map(toFeedItem))}
+                initialNextCursor={encodeArticleCursor(feed.nextCursor)}
+                locale={locale}
+                copy={messages.latest}
+                dayCopy={messages.feed.day}
+                statusLabels={messages.story.claimStatus}
+              />
+            </>
+          ) : (
+            <div className="empty-state">
+              <h2>{messages.feed.emptyTitle}</h2>
+              <p>{messages.feed.emptyDescription}</p>
+              <Link className="button" href={localizedPath("/search", locale)}>{messages.navigation.search}</Link>
+            </div>
+          )}
+        </section>
 
-        <aside className="latest-rail" aria-labelledby="latest-title">
-          <SectionHeader
-            id="latest-title"
-            title={messages.home.latestEyebrow}
-            href={localizedPath("/latest", locale)}
-            linkLabel={messages.common.viewAll}
-            accent
-          />
-          <div className="latest-rail__items">
-            {feed.latest.map((article) => (
-              <article key={article.id}>
-                <time dateTime={article.publishedAt ?? undefined}>
-                  {formatArticleTime(article.publishedAt, locale)}
-                </time>
-                <h3>
-                  <Link href={localizedPath(`/articles/${article.slug}`, locale)} prefetch={false}>
-                    {article.title}
-                  </Link>
-                </h3>
-                <BookmarkButton articleId={article.id} copy={messages.bookmark} compact />
-              </article>
-            ))}
-          </div>
-          <Link className="rail-link" href={localizedPath("/latest", locale)} prefetch={false}>
-            {messages.home.viewAllLatest} <ArrowRight aria-hidden="true" />
-          </Link>
+        <aside className="feed-aside">
+          <EntityLeaderboard entities={entities.slice(0, 6)} locale={locale} />
         </aside>
-      </section>
-
-      <section className="spotlight" aria-labelledby="spotlight-title">
-        <SectionHeader
-          id="spotlight-title"
-          title={messages.home.featuredTitle}
-          href={localizedPath("/latest", locale)}
-          linkLabel={messages.home.allArticles}
-        />
-        <div className="spotlight__grid">
-          {feed.spotlight.map((article, index) => (
-            <StoryRow article={article} locale={locale} index={index} key={article.id} />
-          ))}
-        </div>
-      </section>
+      </div>
 
       <NewsletterForm locale={locale} copy={messages.newsletter} source={`home-${locale}`} />
       <TopicRail categories={feed.categories} locale={locale} />

@@ -13,7 +13,7 @@ import {
   getPublicCategories,
   searchPublishedArticles,
 } from "@/lib/editorial-queries";
-import { publicArchivePageSize } from "@atlasnews/core/editorial/application/public-feed";
+import { feedPageSize } from "@atlasnews/core/editorial/domain/editorial-service";
 import type { Category } from "@atlasnews/core/editorial/domain/article";
 
 export const revalidate = 60;
@@ -93,7 +93,7 @@ export default async function CategoryPage({
   const page = await searchPublishedArticles({
     locale,
     category: slug,
-    limit: publicArchivePageSize,
+    limit: feedPageSize,
   });
 
   return (

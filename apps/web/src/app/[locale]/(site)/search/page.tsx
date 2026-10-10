@@ -6,7 +6,7 @@ import {
   getPublicCategories,
   searchPublishedArticles,
 } from "@/lib/editorial-queries";
-import { publicArchivePageSize } from "@atlasnews/core/editorial/application/public-feed";
+import { feedPageSize } from "@atlasnews/core/editorial/domain/editorial-service";
 
 export async function generateMetadata({
   params,
@@ -41,7 +41,7 @@ export default async function SearchPage({
       ? searchPublishedArticles({
           locale,
           query: normalizedQuery,
-          limit: publicArchivePageSize,
+          limit: feedPageSize,
         })
       : Promise.resolve({ items: [], nextCursor: null }),
     getPublicCategories(locale),

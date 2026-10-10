@@ -13,6 +13,16 @@
   --neura-color-warning: #c17a10;
   --neura-color-info: #23759a;
   --neura-color-white: #ffffff;
+  --neura-color-claim-confirmed: #1e3a1c;
+  --neura-color-claim-confirmed-ink: #9fd699;
+  --neura-color-claim-rollout: #3d211d;
+  --neura-color-claim-rollout-ink: #f0a497;
+  --neura-color-claim-test: #1b3442;
+  --neura-color-claim-test-ink: #93cbe6;
+  --neura-color-claim-rumour: #43301a;
+  --neura-color-claim-rumour-ink: #f0c27a;
+  --neura-color-claim-analysis: #2a2e32;
+  --neura-color-claim-analysis-ink: #c9ced3;
   --neura-spacing-xxs: 4px;
   --neura-spacing-xs: 8px;
   --neura-spacing-sm: 12px;

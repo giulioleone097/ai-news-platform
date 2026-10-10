@@ -1,37 +1,57 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Messages, Locale } from "@/i18n";
-import type { ArticleListItem } from "@atlasnews/core/editorial/application/public-feed";
-import { StoryRow } from "./story-row";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { Locale } from "@atlasnews/core/locale";
+import type { ClaimStatus } from "@atlasnews/core/editorial/domain/article";
+import { groupByDay } from "@atlasnews/core/editorial/domain/editorial-service";
+import type { Messages } from "@/i18n";
+import type { FeedItem } from "./feed-item";
+import { formatDay } from "./feed-format";
+import { FeedRow, type StatusLabels } from "./feed-row";
 
 interface FeedResponse {
-  items: ArticleListItem[];
+  items: FeedItem[];
   nextCursor: string | null;
 }
 
+export interface FeedFilters {
+  category?: string;
+  entity?: string;
+  status?: ClaimStatus;
+  query?: string;
+}
+
+const noSubscription = () => () => {};
+const utcToday = () => new Date().toISOString().slice(0, 10);
+
+/** Stories grouped by UTC day, newest first; older pages load as the end of the list nears. */
 export function InfiniteArticleList({
-  initialArticles,
+  initialItems,
   initialNextCursor,
   locale,
-  category,
-  query,
+  filters = {},
   copy,
+  dayCopy,
+  statusLabels,
 }: {
-  initialArticles: ArticleListItem[];
+  initialItems: FeedItem[];
   initialNextCursor: string | null;
   locale: Locale;
-  category?: string;
-  query?: string;
+  filters?: FeedFilters;
   copy: Messages["latest"];
+  dayCopy: Messages["feed"]["day"];
+  statusLabels: StatusLabels;
 }) {
-  const [articles, setArticles] = useState(initialArticles);
+  const [items, setItems] = useState(initialItems);
   const [cursor, setCursor] = useState(initialNextCursor);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [hasLoaded, setHasLoaded] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
   const controllerRef = useRef<AbortController | null>(null);
+  // "Today" and "Yesterday" need the reader's clock, so they appear after hydration only.
+  const today = useSyncExternalStore(noSubscription, utcToday, () => "");
+  const { category, entity, status: claimStatus, query } = filters;
 
   const loadMore = useCallback(async () => {
     if (!cursor || loadingRef.current) return;
@@ -42,6 +62,8 @@ export function InfiniteArticleList({
     controllerRef.current = controller;
     const params = new URLSearchParams({ locale, cursor });
     if (category) params.set("category", category);
+    if (entity) params.set("entity", entity);
+    if (claimStatus) params.set("status", claimStatus);
     if (query) params.set("q", query);
 
     try {
@@ -57,12 +79,9 @@ export function InfiniteArticleList({
         throw new Error("Article feed returned an invalid payload");
       }
 
-      setArticles((current) => {
-        const existingIds = new Set(current.map((article) => article.id));
-        return [
-          ...current,
-          ...data.items.filter((article) => !existingIds.has(article.id)),
-        ];
+      setItems((current) => {
+        const existingIds = new Set(current.map((item) => item.id));
+        return [...current, ...data.items.filter((item) => !existingIds.has(item.id))];
       });
       setCursor(data.nextCursor);
       setHasLoaded(true);
@@ -75,7 +94,7 @@ export function InfiniteArticleList({
       loadingRef.current = false;
       controllerRef.current = null;
     }
-  }, [category, cursor, locale, query]);
+  }, [category, claimStatus, cursor, entity, locale, query]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -98,11 +117,27 @@ export function InfiniteArticleList({
     [],
   );
 
+  const yesterday = today
+    ? new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
+    : "";
+  const dayLabel = (date: string) => {
+    const label = formatDay(date, locale);
+    if (date === today) return `${dayCopy.today} · ${label}`;
+    return date === yesterday ? `${dayCopy.yesterday} · ${label}` : label;
+  };
+
   return (
     <>
       <div aria-busy={status === "loading"} data-infinite-feed="true">
-        {articles.map((article, index) => (
-          <StoryRow article={article} locale={locale} index={index} key={article.id} />
+        {groupByDay(items).map((group) => (
+          <section className="feed-day" aria-labelledby={`feed-day-${group.date}`} key={group.date}>
+            <h2 className="feed-day__heading" id={`feed-day-${group.date}`}>{dayLabel(group.date)}</h2>
+            <ul className="feed-list">
+              {group.items.map((item) => (
+                <FeedRow item={item} locale={locale} statusLabels={statusLabels} key={item.id} />
+              ))}
+            </ul>
+          </section>
         ))}
       </div>
       <div

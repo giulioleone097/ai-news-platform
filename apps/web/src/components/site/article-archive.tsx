@@ -1,12 +1,9 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
-import type { Article, Category } from "@atlasnews/core/editorial/domain/article";
+import type { Article, ArticleCursor, Category } from "@atlasnews/core/editorial/domain/article";
+import { encodeArticleCursor } from "@atlasnews/core/editorial/application/public-feed";
 import { getMessages, localizedPath, type Locale } from "@/i18n";
-import {
-  encodeArticleCursor,
-  toArticleListItem,
-} from "@atlasnews/core/editorial/application/public-feed";
-import type { ArticleCursor } from "@atlasnews/core/editorial/domain/article";
+import { toFeedItem } from "./feed-item";
 import { InfiniteArticleList } from "./infinite-article-list";
 
 export function ArticleArchive({
@@ -68,12 +65,13 @@ export function ArticleArchive({
       <div className="archive-list">
         {articles.length ? (
           <InfiniteArticleList
-            initialArticles={articles.map(toArticleListItem)}
+            initialItems={articles.map(toFeedItem)}
             initialNextCursor={encodeArticleCursor(nextCursor)}
             locale={locale}
-            category={activeCategory}
-            query={query || undefined}
+            filters={{ category: activeCategory, query: query || undefined }}
             copy={messages.latest}
+            dayCopy={messages.feed.day}
+            statusLabels={messages.story.claimStatus}
           />
         ) : (
           <div className="empty-state">
