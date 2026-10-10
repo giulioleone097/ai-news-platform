@@ -29,7 +29,7 @@ if (generated.status !== 0) {
 
     if (current !== expected) {
       process.stderr.write(
-        "Design tokens are stale. Run `npm run design:tokens:write`.\n",
+        "Design tokens are stale. Run `pnpm design:tokens:write`.\n",
       );
       process.exitCode = 1;
     } else {

@@ -75,20 +75,20 @@ While it is empty no network identity is derived from the request, and the limit
 ## Local demo
 
 ```bash
-npm ci
-npm run dev
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
 No database, Docker daemon, or provider account is required. State resets when the process restarts.
 
 ## Reproduce Supabase locally
 
-Prerequisites: Docker-compatible runtime and the Supabase CLI (the commands below use `npx`). The committed `supabase/config.toml` defines the local stack.
+Prerequisites: Docker-compatible runtime and the Supabase CLI (a dev dependency of the repository; the commands below run it with `pnpm exec`). The committed `supabase/config.toml` defines the local stack.
 
 ```bash
-npm run supabase:start
-npm run supabase:reset
-npm run supabase:status
+pnpm supabase:start
+pnpm supabase:reset
+pnpm supabase:status
 ```
 
 `db reset --local` destroys only the local database, replays every committed migration, and then applies `supabase/seed.sql`. Copy the API URL and anon key printed by `supabase status` into `.env.local`, then restart Next.js.
@@ -109,7 +109,7 @@ ATLASNEWS_MCP_ADMIN_API_KEY=<openssl-rand-hex-32-output>
 Stop the local stack without deleting data:
 
 ```bash
-npx --no-install supabase stop
+pnpm exec supabase stop
 ```
 
 ## Prepare remote Supabase
@@ -119,10 +119,10 @@ Create Preview and Production projects manually in the Supabase Dashboard. Selec
 Authenticate and link one environment at a time:
 
 ```bash
-npx --no-install supabase login
-npx --no-install supabase link --project-ref <project-ref>
-npx --no-install supabase migration list
-npx --no-install supabase db push --dry-run
+pnpm exec supabase login
+pnpm exec supabase link --project-ref <project-ref>
+pnpm exec supabase migration list
+pnpm exec supabase db push --dry-run
 ```
 
 Before production migration:
@@ -136,7 +136,7 @@ Before production migration:
 Apply only after those checks:
 
 ```bash
-npx --no-install supabase db push
+pnpm exec supabase db push
 ```
 
 Do not use `db reset --linked` on Production. Do not use `--include-seed` automatically on Production. The committed seed is deterministic demo/editorial content; if launch content is desired, review it as production data and apply it once through an explicit, audited operation. The studio needs at least one category for each authored locale, so an empty Production project must either receive reviewed localized categories or the approved category portion of the seed before the first article is created.
@@ -254,7 +254,7 @@ Stop the schedule without losing the settings: `select cron.alter_job((select jo
 
 ## Release order
 
-1. `npm ci && npm run check` at the release commit.
+1. `pnpm install --frozen-lockfile && pnpm check` at the release commit.
 2. Supabase backup/readiness check.
 3. `supabase db push --dry-run`, then `supabase db push`.
 4. Deploy `apps/web` to Sites and `apps/mcp` and `apps/jobs` as containers, each with its environment-specific variables.

@@ -34,7 +34,7 @@ How it behaves in the browser:
 ## Test in ChatGPT's built-in browser
 
 1. Update the ChatGPT desktop app, pick GPT-5.6 Sol or GPT-6 Sol, and keep **Enable site tools** on in Settings > Browser > Permissions.
-2. Open the site in the built-in browser (a deployed URL, or a local `npm run start` build) and select **Site tools** in the address bar: five tools should be listed under **Available site tools**.
+2. Open the site in the built-in browser (a deployed URL, or a local `pnpm start` build) and select **Site tools** in the address bar: five tools should be listed under **Available site tools**.
 3. Ask: "Search the site for agents, open the first story, read it and save it." Check that the page moves to the results and then to the story, and that the bookmark button of the story turns on.
 
 Without ChatGPT, the same API exists in Chrome (flag `chrome://flags/#enable-webmcp-testing`), and `document.modelContext.getTools()` and `executeTool()` list and run the tools.

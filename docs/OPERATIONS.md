@@ -5,29 +5,29 @@
 Every release candidate must satisfy:
 
 ```bash
-npm ci
-npm run check
+pnpm install --frozen-lockfile
+pnpm check
 ```
 
 Build the reader site, start it and the MCP server in explicit disposable demo-review mode, then verify the complete HTTP and MCP lifecycle from a third terminal. The site and the MCP server are separate processes that share no memory, so the shared revalidation secret is what lets an MCP write reach the site.
 
 ```bash
-npm run build:next -w apps/web
+pnpm --filter @atlasnews/web build:next
 ATLASNEWS_CONTENT_MODE=demo ATLASNEWS_ENABLE_DEMO_STUDIO=true \
-ATLASNEWS_REVALIDATE_SECRET=<disposable-32-char-secret> npm start
+ATLASNEWS_REVALIDATE_SECRET=<disposable-32-char-secret> pnpm start
 
 ATLASNEWS_CONTENT_MODE=demo \
 ATLASNEWS_MCP_ADMIN_API_KEY=<disposable-local-key> \
-ATLASNEWS_REVALIDATE_SECRET=<disposable-32-char-secret> npm run start -w apps/mcp
+ATLASNEWS_REVALIDATE_SECRET=<disposable-32-char-secret> pnpm --filter @atlasnews/mcp start
 
-ATLASNEWS_MCP_ADMIN_API_KEY=<disposable-local-key> npm run smoke:runtime
+ATLASNEWS_MCP_ADMIN_API_KEY=<disposable-local-key> pnpm smoke:runtime
 ```
 
 Additionally verify the local Supabase migration chain when schema or persistence behavior changes:
 
 ```bash
-npm run supabase:start
-npm run supabase:reset
+pnpm supabase:start
+pnpm supabase:reset
 ```
 
 The CI build intentionally runs without Supabase credentials, proving the zero-config public demo remains viable while production Studio fails closed. A green CI build does not replace staging smoke checks against Supabase, and the ChatGPT Sites artifact has only been run locally in `workerd` ([SITES.md](SITES.md#not-verified-without-a-real-deployment)).
@@ -64,7 +64,7 @@ Measure a cold navigation and a warm navigation for `/en`, `/it`, one category, 
 - Search and feed queries use locale/status/category indexes and cursor pagination.
 - Latest, category, and search archives render six rows in the initial HTML, then prefetch compact list rows through `/api/articles` as the sentinel approaches the viewport. A visible load-more control remains as an accessible fallback.
 - Article HTML remains static; the comment client and its first API request are split into a separate chunk and activated only near the viewport.
-- `npm run perf:budget` parses prerendered route HTML and rejects public JavaScript, CSS, or hero-source regressions after every production build.
+- `pnpm perf:budget` parses prerendered route HTML and rejects public JavaScript, CSS, or hero-source regressions after every production build.
 - React/Next view transitions are bounded to 180 ms, pass pointer events through, and disable animation under reduced-motion preferences.
 
 Never mark a regression acceptable because the second navigation is fast; cold-path behavior is part of the release gate.
@@ -172,9 +172,9 @@ Check the answer to `events/subscribe`: HTTP 429 means the per-network subscribe
 
 Check database region alignment, query indexes, container start-up and the result limit. Locate the slow boundary before changing any timeout.
 
-### `npm ci` fails
+### `pnpm install --frozen-lockfile` fails
 
-The lockfile and `package.json` differ. Regenerate the lockfile intentionally with the supported npm/Node version, review the dependency diff, and commit them together. Do not replace `npm ci` with `npm install` in CI.
+The lockfile (`pnpm-lock.yaml`) and a `package.json` differ. Run `pnpm install` once with the pinned pnpm (`packageManager` in `package.json`) and a supported Node, review the dependency diff, and commit the lockfile and manifests together. Do not drop `--frozen-lockfile` in CI.
 
 ### Workers do not run
 
@@ -187,7 +187,7 @@ Outbox rows stay `pending`, newsletters are not sent, or MCP event deliveries do
 
 ### Supabase migration history differs
 
-Run `npx --no-install supabase migration list` and inspect local/remote versions. Do not run `migration repair`, `db reset --linked`, or destructive SQL until the exact history mismatch and target project are proven.
+Run `pnpm exec supabase migration list` and inspect local/remote versions. Do not run `migration repair`, `db reset --linked`, or destructive SQL until the exact history mismatch and target project are proven.
 
 ## Rollback
 

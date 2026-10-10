@@ -8,10 +8,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@atlasnews/adapters": "*",
-    "@atlasnews/core": "*"
-  },
-  "devDependencies": {
+    "@atlasnews/adapters": "workspace:*",
+    "@atlasnews/core": "workspace:*",
     "tsx": "^4.23.15"
   }
 }

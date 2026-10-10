@@ -24,35 +24,39 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # No version input: the action installs the pnpm pinned by "packageManager" in package.json.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24.x
-          cache: npm
+          cache: pnpm
 
       - name: Install exact dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Validate design system
-        run: npm run design:lint && npm run design:tokens:check
+        run: pnpm run design:lint && pnpm run design:tokens:check
 
       - name: Validate agent plugin
-        run: npm run plugin:check
+        run: pnpm run plugin:check
 
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
 
       - name: Type-check
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Test
-        run: npm run test
+        run: pnpm run test
 
       - name: Build production bundle
-        run: npm run build
+        run: pnpm run build
 
       - name: Enforce performance budgets
-        run: npm run perf:budget
+        run: pnpm run perf:budget
 
       - name: Build ChatGPT Sites artifact
-        run: npm run build:sites
+        run: pnpm run build:sites

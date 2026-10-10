@@ -21,3 +21,4 @@ test-results
 .DS_Store
 Dockerfile
 .dockerignore
+.pnpm-store

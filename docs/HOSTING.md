@@ -11,7 +11,7 @@ docker build --build-arg APP=mcp  -t atlasnews-mcp  .
 docker build --build-arg APP=jobs -t atlasnews-jobs .
 ```
 
-The image is `node:24-slim` (the `engines.node` major). It installs with `npm ci --workspace apps/<app>` from the root lockfile, so `apps/web` and root dev tooling are not installed. There is no compile step: the app runs its TypeScript source through `tsx`, as `npm run start -w apps/<app>` does. Runtime is non-root (`node`, uid 1000) with `NODE_ENV=production`. No environment file or secret is copied into the image.
+The image is `node:24-slim` (the `engines.node` major). A build stage runs `pnpm deploy --prod` for the selected app from the root lockfile (pnpm comes from Corepack at the version pinned in `packageManager`; the pnpm store is a BuildKit cache). The runtime stage copies only that result: the app, the workspace packages it uses and its production dependencies, so `apps/web`, the root dev tooling and pnpm itself are not in the image. There is no compile step: the app runs its TypeScript source through `tsx` (a production dependency of both apps), as `pnpm --filter @atlasnews/<app> start` does. Runtime is non-root (`node`, uid 1000) with `NODE_ENV=production`. No environment file or secret is copied into the image.
 
 ## Run
 

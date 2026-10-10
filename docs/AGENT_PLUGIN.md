@@ -25,7 +25,7 @@ claude plugin install atlasnews@atlasnews-plugins
 codex plugin marketplace add <owner>/<repository>
 ```
 
-Copilot CLI reads `.github/plugin/marketplace.json`. The plugin ships with the local server address `http://localhost:8787/mcp` (`npm run start -w apps/mcp`), so it works against a development checkout.
+Copilot CLI reads `.github/plugin/marketplace.json`. The plugin ships with the local server address `http://localhost:8787/mcp` (`pnpm --filter @atlasnews/mcp start`), so it works against a development checkout.
 
 ## Auth
 
@@ -34,8 +34,8 @@ The plugin holds no key and no token. Reading is anonymous. When an editor tool 
 ## Validate
 
 ```sh
-npm run plugin:check     # structure, limits, one server, consistency across manifests (runs in npm run check)
-npm run plugin:release   # the same, plus what the stores need from the owner
+pnpm plugin:check     # structure, limits, one server, consistency across manifests (runs in pnpm check)
+pnpm plugin:release   # the same, plus what the stores need from the owner
 ```
 
 `scripts/validate-plugin.mjs` is the only owner of the rules. It checks, among others: names and field limits of the OpenAI manifest (display name and short description at most 30 characters, five positive and three negative review cases whose tools exist in the catalogue, at most three default prompts), brand colours that exist in `DESIGN.md` with the required contrast, square icons of at least 48 px, one server with identical URLs in `mcp.json` and `.mcp.json`, an auth declaration that matches Supabase's dynamic registration setting, no API-key wording, tool names in the skills that exist, a README of at least 40 words, and the marketplace sources (`./plugins/atlasnews`, resolved from the repository root). `claude plugin validate plugins/atlasnews --strict` and `claude plugin validate .` pass as well.
