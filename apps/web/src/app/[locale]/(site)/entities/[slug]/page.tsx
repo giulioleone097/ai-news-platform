@@ -4,6 +4,8 @@ import { ExternalLink } from "lucide-react";
 import { notFound } from "next/navigation";
 import { toFeedItem } from "@/components/site/feed-item";
 import { InfiniteArticleList } from "@/components/site/infinite-article-list";
+import { SectionHeader } from "@/components/site/section-header";
+import "@/styles/site/lists.css";
 import { Timeline } from "@/components/site/timeline";
 import { getAlternates, getMessages, isLocale, locales, localizedPath } from "@/i18n";
 import {
@@ -57,10 +59,12 @@ export default async function EntityPage({
   const copy = messages.entities;
   const page = await searchPublishedArticles({ locale, entity: slug, limit: feedPageSize });
 
+  const hasStories = page.items.length > 0;
+
   return (
-    <main id="main-content" className="site-shell entity-page">
+    <main id="main-content" className="site-shell list-main">
       <header className="page-head">
-        <p className="page-head__kicker">
+        <p className="page-head__meta">
           {messages.story.entityKind[entity.kind]}
           {entity.parent ? (
             <>
@@ -82,21 +86,17 @@ export default async function EntityPage({
         ) : null}
       </header>
 
-      <section className="entity-section" aria-labelledby="timeline-title">
-        <h2 id="timeline-title">{copy.timelineTitle}</h2>
-        {timeline.length ? (
-          <>
-            <p className="entity-section__note">{copy.timelineDescription}</p>
-            <Timeline items={timeline} locale={locale} statusLabels={messages.story.claimStatus} />
-          </>
-        ) : (
-          <p className="entity-section__note">{copy.timelineEmpty}</p>
-        )}
-      </section>
+      {timeline.length ? (
+        <section className="entity-section" aria-labelledby="timeline-title">
+          <SectionHeader id="timeline-title" title={copy.timelineTitle} />
+          <p className="entity-section__note">{copy.timelineDescription}</p>
+          <Timeline items={timeline} locale={locale} statusLabels={messages.story.claimStatus} />
+        </section>
+      ) : null}
 
-      <section className="entity-section" aria-labelledby="stories-title">
-        <h2 id="stories-title">{copy.storiesTitle}</h2>
-        {page.items.length ? (
+      {hasStories ? (
+        <section className="entity-section entity-section--stream" aria-labelledby="stories-title">
+          <SectionHeader id="stories-title" title={copy.storiesTitle} />
           <InfiniteArticleList
             initialItems={page.items.map(toFeedItem)}
             initialNextCursor={encodeArticleCursor(page.nextCursor)}
@@ -106,14 +106,16 @@ export default async function EntityPage({
             dayCopy={messages.feed.day}
             statusLabels={messages.story.claimStatus}
           />
-        ) : (
-          <div className="empty-state">
-            <h3>{copy.storiesEmptyTitle}</h3>
-            <p>{copy.storiesEmptyDescription}</p>
-            <Link className="button" href={localizedPath("/latest", locale)}>{copy.seeLatest}</Link>
-          </div>
-        )}
-      </section>
+        </section>
+      ) : null}
+
+      {!hasStories && !timeline.length ? (
+        <div className="empty-state">
+          <h2>{copy.storiesEmptyTitle}</h2>
+          <p>{copy.storiesEmptyDescription}</p>
+          <Link className="button" href={localizedPath("/latest", locale)}>{copy.seeLatest}</Link>
+        </div>
+      ) : null}
     </main>
   );
 }

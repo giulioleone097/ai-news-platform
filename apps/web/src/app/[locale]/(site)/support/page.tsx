@@ -35,7 +35,6 @@ export default async function SupportPage({
     <main id="main-content" className={`site-shell ${styles.page}`}>
       <div className={styles.column}>
         <header className="page-head">
-          <p className="page-head__kicker">{copy.kicker}</p>
           <h1>{copy.title}</h1>
           <p>{copy.description}</p>
         </header>

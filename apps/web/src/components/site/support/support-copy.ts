@@ -52,7 +52,6 @@ export interface ContactCopy {
 export interface SupportCopy {
   title: string;
   description: string;
-  kicker: string;
   faqLabel: string;
   faq: readonly PageSection[];
   relatedLabel: string;
@@ -64,7 +63,6 @@ export interface SupportCopy {
 const en: SupportCopy = {
   title: "Support",
   description: "Help with AtlasNews: what it is, how to report a comment, how to unsubscribe, how editors sign in and how to write to us.",
-  kicker: "Help",
   faqLabel: "Common questions",
   faq: [
     {
@@ -137,7 +135,6 @@ const en: SupportCopy = {
 const it: SupportCopy = {
   title: "Assistenza",
   description: "Aiuto su AtlasNews: cos'è, come segnalare un commento, come disiscriversi, come accedono i redattori e come scriverci.",
-  kicker: "Aiuto",
   faqLabel: "Domande frequenti",
   faq: [
     {

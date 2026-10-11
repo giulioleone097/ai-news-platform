@@ -1,0 +1,249 @@
+/* List pages: latest, a topic, search, a status, the products index and one product. They reuse the
+   page heading from shell.css and the stream rows from feed.css; this file adds what only they need. */
+
+.archive-main,
+.list-main {
+  padding-bottom: 1rem;
+}
+
+/* Page heading extras. */
+.page-head__meta {
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.page-head__meta a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 0.2em;
+}
+
+.page-head__meta a:hover {
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 0.16em;
+}
+
+.page-head__link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-self: start;
+  gap: 0.375rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.page-head__link:hover {
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 0.16em;
+}
+
+.page-head__link svg {
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 1.75;
+}
+
+/* Search field and category filter above a stream. */
+.archive__tools {
+  display: grid;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+}
+
+.archive-search {
+  display: flex;
+  max-width: 36rem;
+  gap: 0.5rem;
+}
+
+.archive-search .input {
+  min-width: 0;
+  flex: 1;
+}
+
+.archive-search .button {
+  flex: none;
+}
+
+/* On the search page the field is the point of the page. */
+.archive-search--large .input,
+.archive-search--large .button {
+  min-height: 3.25rem;
+}
+
+.archive-search--large .input {
+  font-size: 1.125rem;
+}
+
+/* A search with nothing typed yet: the two ways into the archive, side by side. */
+.archive-suggest {
+  display: grid;
+  gap: 2.5rem;
+  padding-top: 1.5rem;
+}
+
+.archive-suggest .side-module {
+  min-width: 0;
+}
+
+@media (min-width: 48rem) {
+  .archive-suggest {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4rem;
+  }
+}
+
+/* The status chip leading a status page. */
+.list-filter {
+  padding-bottom: 0.5rem;
+}
+
+/* Products index: groups of dense rows, two or three columns on wide screens. */
+.entity-group {
+  padding-top: 2.25rem;
+}
+
+.entity-list {
+  display: grid;
+  column-gap: 2.5rem;
+}
+
+@media (min-width: 48rem) {
+  .entity-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 72rem) {
+  .entity-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.entity-row {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 0.1875rem;
+  padding-block: 0.875rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.entity-row__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.entity-row__name {
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.entity-row__name a {
+  text-decoration: underline transparent;
+  text-decoration-thickness: 0.16em;
+  text-underline-offset: 0.14em;
+  transition: text-decoration-color var(--ease);
+}
+
+.entity-row:hover .entity-row__name a {
+  text-decoration-color: var(--accent);
+}
+
+.entity-row__name a::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+.entity-row__count,
+.entity-row__maker {
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.entity-row__count {
+  flex: none;
+}
+
+.entity-row__description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* One product: its timeline, then its stories. */
+.entity-section {
+  padding-top: 2.5rem;
+}
+
+/* The stream brings its own rule under each day, so its heading goes without one. */
+.entity-section--stream .section-header {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.entity-section__note {
+  padding-top: 0.75rem;
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+}
+
+.entity-section .timeline {
+  margin-top: 0.75rem;
+}
+
+/* Loading skeleton for the search page. */
+.list-skeleton {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.list-skeleton span {
+  display: block;
+  height: 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  animation: list-skeleton 1.4s ease-in-out infinite alternate;
+}
+
+.list-skeleton__title {
+  width: min(100%, 22rem);
+  height: 2rem !important;
+  margin-top: 2.5rem;
+}
+
+.list-skeleton__field {
+  width: min(100%, 36rem);
+  height: 2.75rem !important;
+  margin-block: 0.5rem 1.5rem;
+}
+
+.list-skeleton__row {
+  border-bottom: 1px solid var(--line);
+  padding-block: 0.875rem;
+}
+
+@keyframes list-skeleton {
+  from {
+    opacity: 0.55;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

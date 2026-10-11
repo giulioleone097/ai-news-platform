@@ -1,0 +1,83 @@
+/* A short message with one clear action: not found, a page error, comment notification links.
+   It stands alone, so the root not-found page (no header or footer) uses it too. */
+
+.notice {
+  display: grid;
+  width: min(100%, var(--shell));
+  align-content: start;
+  justify-items: start;
+  gap: 1rem;
+  margin-inline: auto;
+  padding: clamp(3rem, 9vw, 6rem) var(--gutter);
+}
+
+/* Without the site header and footer around it the block is centred on the page. */
+.notice--standalone {
+  width: min(100%, 44rem);
+}
+
+.notice > * {
+  max-width: 36rem;
+}
+
+.notice h1 {
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.notice p {
+  max-width: 36rem;
+  color: var(--fg-muted);
+  font-size: 1.0625rem;
+}
+
+.notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.notice__actions form {
+  display: contents;
+}
+
+.notice__other {
+  width: 100%;
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.notice__other h2 {
+  font-size: 1.125rem;
+}
+
+.notice__other p {
+  padding-top: 0.25rem;
+}
+
+.notice__other a {
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.notice__other a:hover {
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 0.16em;
+}
+
+@media (max-width: 30rem) {
+  .notice__actions,
+  .notice__actions > *,
+  .notice__actions form .button {
+    width: 100%;
+  }
+}
+
+.notice .brand {
+  margin-bottom: 1.5rem;
+}

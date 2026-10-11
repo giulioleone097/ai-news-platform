@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import "@/styles/site/notice.css";
 import { defaultLocale, getMessages, isLocale, localizedPath } from "@/i18n";
 
 export default function NotFound() {
@@ -10,13 +11,14 @@ export default function NotFound() {
   const messages = getMessages(locale);
 
   return (
-    <main id="main-content" className="site-shell not-found">
-      <p>404</p>
+    <main id="main-content" className="notice">
       <h1>{messages.errors.notFoundTitle}</h1>
-      <span>{messages.errors.notFoundDescription}</span>
-      <Link className="button button--primary" href={localizedPath("/", locale)}>
-        {messages.errors.backHome}
-      </Link>
+      <p>{messages.errors.notFoundDescription}</p>
+      <div className="notice__actions">
+        <Link className="button button--primary" href={localizedPath("/", locale)}>
+          {messages.errors.backHome}
+        </Link>
+      </div>
     </main>
   );
 }

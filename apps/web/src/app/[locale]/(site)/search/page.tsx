@@ -60,6 +60,7 @@ export default async function SearchPage({
         locale={locale}
         query={normalizedQuery}
         nextCursor={page.nextCursor}
+        searchPage
       />
     </main>
   );

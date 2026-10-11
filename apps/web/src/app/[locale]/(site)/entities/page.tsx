@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SectionHeader } from "@/components/site/section-header";
+import "@/styles/site/lists.css";
 import { getAlternates, getMessages, isLocale, localizedPath } from "@/i18n";
 import { getCachedEntities } from "@/lib/editorial-queries";
 import { entityKinds } from "@atlasnews/core/editorial/domain/entity";
@@ -38,7 +40,7 @@ export default async function EntitiesPage({
   const entities = await getCachedEntities(locale);
 
   return (
-    <main id="main-content" className="site-shell entity-index">
+    <main id="main-content" className="site-shell list-main">
       <header className="page-head">
         <h1>{copy.indexTitle}</h1>
         <p>{copy.indexDescription}</p>
@@ -50,20 +52,24 @@ export default async function EntitiesPage({
           if (!group.length) return null;
           return (
             <section className="entity-group" aria-labelledby={`kind-${kind}`} key={kind}>
-              <h2 id={`kind-${kind}`}>{copy.kindPlural[kind]}</h2>
-              <ul className="entity-grid">
+              <SectionHeader id={`kind-${kind}`} title={copy.kindPlural[kind]} />
+              <ul className="entity-list">
                 {group.map((entity) => (
-                  <li className="entity-card" key={entity.slug}>
-                    <h3>
-                      <Link href={localizedPath(`/entities/${entity.slug}`, locale)} prefetch={false}>
-                        {entity.name}
-                      </Link>
-                    </h3>
-                    {entity.parent ? <p className="entity-card__parent">{copy.madeBy} {entity.parent.name}</p> : null}
-                    {entity.description ? <p>{entity.description}</p> : null}
-                    <p className="entity-card__count">
-                      {entity.storyCount} {entity.storyCount === 1 ? copy.storyOne : copy.storyMany}
-                    </p>
+                  <li className="entity-row" key={entity.slug}>
+                    <div className="entity-row__head">
+                      <h3 className="entity-row__name">
+                        <Link href={localizedPath(`/entities/${entity.slug}`, locale)} prefetch={false}>
+                          {entity.name}
+                        </Link>
+                      </h3>
+                      {entity.storyCount ? (
+                        <span className="entity-row__count">
+                          {entity.storyCount} {entity.storyCount === 1 ? copy.storyOne : copy.storyMany}
+                        </span>
+                      ) : null}
+                    </div>
+                    {entity.parent ? <p className="entity-row__maker">{copy.madeBy} {entity.parent.name}</p> : null}
+                    {entity.description ? <p className="entity-row__description">{entity.description}</p> : null}
                   </li>
                 ))}
               </ul>

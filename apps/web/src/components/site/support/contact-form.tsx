@@ -96,11 +96,12 @@ export function ContactForm({
       <h2 id="contact-title">{copy.title}</h2>
       <p>{copy.description}</p>
       <form ref={formRef} className={styles.form} noValidate onSubmit={(event) => void submit(event)}>
-        {invalidCount ? <p className={styles.summary} role="alert">{copy.errorSummary}</p> : null}
+        {invalidCount ? <p className={`form-message form-message--error ${styles.summary}`} role="alert">{copy.errorSummary}</p> : null}
 
         <div className={styles.field}>
           <label htmlFor="contact-name">{labels.name}</label>
           <input
+            className="input"
             id="contact-name"
             name="name"
             autoComplete="name"
@@ -110,12 +111,13 @@ export function ContactForm({
             aria-describedby={describe("name")}
             disabled={sending}
           />
-          {errors.name ? <p className={styles.error} id={errorId("name")}>{errors.name}</p> : null}
+          {errors.name ? <p className="form-message form-message--error" id={errorId("name")}>{errors.name}</p> : null}
         </div>
 
         <div className={styles.field}>
           <label htmlFor="contact-email">{labels.email}</label>
           <input
+            className="input"
             id="contact-email"
             name="email"
             type="email"
@@ -126,12 +128,13 @@ export function ContactForm({
             aria-describedby={describe("email")}
             disabled={sending}
           />
-          {errors.email ? <p className={styles.error} id={errorId("email")}>{errors.email}</p> : null}
+          {errors.email ? <p className="form-message form-message--error" id={errorId("email")}>{errors.email}</p> : null}
         </div>
 
         <div className={styles.field}>
           <label htmlFor="contact-subject">{labels.subject}</label>
           <input
+            className="input"
             id="contact-subject"
             name="subject"
             maxLength={contactPolicy.maxSubject}
@@ -140,12 +143,13 @@ export function ContactForm({
             aria-describedby={describe("subject")}
             disabled={sending}
           />
-          {errors.subject ? <p className={styles.error} id={errorId("subject")}>{errors.subject}</p> : null}
+          {errors.subject ? <p className="form-message form-message--error" id={errorId("subject")}>{errors.subject}</p> : null}
         </div>
 
         <div className={styles.field}>
           <label htmlFor="contact-body">{labels.body}</label>
           <textarea
+            className="input"
             id="contact-body"
             name="body"
             rows={7}
@@ -156,7 +160,7 @@ export function ContactForm({
             disabled={sending}
           />
           <small id="contact-body-hint">{copy.bodyHint}</small>
-          {errors.body ? <p className={styles.error} id={errorId("body")}>{errors.body}</p> : null}
+          {errors.body ? <p className="form-message form-message--error" id={errorId("body")}>{errors.body}</p> : null}
         </div>
 
         <div className={styles.trap} aria-hidden="true">
@@ -169,13 +173,13 @@ export function ContactForm({
         <p className={styles.note}>
           {copy.privacyBefore} <a href={privacyHref}>{copy.privacyLink}</a>{copy.privacyAfter}
         </p>
-        <button className={styles.submit} disabled={sending} type="submit">
+        <button className={`button button--primary ${styles.submit}`} disabled={sending} type="submit">
           {sending ? copy.submitting : copy.submit}
         </button>
-        <p className={styles.success} role="status" aria-live="polite">
+        <p className={`form-message form-message--success ${styles.live}`} role="status" aria-live="polite">
           {status.kind === "sent" ? copy.success : ""}
         </p>
-        {status.kind === "failed" ? <p className={styles.error} role="alert">{status.message}</p> : null}
+        {status.kind === "failed" ? <p className="form-message form-message--error" role="alert">{status.message}</p> : null}
       </form>
     </section>
   );
