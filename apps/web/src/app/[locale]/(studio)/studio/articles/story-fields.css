@@ -1,37 +1,24 @@
+/* The story fields of the article form: status, key points, sources and linked entities. */
 .story-fieldset {
   display: grid;
   min-width: 0;
   gap: 0.75rem;
   padding: 0;
   border: 0;
-  margin: 1.5rem 0 0;
 }
 
 .story-fieldset > legend {
   padding: 0;
-  margin-bottom: 0.2rem;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.story-fieldset > p {
-  color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1.45;
-}
-
-.story-fieldset .studio-field {
-  margin-top: 0;
+  margin-bottom: 0.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
 }
 
 .story-source {
   display: grid;
   gap: 0.75rem;
-  padding: 0.9rem;
-  border: 1px solid var(--rule);
-  border-radius: 0.3rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
 }
 
 .story-source__header {
@@ -39,66 +26,67 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
-.story-entity-group {
-  display: grid;
-  gap: 0.25rem;
+@media (min-width: 40rem) {
+  .story-source {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .story-source__header,
+  .story-source > .studio-field:last-child {
+    grid-column: 1 / -1;
+  }
 }
 
 .story-entity-group > h3 {
-  color: var(--muted);
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 .story-entity {
   display: flex;
-  min-height: 2.75rem;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.25rem 1rem;
-  border-bottom: 1px solid var(--rule);
+  gap: 0 1rem;
+  border-bottom: 1px solid var(--line);
 }
 
 .story-entity .studio-check {
-  min-height: 2.75rem;
   flex: 1 1 12rem;
-  margin-top: 0;
-}
-
-.story-entity .studio-check small {
-  color: var(--muted);
-  font-weight: 500;
 }
 
 .story-entity__primary {
   display: inline-flex;
-  min-height: 2.75rem;
+  min-height: 2.25rem;
   align-items: center;
-  gap: 0.45rem;
-  font-size: 0.7rem;
-  font-weight: 700;
+  gap: 0.5rem;
+  font-size: 0.875rem;
 }
 
 .story-entity__primary input {
-  width: 1.1rem;
-  height: 1.1rem;
-  accent-color: var(--ink);
-}
-
-.story-entity__primary input:focus-visible {
-  outline: 0.1875rem solid var(--coral);
-  outline-offset: 0.1875rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--fg);
 }
 
 .story-entity__primary:has(input:disabled) {
-  color: var(--muted);
+  color: var(--fg-muted);
+}
+
+@media (pointer: coarse) {
+  .story-entity__primary {
+    min-height: 2.75rem;
+  }
+}
+
+.story-fieldset > .button {
+  justify-self: start;
 }

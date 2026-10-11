@@ -159,7 +159,7 @@ function MediaPickerPanel({
             <Image alt="" className="studio-media-picker__thumb" height={96} src={chosen.url} unoptimized width={128} />
             <span>{chosen.name}</span>
           </div>
-          <label className="studio-media-picker__field">
+          <label className="studio-field">
             <span>{copy.altLabel}</span>
             <input
               aria-describedby={`${altHelpId}${altError ? ` ${altErrorId}` : ""}`}
@@ -185,10 +185,10 @@ function MediaPickerPanel({
         </div>
       ) : (
         <div className="studio-media-picker__library">
-          <label className="studio-media-picker__field">
+          <label className="studio-field">
             <span>{copy.search}</span>
             <span className="studio-media-picker__search">
-              <Search aria-hidden="true" size={16} />
+              <Search aria-hidden="true" />
               <input
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={ignoreEnter}
@@ -222,16 +222,16 @@ function MediaPickerPanel({
 
       <div className="studio-media-picker__footer">
         {chosen ? (
-          <button className="studio-button" onClick={() => setChosen(null)} type="button">
-            <ArrowLeft aria-hidden="true" size={16} />
+          <button className="button button--quiet" onClick={() => setChosen(null)} type="button">
+            <ArrowLeft aria-hidden="true" />
             <span>{copy.back}</span>
           </button>
         ) : null}
-        <button className="studio-button" onClick={onCancel} type="button">
+        <button className="button button--quiet" onClick={onCancel} type="button">
           {copy.cancel}
         </button>
         {chosen ? (
-          <button className="studio-button studio-button--primary" onClick={insert} type="button">
+          <button className="button button--primary" onClick={insert} type="button">
             {copy.insert}
           </button>
         ) : null}

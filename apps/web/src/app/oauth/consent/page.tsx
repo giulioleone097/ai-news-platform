@@ -6,7 +6,8 @@ import { ArrowLeft } from "lucide-react";
 import { normalizeLocale } from "@/i18n";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { authorizationIdPattern, isEditorProfile, isRedirectAllowed, redirectHost } from "./authorization";
-import "./consent.css";
+import "@/components/studio/auth.css";
+import { StudioBrand } from "@/components/studio/studio-brand";
 import { consentCopy, type ConsentCopy } from "./copy";
 import { DecisionForm } from "./decision-form";
 import { ConsentSignInForm } from "./sign-in-form";
@@ -23,14 +24,12 @@ function Panel({ copy, children }: { copy: ConsentCopy; children: React.ReactNod
   return (
     <main className="auth-page">
       <section className="auth-panel" aria-labelledby="consent-title">
+        <StudioBrand href="/" label="Studio" name="AtlasNews" />
+        {children}
         <Link className="auth-back" href="/">
           <ArrowLeft aria-hidden="true" size={16} />
           {copy.backToSite}
         </Link>
-        <div className="auth-heading consent-heading">
-          <p className="auth-eyebrow">{copy.eyebrow}</p>
-          {children}
-        </div>
       </section>
     </main>
   );
@@ -39,8 +38,10 @@ function Panel({ copy, children }: { copy: ConsentCopy; children: React.ReactNod
 function Problem({ copy, message }: { copy: ConsentCopy; message: string }) {
   return (
     <Panel copy={copy}>
-      <h1 id="consent-title">{copy.title}</h1>
-      <p className="auth-form__error" role="alert">
+      <div className="auth-head">
+        <h1 id="consent-title">{copy.title}</h1>
+      </div>
+      <p className="auth-note auth-note--error" role="alert">
         {message}
       </p>
     </Panel>
@@ -64,8 +65,10 @@ export default async function ConsentPage({
   if (!auth.user) {
     return (
       <Panel copy={copy}>
-        <h1 id="consent-title">{copy.signInTitle}</h1>
-        <p>{copy.signInDescription}</p>
+        <div className="auth-head">
+          <h1 id="consent-title">{copy.signInTitle}</h1>
+          <p>{copy.signInDescription}</p>
+        </div>
         <ConsentSignInForm
           authorizationId={authorizationId}
           labels={{
@@ -102,25 +105,27 @@ export default async function ConsentPage({
 
   return (
     <Panel copy={copy}>
-      <h1 id="consent-title">{copy.requestTitle(clientName)}</h1>
-      <p className="consent-redirect">
-        {copy.returnsTo} <strong>{redirectHost(details.redirect_uri)}</strong>
-      </p>
-      <p>{copy.signedInAs(signedInAs)}</p>
+      <div className="auth-head">
+        <h1 id="consent-title">{copy.requestTitle(clientName)}</h1>
+        {/* The host is the part of the request the application cannot choose freely: it comes first and loudest. */}
+        <p className="auth-redirect">
+          {copy.returnsTo} <strong>{redirectHost(details.redirect_uri)}</strong>
+        </p>
+        <p>{copy.signedInAs(signedInAs)}</p>
+      </div>
 
-      <dl className="consent-details">
+      <div className="auth-section">
         {details.client.uri ? (
-          <div>
-            <dt>{copy.website}</dt>
-            <dd>{details.client.uri}</dd>
-          </div>
+          <p className="auth-muted">
+            {copy.website}: {details.client.uri}
+          </p>
         ) : null}
-      </dl>
-      <p className="consent-note">{copy.clientNameNote}</p>
+        <p className="auth-muted">{copy.clientNameNote}</p>
+      </div>
 
-      <section className="consent-section" aria-labelledby="consent-permissions">
+      <section className="auth-section" aria-labelledby="consent-permissions">
         <h2 id="consent-permissions">{copy.permissionsTitle}</h2>
-        <ul>
+        <ul className="auth-list">
           {isEditor ? <li>{copy.newsroomAccess}</li> : null}
           {scopes.map((scope) => (
             <li key={scope}>{copy.scopeLabels[scope] ?? scope}</li>
@@ -129,7 +134,7 @@ export default async function ConsentPage({
       </section>
 
       {isEditor ? null : (
-        <p className="auth-form__error" role="alert">
+        <p className="auth-note auth-note--error" role="alert">
           {copy.notAnEditor}
         </p>
       )}
@@ -144,11 +149,11 @@ export default async function ConsentPage({
           denying: copy.denying,
         }}
       />
-      <p className="consent-note">{copy.revokeNote}</p>
+      <p className="auth-muted">{copy.revokeNote}</p>
       {isEditor ? null : (
         <form action={signOutOfConsent}>
           <input name="authorizationId" type="hidden" value={authorizationId} />
-          <button className="auth-submit consent-deny" type="submit">
+          <button className="button button--quiet" type="submit">
             {copy.notAnEditorAction}
           </button>
         </form>

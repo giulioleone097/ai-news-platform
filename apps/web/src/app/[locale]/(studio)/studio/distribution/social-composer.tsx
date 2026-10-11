@@ -1,10 +1,10 @@
 "use client";
 
-import { BriefcaseBusiness, Check, Clock3, MessageCircle, ScanText, Send, ShieldCheck } from "lucide-react";
+import { BriefcaseBusiness, Check, MessageCircle, ScanText, Send } from "lucide-react";
 import { useActionState, useState } from "react";
 import type { SocialProvider } from "@atlasnews/core/social-publishing/domain/social-publication";
 import { submitSocialPublicationAction } from "./social-actions";
-import styles from "./distribution.module.css";
+import { Note } from "@/components/studio/note";
 import {
   idleSocialComposerState,
   type SocialComposerPublication,
@@ -73,39 +73,35 @@ export function SocialComposer({
   }
 
   return (
-    <section className={styles.composer} aria-labelledby="social-composer-title">
-      <div className={styles.sectionHeading}>
-        <span className={styles.sectionNumber}>01</span>
-        <div>
-          <h2 id="social-composer-title">{copy.composerTitle}</h2>
-          <p>{copy.composerDescription}</p>
-        </div>
+    <section className="studio-stack" aria-labelledby="social-composer-title">
+      <div className="studio-section__head">
+        <h2 className="studio-section__title" id="social-composer-title">{copy.composerTitle}</h2>
+        <p>{copy.composerDescription}</p>
       </div>
 
-      <form action={action} className={styles.composerForm}>
+      <form action={action} className="studio-composer">
         <input name="locale" type="hidden" value={copy.locale} />
         <input name="provider" type="hidden" value={provider} />
         <input name="jobId" type="hidden" value={recoverableJob?.id ?? ""} />
         <input name="expectedRevision" type="hidden" value={recoverableJob?.expectedRevision ?? ""} />
 
-        <fieldset className={styles.channelFieldset}>
-          <legend>{copy.channel}</legend>
-          <div className={styles.channelGrid}>
+        <fieldset className="studio-field">
+          <legend className="studio-label">{copy.channel}</legend>
+          <div className="studio-segmented">
             {(Object.keys(providerLabels) as SocialProvider[]).map((channel) => {
               const Icon = providerIcons[channel];
               const configured = configuredProviders.includes(channel);
               return (
                 <button
                   aria-pressed={provider === channel}
-                  className={`${styles.channelButton} ${provider === channel ? styles.channelButtonActive : ""}`}
                   disabled={!configured || pending}
                   key={channel}
                   onClick={() => chooseProvider(channel)}
+                  title={configured ? undefined : copy.unavailable}
                   type="button"
                 >
-                  <Icon aria-hidden="true" size={18} />
-                  <span>{providerLabels[channel]}</span>
-                  <small>{configured ? copy.configured : copy.unavailable}</small>
+                  <Icon aria-hidden="true" />
+                  {providerLabels[channel]}
                 </button>
               );
             })}
@@ -113,7 +109,7 @@ export function SocialComposer({
         </fieldset>
 
         {canSubmit ? (
-          <div className={styles.composerFields}>
+          <>
             <label className="studio-field">
               <span>{copy.story}</span>
               <select
@@ -140,10 +136,10 @@ export function SocialComposer({
                   setConfirmed(false);
                 }}
                 required
-                rows={7}
+                rows={6}
                 value={text}
               />
-              <small className={styles.fieldMeta}>
+              <small className="studio-composer__meta">
                 <span id="social-message-help">{copy.messageHelp}</span>
                 <span>{Array.from(text).length}/{providerLimits[provider]}</span>
               </small>
@@ -183,69 +179,66 @@ export function SocialComposer({
               {error("scheduledFor") ? <small className="studio-field__error">{error("scheduledFor")}</small> : null}
             </label>
 
-            <label className={styles.confirmation}>
+            <label className="studio-check">
               <input
                 checked={confirmed}
                 name="confirm"
                 onChange={(event) => setConfirmed(event.currentTarget.checked)}
                 type="checkbox"
               />
-              <span><ShieldCheck aria-hidden="true" size={18} />{copy.confirm}</span>
+              {copy.confirm}
             </label>
-            {recoverableJob ? <p className={styles.inlineEmpty}>{copy.requeueNotice}</p> : null}
+            {recoverableJob ? <p className="studio-muted">{copy.requeueNotice}</p> : null}
             {error("confirm") ? <small className="studio-field__error">{error("confirm")}</small> : null}
 
-            <div className={styles.composerActions}>
+            <div className="studio-inline">
               <button
-                className="studio-button studio-button--secondary"
+                className="button button--quiet"
                 disabled={pending}
                 name="intent"
                 type="submit"
                 value="preview"
               >
-                <ScanText aria-hidden="true" size={16} />
+                <ScanText aria-hidden="true" />
                 {pending ? copy.pending : copy.preview}
               </button>
               <button
-                className="studio-button studio-button--primary"
+                className="button button--primary"
                 disabled={pending || !confirmed}
                 name="intent"
                 type="submit"
                 value={recoverableJob ? "requeue" : "enqueue"}
               >
-                <Send aria-hidden="true" size={16} />
+                <Send aria-hidden="true" />
                 {pending ? copy.pending : recoverableJob ? copy.requeue : copy.queue}
               </button>
             </div>
-          </div>
+          </>
         ) : (
-          <p className={styles.inlineEmpty}>{copy.emptyPublications}</p>
+          <p className="studio-muted">{copy.emptyPublications}</p>
         )}
 
-        {state.status === "error" && state.message ? (
-          <p className="studio-alert studio-alert--error" role="alert">{state.message}</p>
-        ) : null}
+        {state.status === "error" && state.message ? <Note tone="error">{state.message}</Note> : null}
 
         {state.status === "preview" && state.preview ? (
-          <aside className={styles.preview} aria-live="polite">
-            <div className={styles.previewHeading}>
-              <span><Check aria-hidden="true" size={15} />{copy.validated}</span>
-              <strong>{copy.previewTitle}</strong>
-            </div>
-            <p className={styles.previewText}>{state.preview.text}</p>
-            <div className={styles.previewMeta}>
-              {state.preview.articleUrl ? <span><Send aria-hidden="true" size={14} />{copy.canonicalLink}</span> : null}
-              {state.preview.recipient ? <span><ShieldCheck aria-hidden="true" size={14} />{copy.recipientRedacted}</span> : null}
-              {state.preview.scheduledFor ? <span><Clock3 aria-hidden="true" size={14} />{state.preview.scheduledFor}</span> : null}
-            </div>
+          <aside className="studio-composer__preview" aria-live="polite">
+            <p className="studio-badge" data-tone="success">
+              <Check aria-hidden="true" size={14} /> {copy.validated}
+            </p>
+            <h3>{copy.previewTitle}</h3>
+            <p className="studio-text">{state.preview.text}</p>
+            <p className="studio-meta">
+              {state.preview.articleUrl ? <span>{copy.canonicalLink}</span> : null}
+              {state.preview.recipient ? <span>{copy.recipientRedacted}</span> : null}
+              {state.preview.scheduledFor ? <span>{state.preview.scheduledFor}</span> : null}
+            </p>
           </aside>
         ) : null}
 
         {state.status === "queued" && state.readback ? (
-          <p className="studio-alert studio-alert--success" aria-live="polite">
-            <Check aria-hidden="true" size={16} />
+          <Note tone="success">
             {providerLabels[state.readback.provider]} · {state.readback.status} · {state.readback.availableAt}
-          </p>
+          </Note>
         ) : null}
       </form>
     </section>

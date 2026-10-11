@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Plus } from "lucide-react";
 import { listCategoryRows } from "@/components/studio/categories/category-data";
 import { CategoryList } from "@/components/studio/categories/category-list";
+import { Note } from "@/components/studio/note";
+import { PageHead } from "@/components/studio/page-head";
 import { isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { categoryCopy } from "./copy";
@@ -27,36 +29,24 @@ export default async function StudioCategoriesPage({
 
   return (
     <>
-      <header className="studio-page-header">
-        <div>
-          <p className="studio-kicker">{copy.listKicker}</p>
-          <h1>{copy.listTitle}</h1>
-          <p>{copy.listDescription}</p>
-        </div>
-        <Link className="studio-button studio-button--primary" href={newHref}>
-          <Plus aria-hidden="true" size={17} />
+      <PageHead description={copy.listDescription} title={copy.listTitle}>
+        <Link className="button button--primary" href={newHref}>
+          <Plus aria-hidden="true" />
           {copy.newCategory}
         </Link>
-      </header>
+      </PageHead>
 
-      {query.saved ? (
-        <p className="studio-alert studio-alert--success" role="status">{copy.saved}</p>
-      ) : query.deleted ? (
-        <p className="studio-alert studio-alert--success" role="status">{copy.deleted}</p>
-      ) : null}
+      {query.saved ? <Note tone="success">{copy.saved}</Note> : query.deleted ? <Note tone="success">{copy.deleted}</Note> : null}
 
-      <section className="studio-section" aria-label={copy.listTitle}>
-        {categories.length ? (
-          <CategoryList categories={categories} locale={locale} />
-        ) : (
-          <div className="studio-empty-state">
-            <span>00</span>
-            <h2>{copy.emptyTitle}</h2>
-            <p>{copy.emptyDescription}</p>
-            <Link className="studio-button studio-button--primary" href={newHref}>{copy.newCategory}</Link>
-          </div>
-        )}
-      </section>
+      {categories.length ? (
+        <CategoryList categories={categories} locale={locale} />
+      ) : (
+        <div className="empty-state">
+          <h2>{copy.emptyTitle}</h2>
+          <p>{copy.emptyDescription}</p>
+          <Link className="button button--primary" href={newHref}>{copy.newCategory}</Link>
+        </div>
+      )}
     </>
   );
 }

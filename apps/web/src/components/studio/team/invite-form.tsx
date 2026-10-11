@@ -5,9 +5,9 @@ import { teamLimits } from "@atlasnews/core/team/domain/team";
 import type { Locale } from "@/i18n";
 import { inviteMemberAction } from "@/app/[locale]/(studio)/studio/team/actions";
 import { teamCopy } from "@/app/[locale]/(studio)/studio/team/copy";
+import { Note } from "@/components/studio/note";
 import { StudioSubmitButton } from "@/components/studio/studio-submit-button";
 import { idleInviteFormState } from "./team-state";
-import styles from "./team.module.css";
 
 export function InviteForm({ locale }: { locale: Locale }) {
   const [state, formAction] = useActionState(inviteMemberAction, idleInviteFormState);
@@ -15,12 +15,10 @@ export function InviteForm({ locale }: { locale: Locale }) {
   const values = state.values ?? { email: "", name: "", role: "editor" as const };
 
   return (
-    <form action={formAction} className="studio-panel" noValidate>
+    <form action={formAction} className="studio-stack" noValidate>
       <input name="locale" type="hidden" value={locale} />
-      {state.status === "error" && state.message ? (
-        <p className="studio-alert studio-alert--error" role="alert">{state.message}</p>
-      ) : null}
-      <div className={styles.invite}>
+      {state.status === "error" && state.message ? <Note tone="error">{state.message}</Note> : null}
+      <div className="studio-invite">
         <label className="studio-field">
           <span>{copy.email}</span>
           <input
@@ -46,9 +44,7 @@ export function InviteForm({ locale }: { locale: Locale }) {
             <option value="admin">{copy.roleAdmin}</option>
           </select>
         </label>
-        <div className={styles.submit}>
-          <StudioSubmitButton idleLabel={copy.invite} pendingLabel={copy.inviting} />
-        </div>
+        <StudioSubmitButton idleLabel={copy.invite} pendingLabel={copy.inviting} />
       </div>
     </form>
   );

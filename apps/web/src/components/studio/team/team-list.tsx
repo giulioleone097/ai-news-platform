@@ -1,9 +1,9 @@
 import type { Locale } from "@/i18n";
 import { teamCopy } from "@/app/[locale]/(studio)/studio/team/copy";
+import { Badge } from "../badge";
 import { RemoveMemberButton } from "./remove-member-button";
 import { RoleForm } from "./role-form";
 import type { TeamRow } from "./team-data";
-import styles from "./team.module.css";
 
 export function TeamList({
   currentAuthorId,
@@ -35,22 +35,22 @@ export function TeamList({
             const isYou = member.authorId === currentAuthorId;
             return (
               <tr key={member.id}>
-                <td data-label={copy.member}>
-                  <span className={styles.identity}>
+                <td className="studio-table__main">
+                  <span className="studio-cell">
                     <strong>{member.authorName}{isYou ? ` (${copy.you})` : ""}</strong>
-                    <span>{member.email}</span>
+                    <small>{member.email}</small>
                   </span>
                 </td>
                 <td data-label={copy.status}>
-                  <span className={`studio-status ${member.status === "active" ? "studio-status--published" : "studio-status--review"}`}>
+                  <Badge tone={member.status === "active" ? "success" : "warning"}>
                     {member.status === "active" ? copy.active : copy.invited}
-                  </span>
+                  </Badge>
                 </td>
                 <td data-label={copy.role}>
                   <RoleForm email={member.email} id={member.id} locale={locale} role={member.role} />
                 </td>
-                <td>
-                  <span className={styles.rowActions}>
+                <td className="studio-table__actions">
+                  <span className="studio-actions">
                     {isYou ? null : <RemoveMemberButton email={member.email} id={member.id} locale={locale} />}
                   </span>
                 </td>

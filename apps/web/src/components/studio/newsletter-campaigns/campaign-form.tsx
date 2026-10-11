@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { saveNewsletterCampaignAction } from "@/app/[locale]/(studio)/studio/newsletter/campaigns/actions";
 import { idleStudioActionState } from "@/components/studio/action-state";
 import { MarkdownEditor, type MarkdownEditorCopy } from "@/components/studio/markdown-editor";
+import { Note } from "@/components/studio/note";
 import type { Locale } from "@/i18n";
 import { toUtcDateTimeInput } from "@/lib/editorial-datetime";
 import type { NewsletterCampaign } from "@atlasnews/core/newsletter/domain/newsletter";
@@ -144,7 +145,7 @@ function CampaignButton({
       type="submit"
       value={intent}
     >
-      <Icon aria-hidden="true" size={16} />
+      <Icon aria-hidden="true" />
       {pending ? pendingLabel : label}
     </button>
   );
@@ -164,6 +165,36 @@ export function NewsletterCampaignForm({
   const editable = !campaign || campaign.status === "draft";
   const error = (field: string) => state.fieldErrors?.[field]?.[0];
   const errorId = (field: string) => `campaign-${field}-error`;
+  const fieldError = (field: string) =>
+    error(field) ? <small className="studio-field__error" id={errorId(field)}>{error(field)}</small> : null;
+  const invalid = (field: string) => ({
+    "aria-describedby": error(field) ? errorId(field) : undefined,
+    "aria-invalid": Boolean(error(field)) || undefined,
+  });
+  const canCancel = campaign
+    && (campaign.status === "draft" || campaign.status === "scheduled" || campaign.status === "sending");
+
+  const actions = (
+    <div className="studio-buttons">
+      {editable ? (
+        <>
+          <CampaignButton className="button button--quiet" icon={Save} intent="save" label={labels.save} pendingLabel={labels.saving} />
+          <CampaignButton className="button button--quiet" confirmMessage={labels.scheduleConfirm} icon={CalendarClock} intent="schedule" label={labels.scheduleAction} pendingLabel={labels.working} />
+          <CampaignButton className="button button--primary" confirmMessage={labels.sendConfirm} icon={Send} intent="send" label={labels.send} pendingLabel={labels.working} />
+        </>
+      ) : null}
+      {canCancel ? (
+        <CampaignButton
+          className="button button--danger"
+          confirmMessage={labels.cancelConfirm}
+          icon={XCircle}
+          intent="cancel"
+          label={labels.cancel}
+          pendingLabel={labels.working}
+        />
+      ) : null}
+    </div>
+  );
 
   return (
     <form action={action} className="studio-editor">
@@ -171,46 +202,26 @@ export function NewsletterCampaignForm({
       <input name="confirmation" type="hidden" value="" />
       {campaign ? <input name="id" type="hidden" value={campaign.id} /> : null}
 
-      {state.status === "error" && state.message ? (
-        <p className="studio-alert studio-alert--error" role="alert">{state.message}</p>
-      ) : null}
+      {state.status === "error" && state.message ? <Note tone="error">{state.message}</Note> : null}
 
       {editable ? (
         <div className="studio-editor__grid">
           <div className="studio-editor__main">
-            <section className="studio-panel" aria-labelledby="campaign-message-title">
-              <div className="studio-panel__heading">
-                <span>01</span>
-                <h2 id="campaign-message-title">{labels.subject}</h2>
-              </div>
+            <section className="studio-section">
               <label className="studio-field studio-field--title">
                 <span>{labels.subject}</span>
-                <input
-                  aria-describedby={error("subject") ? errorId("subject") : undefined}
-                  aria-invalid={Boolean(error("subject")) || undefined}
-                  defaultValue={campaign?.subject}
-                  maxLength={200}
-                  name="subject"
-                  required
-                />
-                {error("subject") ? <small className="studio-field__error" id={errorId("subject")}>{error("subject")}</small> : null}
+                <input {...invalid("subject")} defaultValue={campaign?.subject} maxLength={200} name="subject" required />
+                {fieldError("subject")}
               </label>
               <label className="studio-field">
                 <span>{labels.preheader}</span>
-                <textarea
-                  aria-describedby={error("preheader") ? errorId("preheader") : undefined}
-                  aria-invalid={Boolean(error("preheader")) || undefined}
-                  defaultValue={campaign?.preheader}
-                  maxLength={300}
-                  name="preheader"
-                  rows={3}
-                />
-                {error("preheader") ? <small className="studio-field__error" id={errorId("preheader")}>{error("preheader")}</small> : null}
+                <textarea {...invalid("preheader")} defaultValue={campaign?.preheader} maxLength={300} name="preheader" rows={2} />
+                {fieldError("preheader")}
               </label>
               <MarkdownEditor
                 copy={labels.markdown}
                 defaultValue={campaign?.contentMarkdown}
-                error={error("contentMarkdown") ? <small className="studio-field__error" id={errorId("contentMarkdown")}>{error("contentMarkdown")}</small> : undefined}
+                error={fieldError("contentMarkdown") ?? undefined}
                 errorId={errorId("contentMarkdown")}
                 help={labels.contentHelp}
                 invalid={Boolean(error("contentMarkdown"))}
@@ -220,22 +231,14 @@ export function NewsletterCampaignForm({
           </div>
 
           <aside className="studio-editor__aside">
-            <section className="studio-panel" aria-labelledby="campaign-sender-title">
-              <div className="studio-panel__heading">
-                <span>02</span>
-                <h2 id="campaign-sender-title">{labels.sender}</h2>
-              </div>
+            {actions}
+
+            <fieldset className="studio-section">
+              <legend>{labels.sender}</legend>
               <label className="studio-field">
                 <span>{labels.fromName}</span>
-                <input
-                  aria-describedby={error("fromName") ? errorId("fromName") : undefined}
-                  aria-invalid={Boolean(error("fromName")) || undefined}
-                  defaultValue={campaign?.fromName ?? "AtlasNews"}
-                  maxLength={120}
-                  name="fromName"
-                  required
-                />
-                {error("fromName") ? <small className="studio-field__error" id={errorId("fromName")}>{error("fromName")}</small> : null}
+                <input {...invalid("fromName")} defaultValue={campaign?.fromName ?? "AtlasNews"} maxLength={120} name="fromName" required />
+                {fieldError("fromName")}
               </label>
               <label className="studio-field">
                 <span>{labels.fromEmail}</span>
@@ -243,90 +246,49 @@ export function NewsletterCampaignForm({
               </label>
               <label className="studio-field">
                 <span>{labels.replyTo}</span>
-                <input
-                  aria-describedby={error("replyTo") ? errorId("replyTo") : undefined}
-                  aria-invalid={Boolean(error("replyTo")) || undefined}
-                  defaultValue={campaign?.replyTo ?? defaults.replyTo ?? ""}
-                  name="replyTo"
-                  type="email"
-                />
-                {error("replyTo") ? <small className="studio-field__error" id={errorId("replyTo")}>{error("replyTo")}</small> : null}
+                <input {...invalid("replyTo")} defaultValue={campaign?.replyTo ?? defaults.replyTo ?? ""} name="replyTo" type="email" />
+                {fieldError("replyTo")}
               </label>
-            </section>
+            </fieldset>
 
-            <section className="studio-panel" aria-labelledby="campaign-audience-title">
-              <div className="studio-panel__heading">
-                <span>03</span>
-                <h2 id="campaign-audience-title">{labels.audience}</h2>
-              </div>
+            <fieldset className="studio-section">
+              <legend>{labels.audience}</legend>
               <label className="studio-field">
                 <span>{labels.audienceLocale}</span>
-                <select
-                  aria-describedby={error("audienceLocale") ? errorId("audienceLocale") : undefined}
-                  aria-invalid={Boolean(error("audienceLocale")) || undefined}
-                  defaultValue={campaign?.audienceLocale ?? locale}
-                  name="audienceLocale"
-                >
+                <select {...invalid("audienceLocale")} defaultValue={campaign?.audienceLocale ?? locale} name="audienceLocale">
                   <option value="en">English</option>
                   <option value="it">Italiano</option>
                 </select>
-                {error("audienceLocale") ? <small className="studio-field__error" id={errorId("audienceLocale")}>{error("audienceLocale")}</small> : null}
+                {fieldError("audienceLocale")}
               </label>
               <label className="studio-field">
                 <span>{labels.audienceStatus}</span>
                 <select disabled value="active"><option value="active">{labels.activeOnly}</option></select>
                 <input name="audienceStatus" type="hidden" value="active" />
               </label>
-            </section>
+            </fieldset>
 
-            <section className="studio-panel" aria-labelledby="campaign-schedule-title">
-              <div className="studio-panel__heading">
-                <span>04</span>
-                <h2 id="campaign-schedule-title">{labels.schedule}</h2>
-              </div>
+            <fieldset className="studio-section">
+              <legend>{labels.schedule}</legend>
               <label className="studio-field">
                 <span>{labels.scheduledFor}</span>
                 <input
-                  aria-describedby={error("scheduledFor") ? errorId("scheduledFor") : undefined}
-                  aria-invalid={Boolean(error("scheduledFor")) || undefined}
+                  {...invalid("scheduledFor")}
                   defaultValue={toUtcDateTimeInput(campaign?.scheduledFor ?? null)}
                   name="scheduledFor"
                   type="datetime-local"
                 />
-                {error("scheduledFor") ? <small className="studio-field__error" id={errorId("scheduledFor")}>{error("scheduledFor")}</small> : null}
+                {fieldError("scheduledFor")}
               </label>
-            </section>
+            </fieldset>
           </aside>
         </div>
       ) : (
-        <section className="studio-panel">
-          <p>{labels.unavailable}</p>
-        </section>
+        <>
+          <Note>{labels.unavailable}</Note>
+          {canCancel ? actions : null}
+        </>
       )}
-
-      <div className="studio-editor__actions">
-        {editable ? (
-          <>
-            <CampaignButton className="studio-button studio-button--secondary" icon={Save} intent="save" label={labels.save} pendingLabel={labels.saving} />
-            <CampaignButton className="studio-button studio-button--secondary" confirmMessage={labels.scheduleConfirm} icon={CalendarClock} intent="schedule" label={labels.scheduleAction} pendingLabel={labels.working} />
-            <CampaignButton className="studio-button studio-button--primary" confirmMessage={labels.sendConfirm} icon={Send} intent="send" label={labels.send} pendingLabel={labels.working} />
-          </>
-        ) : null}
-        {campaign && (
-          campaign.status === "draft"
-          || campaign.status === "scheduled"
-          || campaign.status === "sending"
-        ) ? (
-          <CampaignButton
-            className="studio-button studio-button--danger"
-            confirmMessage={labels.cancelConfirm}
-            icon={XCircle}
-            intent="cancel"
-            label={labels.cancel}
-            pendingLabel={labels.working}
-          />
-        ) : null}
-      </div>
     </form>
   );
 }

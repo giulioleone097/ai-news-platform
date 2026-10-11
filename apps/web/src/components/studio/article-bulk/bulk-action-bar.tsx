@@ -11,9 +11,9 @@ import type { BulkAction } from "./types";
 const actions: BulkAction[] = ["publish", "unpublish", "delete"];
 
 const buttonClass: Record<BulkAction, string> = {
-  publish: "studio-button studio-button--primary",
-  unpublish: "studio-button studio-button--secondary",
-  delete: "studio-button studio-button--danger",
+  publish: "button button--small button--primary",
+  unpublish: "button button--small button--quiet",
+  delete: "button button--small button--danger",
 };
 
 export function BulkActionBar({

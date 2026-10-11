@@ -4,7 +4,8 @@ import { getContentMode } from "@atlasnews/adapters/config/env";
 import { InviteForm } from "@/components/studio/team/invite-form";
 import { listTeamRows } from "@/components/studio/team/team-data";
 import { TeamList } from "@/components/studio/team/team-list";
-import styles from "@/components/studio/team/team.module.css";
+import { Note } from "@/components/studio/note";
+import { PageHead } from "@/components/studio/page-head";
 import { isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { teamCopy } from "./copy";
@@ -41,29 +42,19 @@ export default async function StudioTeamPage({
 
   return (
     <>
-      <header className="studio-page-header">
-        <div>
-          <p className="studio-kicker">{copy.kicker}</p>
-          <h1>{copy.title}</h1>
-          <p>{copy.description}</p>
-        </div>
-      </header>
+      <PageHead description={copy.description} title={copy.title} />
 
-      {notice ? <p className="studio-alert studio-alert--success" role="status">{notice}</p> : null}
+      {notice ? <Note tone="success">{notice}</Note> : null}
 
-      <section className="studio-section" aria-labelledby="team-invite-title">
-        <div className="studio-section__header">
-          <h2 id="team-invite-title">{copy.inviteTitle}</h2>
-        </div>
+      <section className="studio-stack" aria-labelledby="team-invite-title">
+        <h2 className="studio-section__title" id="team-invite-title">{copy.inviteTitle}</h2>
         <InviteForm locale={locale} />
       </section>
 
-      <section className="studio-section" aria-labelledby="team-members-title">
-        <div className="studio-section__header">
-          <h2 id="team-members-title">{copy.members}</h2>
-        </div>
+      <section className="studio-stack" aria-labelledby="team-members-title">
+        <h2 className="studio-section__title" id="team-members-title">{copy.members}</h2>
         <TeamList currentAuthorId={editor.author.id} locale={locale} members={members} />
-        {getContentMode() === "sites" ? <p className={styles.note}>{copy.sitesListNote}</p> : null}
+        {getContentMode() === "sites" ? <p className="studio-muted">{copy.sitesListNote}</p> : null}
       </section>
     </>
   );

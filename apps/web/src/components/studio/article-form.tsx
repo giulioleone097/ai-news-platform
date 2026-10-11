@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { Check, ChevronLeft } from "lucide-react";
 import type { Locale, Messages } from "@/i18n";
 import { toUtcDateTimeInput } from "@/lib/editorial-datetime";
 import type { Article, Category } from "@atlasnews/core/editorial/domain/article";
@@ -17,8 +16,12 @@ import { StoryFields } from "@/app/[locale]/(studio)/studio/articles/story-field
 import { idleStudioActionState } from "./action-state";
 import { DeleteArticleButton } from "./delete-article-button";
 import { MarkdownEditor } from "./markdown-editor";
+import { Note } from "./note";
+import { PageHead } from "./page-head";
 import { studioSupplementalCopy } from "./studio-copy";
 import { StudioSubmitButton } from "./studio-submit-button";
+
+const channelLabels = { linkedin: "LinkedIn", x: "X", whatsapp: "WhatsApp" } as const;
 
 export function ArticleForm({
   article,
@@ -61,39 +64,16 @@ export function ArticleForm({
     <form className="studio-editor" action={formAction} noValidate>
       {article ? <input name="id" type="hidden" value={article.id} /> : null}
 
-      <header className="studio-page-header studio-editor__header">
-        <div>
-          <Link className="studio-back-link" href={`/${locale}/studio/articles`}>
-            <ChevronLeft aria-hidden="true" size={16} />
-            {messages.studio.articles}
-          </Link>
-          <p className="studio-kicker">
-            {article ? messages.studio.editArticle : messages.studio.createArticle}
-          </p>
-          <h1>{article?.title ?? messages.studio.newArticle}</h1>
-        </div>
-        <div className="studio-editor__actions">
-          <Link className="studio-button studio-button--secondary" href={`/${locale}/studio/articles`}>
-            {messages.common.cancel}
-          </Link>
-          <StudioSubmitButton idleLabel={messages.common.save} pendingLabel={messages.studio.saving} />
-        </div>
-      </header>
+      <PageHead
+        back={{ href: `/${locale}/studio/articles`, label: messages.studio.articles }}
+        title={article?.title ?? messages.studio.newArticle}
+      />
 
-      {state.status === "error" && state.message ? (
-        <p className="studio-alert studio-alert--error" role="alert" aria-atomic="true">
-          {state.message}
-        </p>
-      ) : null}
+      {state.status === "error" && state.message ? <Note tone="error">{state.message}</Note> : null}
 
       <div className="studio-editor__grid">
         <div className="studio-editor__main">
-          <section className="studio-panel" aria-labelledby="story-content-title">
-            <div className="studio-panel__heading">
-              <span>01</span>
-              <h2 id="story-content-title">{messages.studio.titleLabel}</h2>
-            </div>
-
+          <section className="studio-section">
             <label className="studio-field studio-field--title">
               <span>{messages.studio.titleLabel}</span>
               <input
@@ -129,7 +109,7 @@ export function ArticleForm({
                 minLength={20}
                 name="excerpt"
                 required
-                rows={4}
+                rows={3}
               />
               {fieldError("excerpt")}
             </label>
@@ -145,11 +125,8 @@ export function ArticleForm({
             />
           </section>
 
-          <section className="studio-panel" aria-labelledby="story-media-title">
-            <div className="studio-panel__heading">
-              <span>02</span>
-              <h2 id="story-media-title">{messages.studio.media}</h2>
-            </div>
+          <section className="studio-section" aria-labelledby="story-media-title">
+            <h2 className="studio-section__title" id="story-media-title">{messages.studio.media}</h2>
             <label className="studio-field">
               <span>{messages.studio.coverImageLabel}</span>
               <input
@@ -200,12 +177,14 @@ export function ArticleForm({
         </div>
 
         <aside className="studio-editor__aside">
-          <section className="studio-panel" aria-labelledby="publishing-title">
-            <div className="studio-panel__heading">
-              <span>03</span>
-              <h2 id="publishing-title">{messages.studio.statusLabel}</h2>
-            </div>
+          <div className="studio-buttons">
+            <StudioSubmitButton idleLabel={messages.common.save} pendingLabel={messages.studio.saving} />
+            <Link className="button button--quiet" href={`/${locale}/studio/articles`}>
+              {messages.common.cancel}
+            </Link>
+          </div>
 
+          <section className="studio-section">
             <label className="studio-field">
               <span>{copy.localeLabel}</span>
               {article ? (
@@ -299,38 +278,33 @@ export function ArticleForm({
 
             <label className="studio-check">
               <input defaultChecked={article?.featured} name="featured" type="checkbox" />
-              <span aria-hidden="true">
-                <Check size={14} />
-              </span>
               {copy.featuredLabel}
             </label>
           </section>
 
-          <fieldset className="studio-panel studio-distribution-fieldset">
+          <fieldset className="studio-section">
             <legend>{messages.studio.distribution}</legend>
-            <p>{copy.distributionHelp}</p>
-            {socialChannels.map((channel) => (
-              <label className="studio-check" key={channel}>
-                <input
-                  {...fieldAccessibility("distribution")}
-                  defaultChecked={article?.distribution.includes(channel)}
-                  name="distribution"
-                  type="checkbox"
-                  value={channel}
-                />
-                <span aria-hidden="true">
-                  <Check size={14} />
-                </span>
-                {channel === "newsletter" ? messages.studio.newsletter : channel}
-              </label>
-            ))}
+            <p className="studio-muted">{copy.distributionHelp}</p>
+            <div>
+              {socialChannels.map((channel) => (
+                <label className="studio-check" key={channel}>
+                  <input
+                    {...fieldAccessibility("distribution")}
+                    defaultChecked={article?.distribution.includes(channel)}
+                    name="distribution"
+                    type="checkbox"
+                    value={channel}
+                  />
+                  {channel === "newsletter" ? messages.studio.newsletter : channelLabels[channel]}
+                </label>
+              ))}
+            </div>
             {fieldError("distribution")}
           </fieldset>
 
           {article ? (
-            <section className="studio-panel studio-danger-zone">
-              <h2>{messages.studio.deleteArticle}</h2>
-              <p>{messages.studio.deleteConfirmation}</p>
+            <section className="studio-section">
+              <p className="studio-muted">{messages.studio.deleteConfirmation}</p>
               <DeleteArticleButton locale={locale} messages={messages} />
             </section>
           ) : null}

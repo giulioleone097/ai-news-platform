@@ -1,12 +1,12 @@
-import { ChevronLeft, Mail, MousePointerClick, Send, ShieldAlert } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarkdownRenderer } from "@/components/markdown/markdown-renderer";
 import { NewsletterCampaignForm } from "@/components/studio/newsletter-campaigns/campaign-form";
+import { Badge, sentenceCase } from "@/components/studio/badge";
 import {
-  campaignStatusClass,
-  deliveryStatusClass,
+  campaignStatusTone,
+  deliveryStatusTone,
 } from "@/components/studio/newsletter-campaigns/campaign-status";
+import { PageHead } from "@/components/studio/page-head";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { getStudioNewsletterCampaignService } from "@/server/composition";
@@ -30,50 +30,73 @@ export default async function NewsletterCampaignPage({
     ? { campaigns: "Campagne", recipients: "Destinatari", sent: "Inviate", delivered: "Consegnate", engagement: "Interazioni", incidents: "Bounce / reclami", preview: "Anteprima email", delivery: "Consegna destinatari", empty: "La snapshot destinatari verrà creata quando la campagna entra in coda." }
     : { campaigns: "Campaigns", recipients: "Recipients", sent: "Sent", delivered: "Delivered", engagement: "Engagement", incidents: "Bounces / complaints", preview: "Email preview", delivery: "Recipient delivery", empty: "The recipient snapshot is created when the campaign enters the queue." };
 
+  const recipientLabels = locale === "it" ? { email: "Email", status: "Stato" } : { email: "Email", status: "Status" };
+  const stats = [
+    { label: labels.recipients, value: campaign.recipientCount },
+    { label: `${labels.sent} / ${labels.delivered}`, value: `${campaign.sentCount} / ${campaign.deliveredCount}` },
+    { label: labels.engagement, value: `${campaign.openCount} / ${campaign.clickCount}` },
+    { label: labels.incidents, value: `${campaign.bounceCount} / ${campaign.complaintCount}` },
+  ];
+
   return (
     <>
-      <header className="studio-page-header">
-        <div>
-          <Link className="studio-back-link" href={`/${locale}/studio/newsletter/campaigns`}>
-            <ChevronLeft aria-hidden="true" size={16} /> {labels.campaigns}
-          </Link>
-          <h1>{campaign.subject}</h1>
-          <p><span className={campaignStatusClass(campaign.status)}>{campaign.status}</span></p>
-        </div>
-      </header>
+      <PageHead
+        back={{ href: `/${locale}/studio/newsletter/campaigns`, label: labels.campaigns }}
+        badge={<Badge tone={campaignStatusTone(campaign.status)}>{sentenceCase(campaign.status)}</Badge>}
+        title={campaign.subject}
+      />
 
-      <section className="studio-newsletter-metrics" aria-label={labels.delivery}>
-        <article><span className="studio-capability-card__icon"><Mail aria-hidden="true" size={22} /></span><strong>{campaign.recipientCount}</strong><p>{labels.recipients}</p></article>
-        <article><span className="studio-capability-card__icon"><Send aria-hidden="true" size={22} /></span><strong>{campaign.sentCount} / {campaign.deliveredCount}</strong><p>{labels.sent} / {labels.delivered}</p></article>
-        <article><span className="studio-capability-card__icon"><MousePointerClick aria-hidden="true" size={22} /></span><strong>{campaign.openCount} / {campaign.clickCount}</strong><p>{labels.engagement}</p></article>
-        <article><span className="studio-capability-card__icon"><ShieldAlert aria-hidden="true" size={22} /></span><strong>{campaign.bounceCount} / {campaign.complaintCount}</strong><p>{labels.incidents}</p></article>
-      </section>
+      <dl aria-label={labels.delivery} className="studio-stats">
+        {stats.map((stat) => (
+          <div key={stat.label}>
+            <dt>{stat.label}</dt>
+            <dd>{stat.value}</dd>
+          </div>
+        ))}
+      </dl>
 
       <NewsletterCampaignForm campaign={campaign} defaults={service.defaults()} locale={locale} />
 
       {campaign.status !== "draft" ? (
-        <section className="studio-panel" aria-labelledby="campaign-preview-title">
-          <div className="studio-panel__heading"><span>05</span><h2 id="campaign-preview-title">{labels.preview}</h2></div>
+        <section className="studio-section" aria-labelledby="campaign-preview-title">
+          <h2 className="studio-section__title" id="campaign-preview-title">{labels.preview}</h2>
           <MarkdownRenderer className="markdown-content" content={campaign.contentMarkdown} labels={getMessages(locale).markdown} />
         </section>
       ) : null}
 
-      {recipients.length ? (
-        <section className="studio-audience-list" aria-label={labels.delivery}>
-          {recipients.map((recipient) => (
-            <article key={recipient.id}>
-              <div className="studio-audience-list__identity">
-                <strong>{recipient.email}</strong>
-                <span className={deliveryStatusClass(recipient.deliveryStatus)}>{recipient.deliveryStatus}</span>
-              </div>
-              {recipient.lastError ? <p className="studio-field__error">{recipient.lastError}</p> : null}
-              {recipient.providerMessageId ? <code>{recipient.providerMessageId}</code> : null}
-            </article>
-          ))}
-        </section>
-      ) : (
-        <div className="studio-empty-state"><Mail aria-hidden="true" size={28} /><h2>{labels.delivery}</h2><p>{labels.empty}</p></div>
-      )}
+      <section className="studio-section" aria-labelledby="campaign-delivery-title">
+        <h2 className="studio-section__title" id="campaign-delivery-title">{labels.delivery}</h2>
+        {recipients.length ? (
+          <div className="studio-table-wrap">
+            <table className="studio-table">
+              <thead>
+                <tr>
+                  <th>{recipientLabels.email}</th>
+                  <th>{recipientLabels.status}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recipients.map((recipient) => (
+                  <tr key={recipient.id}>
+                    <td className="studio-table__main">
+                      <div className="studio-cell">
+                        <strong>{recipient.email}</strong>
+                        {recipient.lastError ? <small className="studio-field__error">{recipient.lastError}</small> : null}
+                        {recipient.providerMessageId ? <small>{recipient.providerMessageId}</small> : null}
+                      </div>
+                    </td>
+                    <td data-label={recipientLabels.status}>
+                      <Badge tone={deliveryStatusTone(recipient.deliveryStatus)}>{sentenceCase(recipient.deliveryStatus)}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="studio-muted">{labels.empty}</p>
+        )}
+      </section>
     </>
   );
 }

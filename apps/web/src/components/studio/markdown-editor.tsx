@@ -49,6 +49,7 @@ import {
   type TextSelection,
   uniquePlaceholder,
 } from "./markdown-media";
+import "./editor.css";
 import { MediaPicker, type MediaPickerCopy } from "./media-picker";
 
 const MarkdownPreview = dynamic(
@@ -404,16 +405,15 @@ export function MarkdownEditor({
     <div className="studio-field studio-markdown">
       <div className="studio-markdown__heading">
         <span id="article-content-label">{label}</span>
-        <div className="studio-markdown__modes" role="group" aria-label={copy.viewMode}>
+        <div className="studio-segmented" role="group" aria-label={copy.viewMode}>
           {modes.map(({ value, icon: Icon, label: labelKey }) => (
             <button
               aria-pressed={mode === value}
-              className="studio-markdown__mode"
               key={value}
               onClick={() => changeMode(value)}
               type="button"
             >
-              <Icon aria-hidden="true" size={15} />
+              <Icon aria-hidden="true" />
               <span>{copy[labelKey]}</span>
             </button>
           ))}
@@ -433,7 +433,7 @@ export function MarkdownEditor({
               return (
                 <button
                   aria-label={buttonLabel}
-                  className="studio-markdown__tool"
+                  className="studio-icon-button"
                   key={command}
                   onClick={() => (command === "image" && images ? openImagePicker() : runCommand(command))}
                   onFocus={() => setActiveToolIndex(index)}
@@ -441,7 +441,7 @@ export function MarkdownEditor({
                   title={shortcut ? `${buttonLabel} (${shortcut})` : buttonLabel}
                   type="button"
                 >
-                  <Icon aria-hidden="true" size={18} />
+                  <Icon aria-hidden="true" />
                   <span className="sr-only">{buttonLabel}</span>
                 </button>
               );
@@ -503,7 +503,7 @@ export function MarkdownEditor({
                 <li key={`${index}-${message}`}>{message}</li>
               ))}
             </ul>
-            <button className="studio-button" onClick={() => setUploadErrors([])} type="button">
+            <button className="button button--small button--quiet" onClick={() => setUploadErrors([])} type="button">
               {images.dismiss}
             </button>
           </div>

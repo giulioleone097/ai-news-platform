@@ -1,0 +1,120 @@
+/* Sign-in and OAuth consent: one centred column on the plain page background. */
+.auth-page {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  padding: 2rem var(--gutter);
+}
+
+.auth-panel {
+  display: grid;
+  width: min(26rem, 100%);
+  gap: 1.5rem;
+}
+
+.auth-head {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.auth-head h1 {
+  font-size: 1.5rem;
+  overflow-wrap: anywhere;
+}
+
+.auth-head p {
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+}
+
+.auth-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-stack .button,
+.auth-actions .button {
+  width: 100%;
+}
+
+.auth-field {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.auth-field span {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.auth-divider {
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.auth-note {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--note, var(--line-strong));
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+  overflow-wrap: anywhere;
+}
+
+.auth-note strong {
+  display: block;
+}
+
+.auth-note--error { --note: var(--danger); }
+.auth-note--warning { --note: var(--warning); }
+
+.auth-back {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.auth-back:hover {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.auth-list {
+  display: grid;
+  gap: 0.375rem;
+  padding-left: 1.125rem;
+  list-style: disc;
+}
+
+.auth-section {
+  display: grid;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.auth-section h2 {
+  font-size: 1rem;
+}
+
+.auth-muted {
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+}
+
+.auth-head .auth-redirect strong {
+  display: block;
+  color: var(--fg);
+  font-size: 1.125rem;
+}
+
+.auth-actions {
+  display: grid;
+  gap: 0.5rem;
+}

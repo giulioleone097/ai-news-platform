@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ArrowRight, LockKeyhole, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import "@/components/studio/auth.css";
 import { LoginForm } from "@/components/studio/login-form";
+import { StudioBrand } from "@/components/studio/studio-brand";
 import type { OAuthProviderId } from "@atlasnews/adapters/auth/oauth";
 import { getContentMode, getSignInProviders, isStudioAvailable } from "@atlasnews/adapters/config/env";
 import { getMessages, isLocale, type Messages } from "@/i18n";
@@ -21,9 +23,8 @@ function ProviderLinks({ copy, locale, providers }: { copy: Messages["auth"]; lo
     <>
       <p className="auth-divider">{copy.orSignInWith}</p>
       {providers.map((provider) => (
-        <a className="auth-provider" href={signInPath(provider, `/${locale}/studio`)} key={provider}>
+        <a className="button button--quiet" href={signInPath(provider, `/${locale}/studio`)} key={provider}>
           {label[provider]}
-          <ArrowRight aria-hidden="true" size={18} />
         </a>
       ))}
     </>
@@ -34,17 +35,15 @@ function ProviderLinks({ copy, locale, providers }: { copy: Messages["auth"]; lo
 function SwitchAccount({ copy, locale, user }: { copy: Messages["auth"]; locale: string; user: SignedInUser }) {
   if (user.provider === "chatgpt") {
     return (
-      <a className="auth-submit" href={signOutPath("chatgpt", `/${locale}/login`)} target="_top">
+      <a className="button button--primary" href={signOutPath("chatgpt", `/${locale}/login`)} target="_top">
         {copy.switchAccount}
-        <ArrowRight aria-hidden="true" size={18} />
       </a>
     );
   }
   return (
     <form action={signOutPath(user.provider, `/${locale}/login`)} method="post">
-      <button className="auth-submit" type="submit">
+      <button className="button button--primary" type="submit">
         {copy.switchAccount}
-        <ArrowRight aria-hidden="true" size={18} />
       </button>
     </form>
   );
@@ -94,68 +93,49 @@ export default async function LoginPage({
   return (
     <main className="auth-page">
       <section className="auth-panel" aria-labelledby="auth-title">
-        <Link className="auth-back" href={`/${locale}`}>
-          <ArrowLeft aria-hidden="true" size={16} />
-          {messages.auth.backToSite}
-        </Link>
+        <StudioBrand href={`/${locale}`} label="Studio" name={messages.common.brandName} />
 
-        <div className="auth-brand" aria-label={messages.common.brandName}>
-          {messages.common.brandName}
-          <span>STUDIO</span>
-        </div>
-
-        <div className="auth-heading">
-          <p className="auth-eyebrow">{messages.auth.eyebrow}</p>
+        <div className="auth-head">
           <h1 id="auth-title">{messages.auth.title}</h1>
           <p>{messages.auth.description}</p>
         </div>
 
         {callbackError ? (
-          <p className="auth-form__error" role="alert">
+          <p className="auth-note auth-note--error" role="alert">
             {callbackError}
           </p>
         ) : null}
 
         {!studioAvailable ? (
-          <div className="auth-demo" role="status">
-            <span className="auth-demo__icon" aria-hidden="true">
-              <LockKeyhole size={20} />
-            </span>
-            <div>
-              <strong>{messages.auth.unavailableTitle}</strong>
-              <p>{messages.auth.unavailable}</p>
-            </div>
-          </div>
+          <p className="auth-note auth-note--warning" role="status">
+            <strong>{messages.auth.unavailableTitle}</strong>
+            {messages.auth.unavailable}
+          </p>
         ) : editor?.isDemo ? (
-          <div className="auth-demo">
-            <span className="auth-demo__icon" aria-hidden="true">
-              <Sparkles size={20} />
-            </span>
-            <div>
+          <div className="auth-stack">
+            <p className="auth-note auth-note--warning">
               <strong>{messages.studio.demoMode}</strong>
-              <p>{messages.auth.demoNotice}</p>
-            </div>
-            <Link className="auth-submit" href={`/${locale}/studio`}>
+              {messages.auth.demoNotice}
+            </p>
+            <Link className="button button--primary" href={`/${locale}/studio`}>
               {locale === "it" ? "Entra nello Studio" : "Enter Studio"}
-              <ArrowRight aria-hidden="true" size={18} />
             </Link>
           </div>
         ) : mode === "sites" ? (
-          <div className="auth-form">
+          <div className="auth-stack">
             {user ? (
               <>
-                <p className="auth-form__error" role="alert">
+                <p className="auth-note auth-note--error" role="alert">
                   {messages.auth.notAnEditor.replace("{email}", user.email ?? "")}
                 </p>
                 <SwitchAccount copy={messages.auth} locale={locale} user={user} />
               </>
             ) : (
               <>
-                <p>{messages.auth.chatgptDescription}</p>
+                <p className="auth-muted">{messages.auth.chatgptDescription}</p>
                 {/* The platform owns sign-in: a plain top-level link, never a client-side navigation. */}
-                <a className="auth-submit" href={signInPath("chatgpt", `/${locale}/studio`)} target="_top">
+                <a className="button button--primary" href={signInPath("chatgpt", `/${locale}/studio`)} target="_top">
                   {messages.auth.signInWithChatGPT}
-                  <ArrowRight aria-hidden="true" size={18} />
                 </a>
                 <ProviderLinks copy={messages.auth} locale={locale} providers={providers} />
               </>
@@ -165,19 +145,18 @@ export default async function LoginPage({
           <>
             <LoginForm copy={messages.auth} locale={locale} />
             {providers.length ? (
-              <div className="auth-form">
+              <div className="auth-stack">
                 <ProviderLinks copy={messages.auth} locale={locale} providers={providers} />
               </div>
             ) : null}
           </>
         )}
-      </section>
 
-      <aside className="auth-visual" aria-hidden="true">
-        <div className="auth-visual__grid" />
-        <p>AtlasNews / EDITORIAL INTELLIGENCE</p>
-        <span>01 — 26</span>
-      </aside>
+        <Link className="auth-back" href={`/${locale}`}>
+          <ArrowLeft aria-hidden="true" size={16} />
+          {messages.auth.backToSite}
+        </Link>
+      </section>
     </main>
   );
 }

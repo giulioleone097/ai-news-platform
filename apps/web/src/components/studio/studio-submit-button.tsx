@@ -1,14 +1,15 @@
 "use client";
 
-import type { MouseEventHandler } from "react";
+import type { MouseEventHandler, ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 
 export function StudioSubmitButton({
   idleLabel,
   pendingLabel,
-  className = "studio-button studio-button--primary",
+  className = "button button--primary",
   ariaLabel,
   formAction,
+  icon,
   onClick,
 }: {
   idleLabel: string;
@@ -17,9 +18,12 @@ export function StudioSubmitButton({
   /** Names the item the button acts on, for rows whose buttons would otherwise all read the same. */
   ariaLabel?: string;
   formAction?: (formData: FormData) => void | Promise<void>;
+  /** Shows this icon instead of the label, which stays available to assistive technology. */
+  icon?: ReactNode;
   onClick?: MouseEventHandler<HTMLButtonElement>;
 }) {
   const { pending } = useFormStatus();
+  const label = pending ? pendingLabel : idleLabel;
 
   return (
     <button
@@ -28,9 +32,17 @@ export function StudioSubmitButton({
       disabled={pending}
       formAction={formAction}
       onClick={onClick}
+      title={icon ? idleLabel : undefined}
       type="submit"
     >
-      {pending ? pendingLabel : idleLabel}
+      {icon ? (
+        <>
+          {icon}
+          <span className="sr-only">{label}</span>
+        </>
+      ) : (
+        label
+      )}
     </button>
   );
 }

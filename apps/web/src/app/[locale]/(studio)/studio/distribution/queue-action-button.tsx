@@ -7,7 +7,6 @@ import {
   cancelSocialOutboxAction,
   retrySocialOutboxAction,
 } from "./social-actions";
-import styles from "./distribution.module.css";
 
 function MutationSubmit({
   confirmMessage,
@@ -22,14 +21,14 @@ function MutationSubmit({
   const Icon = intent === "cancel" ? XCircle : RefreshCw;
   return (
     <button
-      className={styles.queueAction}
+      className="button button--small button--quiet"
       disabled={pending}
       onClick={(event) => {
         if (!window.confirm(confirmMessage)) event.preventDefault();
       }}
       type="submit"
     >
-      <Icon aria-hidden="true" size={14} />
+      <Icon aria-hidden="true" />
       {pending ? "…" : label}
     </button>
   );

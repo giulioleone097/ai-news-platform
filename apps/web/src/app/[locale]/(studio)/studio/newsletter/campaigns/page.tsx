@@ -1,7 +1,10 @@
-import { MailPlus, Send, Users } from "lucide-react";
+import { MailPlus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { campaignStatusClass } from "@/components/studio/newsletter-campaigns/campaign-status";
+import { Badge, sentenceCase } from "@/components/studio/badge";
+import { campaignStatusTone } from "@/components/studio/newsletter-campaigns/campaign-status";
+import { Note } from "@/components/studio/note";
+import { PageHead } from "@/components/studio/page-head";
 import { isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { getStudioNewsletterCampaignService } from "@/server/composition";
@@ -11,7 +14,6 @@ export const dynamic = "force-dynamic";
 
 const copy = {
   en: {
-    kicker: "Newsletter",
     title: "Campaigns",
     description: "Compose, schedule and monitor consent-safe email delivery.",
     create: "New campaign",
@@ -20,10 +22,12 @@ const copy = {
     recipients: "recipients",
     delivered: "delivered",
     failed: "failed",
+    subject: "Subject",
+    status: "Status",
+    updated: "Updated",
     unavailable: "Campaign delivery is not configured.",
   },
   it: {
-    kicker: "Newsletter",
     title: "Campagne",
     description: "Componi, programma e monitora consegne email basate sul consenso.",
     create: "Nuova campagna",
@@ -32,6 +36,9 @@ const copy = {
     recipients: "destinatari",
     delivered: "consegnate",
     failed: "fallite",
+    subject: "Oggetto",
+    status: "Stato",
+    updated: "Aggiornata",
     unavailable: "La consegna campagne non è configurata.",
   },
 } as const;
@@ -54,46 +61,57 @@ export default async function NewsletterCampaignsPage({
     if (!(error instanceof NewsletterDeliveryConfigurationError)) throw error;
     return (
       <>
-        <header className="studio-page-header"><div><p className="studio-kicker">{labels.kicker}</p><h1>{labels.title}</h1><p>{labels.description}</p></div></header>
-        <p className="studio-alert studio-alert--error" role="alert">{labels.unavailable}</p>
+        <PageHead description={labels.description} title={labels.title} />
+        <Note tone="warning">{labels.unavailable}</Note>
       </>
     );
   }
+  const when = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
 
   return (
     <>
-      <header className="studio-page-header">
-        <div>
-          <p className="studio-kicker">{labels.kicker}</p>
-          <h1>{labels.title}</h1>
-          <p>{labels.description}</p>
-        </div>
-        <Link className="studio-button studio-button--primary" href={`/${locale}/studio/newsletter/campaigns/new`}>
-          <MailPlus aria-hidden="true" size={16} />
+      <PageHead description={labels.description} title={labels.title}>
+        <Link className="button button--primary" href={`/${locale}/studio/newsletter/campaigns/new`}>
+          <MailPlus aria-hidden="true" />
           {labels.create}
         </Link>
-      </header>
+      </PageHead>
 
       {campaigns.items.length ? (
-        <section className="studio-audience-list" aria-label={labels.title}>
-          {campaigns.items.map((campaign) => (
-            <article key={campaign.id}>
-              <div className="studio-audience-list__identity">
-                <strong><Link href={`/${locale}/studio/newsletter/campaigns/${campaign.id}`}>{campaign.subject}</Link></strong>
-                <span className={campaignStatusClass(campaign.status)}>{campaign.status}</span>
-              </div>
-              <dl>
-                <div><dt><Users aria-hidden="true" size={14} /> {labels.recipients}</dt><dd>{campaign.recipientCount}</dd></div>
-                <div><dt><Send aria-hidden="true" size={14} /> {labels.delivered}</dt><dd>{campaign.deliveredCount}</dd></div>
-                <div><dt>{labels.failed}</dt><dd>{campaign.failureCount + campaign.bounceCount}</dd></div>
-              </dl>
-              <time dateTime={campaign.updatedAt}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(campaign.updatedAt))} UTC</time>
-            </article>
-          ))}
-        </section>
+        <div className="studio-table-wrap">
+          <table className="studio-table">
+            <thead>
+              <tr>
+                <th>{labels.subject}</th>
+                <th>{labels.status}</th>
+                <th>{labels.recipients}</th>
+                <th>{labels.delivered}</th>
+                <th>{labels.failed}</th>
+                <th>{labels.updated}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {campaigns.items.map((campaign) => (
+                <tr key={campaign.id}>
+                  <td className="studio-table__main">
+                    <Link className="studio-cell" href={`/${locale}/studio/newsletter/campaigns/${campaign.id}`}>
+                      <strong>{campaign.subject}</strong>
+                    </Link>
+                  </td>
+                  <td data-label={labels.status}><Badge tone={campaignStatusTone(campaign.status)}>{sentenceCase(campaign.status)}</Badge></td>
+                  <td data-label={labels.recipients}>{campaign.recipientCount}</td>
+                  <td data-label={labels.delivered}>{campaign.deliveredCount}</td>
+                  <td data-label={labels.failed}>{campaign.failureCount + campaign.bounceCount}</td>
+                  <td data-label={labels.updated}>
+                    <time dateTime={campaign.updatedAt}>{when.format(new Date(campaign.updatedAt))} UTC</time>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
-        <div className="studio-empty-state">
-          <MailPlus aria-hidden="true" size={28} />
+        <div className="empty-state">
           <h2>{labels.empty}</h2>
           <p>{labels.emptyBody}</p>
         </div>

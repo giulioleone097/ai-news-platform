@@ -14,7 +14,7 @@ export function DeleteArticleButton({
 }) {
   return (
     <StudioSubmitButton
-      className="studio-button studio-button--danger"
+      className="button button--danger"
       formAction={deleteArticleAction}
       idleLabel={messages.studio.deleteArticle}
       onClick={(event) => {

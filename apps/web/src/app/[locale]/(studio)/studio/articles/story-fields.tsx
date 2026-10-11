@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Check, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import type { Messages } from "@/i18n";
 import {
   claimStatuses,
@@ -67,11 +67,8 @@ export function StoryFields({
     ) : null;
 
   return (
-    <section className="studio-panel" aria-labelledby="story-fields-title">
-      <div className="studio-panel__heading">
-        <span>04</span>
-        <h2 id="story-fields-title">{copy.storyPanel}</h2>
-      </div>
+    <section className="studio-section" aria-labelledby="story-fields-title">
+      <h2 className="studio-section__title" id="story-fields-title">{copy.storyPanel}</h2>
 
       <label className="studio-field">
         <span>{copy.claimStatusLabel}</span>
@@ -92,7 +89,7 @@ export function StoryFields({
 
       <fieldset className="story-fieldset" aria-describedby={describedBy("keyPoints")}>
         <legend>{copy.keyPointsLabel}</legend>
-        <p>{copy.keyPointsHelp}</p>
+        <p className="studio-muted">{copy.keyPointsHelp}</p>
         {keyPoints.map((point, index) => (
           <label className="studio-field" key={index}>
             <span>{`${copy.keyPointNumber} ${index + 1}`}</span>
@@ -112,21 +109,21 @@ export function StoryFields({
 
       <fieldset className="story-fieldset" aria-describedby={describedBy("sources")}>
         <legend>{copy.sourcesLabel}</legend>
-        <p>{copy.sourcesHelp}</p>
+        <p className="studio-muted">{copy.sourcesHelp}</p>
         {sources.map((source, index) => (
           <div className="story-source" key={source.key} role="group" aria-label={`${copy.sourceNumber} ${index + 1}`}>
             <div className="story-source__header">
               <span>{`${copy.sourceNumber} ${index + 1}`}</span>
               <button
                 aria-label={`${copy.removeSource} ${index + 1}`}
-                className="studio-button studio-button--secondary"
+                className="studio-icon-button studio-icon-button--danger"
                 onClick={() => {
                   setSources((rows) => rows.filter((row) => row.key !== source.key));
                   addButton.current?.focus();
                 }}
                 type="button"
               >
-                <Trash2 aria-hidden="true" size={16} />
+                <Trash2 aria-hidden="true" />
               </button>
             </div>
             <label className="studio-field">
@@ -168,7 +165,7 @@ export function StoryFields({
         {renderError("sources")}
         {sources.length < storyLimits.sources.count ? (
           <button
-            className="studio-button studio-button--secondary"
+            className="button button--quiet button--small"
             onClick={() => {
               setNextKey(nextKey + 1);
               setNewSourceKey(nextKey);
@@ -177,7 +174,7 @@ export function StoryFields({
             ref={addButton}
             type="button"
           >
-            <Plus aria-hidden="true" size={16} />
+            <Plus aria-hidden="true" />
             {copy.addSource}
           </button>
         ) : null}
@@ -185,8 +182,8 @@ export function StoryFields({
 
       <fieldset className="story-fieldset" aria-describedby={describedBy("entities")}>
         <legend>{copy.entitiesLabel}</legend>
-        <p>{copy.entitiesHelp}</p>
-        {entities.length ? null : <p>{copy.noEntities}</p>}
+        <p className="studio-muted">{copy.entitiesHelp}</p>
+        {entities.length ? null : <p className="studio-muted">{copy.noEntities}</p>}
         {entityKinds.map((kind) => {
           const group = entities.filter((entity) => entity.kind === kind);
           if (!group.length) return null;
@@ -206,9 +203,6 @@ export function StoryFields({
                         type="checkbox"
                         value={entity.slug}
                       />
-                      <span aria-hidden="true">
-                        <Check size={14} />
-                      </span>
                       {entity.name}
                       {entity.parent ? <small>{` · ${entity.parent.name}`}</small> : null}
                     </label>

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowUpRight, Image as ImageIcon, Upload } from "lucide-react";
+import { Trash2, Upload } from "lucide-react";
+import { Note } from "@/components/studio/note";
+import { PageHead } from "@/components/studio/page-head";
 import { studioSupplementalCopy } from "@/components/studio/studio-copy";
-import { getMessages, isLocale } from "@/i18n";
+import { isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { getEditorialMediaReferenceKey } from "@atlasnews/core/editorial/domain/editorial-image";
 import type { Article } from "@atlasnews/core/editorial/domain/article";
@@ -35,7 +37,6 @@ export default async function StudioMediaPage({
     repositories.articles.listForStudio(locale),
     repositories.media.listAssets(),
   ]);
-  const messages = getMessages(locale);
   const copy = studioSupplementalCopy[locale];
   const catalog = new Map<string, {
     path: string | null;
@@ -71,92 +72,85 @@ export default async function StudioMediaPage({
   const assets = [...catalog.values()];
   const error = Array.isArray(query.error) ? query.error[0] : query.error;
 
+  const writable = repositories.media.writable;
+
   return (
     <>
-      <header className="studio-page-header">
-        <div>
-          <p className="studio-kicker">{messages.studio.media}</p>
-          <h1>{copy.mediaTitle}</h1>
-          <p>{copy.mediaDescription}</p>
-        </div>
-      </header>
+      <PageHead description={copy.mediaDescription} title={copy.mediaTitle} />
 
       {query.uploaded ? (
-        <p className="studio-alert studio-alert--success" role="status">{copy.mediaUploaded}</p>
+        <Note tone="success">{copy.mediaUploaded}</Note>
       ) : query.deleted ? (
-        <p className="studio-alert studio-alert--success" role="status">{copy.mediaDeleted}</p>
+        <Note tone="success">{copy.mediaDeleted}</Note>
       ) : error ? (
-        <p className="studio-alert studio-alert--error" role="alert">
-          {error === "in-use" ? copy.mediaInUse : copy.mediaError}
-        </p>
+        <Note tone="error">{error === "in-use" ? copy.mediaInUse : copy.mediaError}</Note>
       ) : null}
 
-      <section className="studio-media-upload" aria-labelledby="media-upload-title">
-        <span className="studio-capability-card__icon" aria-hidden="true"><Upload size={25} /></span>
-        <div>
-          <p className="studio-kicker">SUPABASE STORAGE</p>
-          <h2 id="media-upload-title">{copy.mediaUploadTitle}</h2>
-          <p>{repositories.media.writable ? copy.mediaUploadHelp : copy.mediaReadOnly}</p>
-        </div>
-        <form action={uploadMediaAction}>
+      <section className="studio-stack" aria-labelledby="media-upload-title">
+        <h2 className="studio-section__title" id="media-upload-title">{copy.mediaUploadTitle}</h2>
+        {writable ? <p className="studio-muted">{copy.mediaUploadHelp}</p> : <Note tone="warning">{copy.mediaReadOnly}</Note>}
+        <form action={uploadMediaAction} className="studio-inline">
           <input name="locale" type="hidden" value={locale} />
-          <label className="studio-file-picker">
-            <span>{copy.mediaUploadAction}</span>
+          <label className="studio-field">
+            <span className="sr-only">{copy.mediaUploadAction}</span>
             <input
               accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
-              disabled={!repositories.media.writable}
+              disabled={!writable}
               name="asset"
               required
               type="file"
             />
           </label>
-          <button className="studio-button studio-button--primary" disabled={!repositories.media.writable} type="submit">
-            <Upload aria-hidden="true" size={16} />
+          <button className="button button--primary" disabled={!writable} type="submit">
+            <Upload aria-hidden="true" />
             {copy.mediaUploadAction}
           </button>
         </form>
       </section>
 
       {assets.length ? (
-        <section className="studio-media-grid" aria-label={copy.mediaTitle}>
-          {assets.map((asset, index) => (
-            <article className="studio-media-card" key={asset.url}>
+        <ul aria-label={copy.mediaTitle} className="studio-media-grid">
+          {assets.map((asset) => (
+            <li key={asset.url}>
               <div
                 aria-label={asset.name}
-                className="studio-media-card__preview studio-media-card__preview--image"
+                className="studio-media-thumb"
                 role="img"
                 style={{ backgroundImage: `url(${JSON.stringify(asset.url)})` }}
-              >
-                <span>{String(index + 1).padStart(2, "0")}</span>
-              </div>
-              <div className="studio-media-card__body">
-                <div className="studio-media-card__meta">
-                  <p className="studio-kicker">{asset.mimeType}</p>
-                  <span>{formatBytes(asset.size, locale)}</span>
-                </div>
-                <a href={asset.url} rel="noreferrer" target="_blank">
-                  <span>{asset.name}</span>
-                  <ArrowUpRight aria-hidden="true" size={15} />
-                </a>
-                <div className="studio-media-card__usage">
-                  <strong>{copy.usedBy}</strong>
-                  {asset.articles.length ? asset.articles.map((article) => (
-                    <Link href={`/${locale}/studio/articles/${article.id}`} key={article.id}>{article.title}</Link>
-                  )) : <span>{copy.unusedAsset}</span>}
-                </div>
-                {asset.path && repositories.media.writable && !asset.articles.length ? (
-                  <form action={deleteMediaAction}>
-                    <input name="locale" type="hidden" value={locale} />
-                    <input name="path" type="hidden" value={asset.path} />
-                    <button className="studio-button studio-button--danger" type="submit">{copy.deleteAsset}</button>
-                  </form>
-                ) : null}
-              </div>
-            </article>
+              />
+              <a href={asset.url} rel="noreferrer" target="_blank" title={asset.name}>{asset.name}</a>
+              <p>{asset.mimeType} · {formatBytes(asset.size, locale)}</p>
+              <p>
+                {asset.articles.length ? (
+                  <>
+                    {copy.usedBy}{" "}
+                    {asset.articles.slice(0, 2).map((article, index) => (
+                      <span key={article.id}>
+                        {index ? ", " : null}
+                        <Link href={`/${locale}/studio/articles/${article.id}`}>{article.title}</Link>
+                      </span>
+                    ))}
+                    {asset.articles.length > 2 ? ` +${asset.articles.length - 2}` : null}
+                  </>
+                ) : (
+                  copy.unusedAsset
+                )}
+              </p>
+              {asset.path && writable && !asset.articles.length ? (
+                <form action={deleteMediaAction}>
+                  <input name="locale" type="hidden" value={locale} />
+                  <input name="path" type="hidden" value={asset.path} />
+                  <button className="button button--small button--danger" type="submit">
+                    <Trash2 aria-hidden="true" />
+                    {copy.deleteAsset}
+                  </button>
+                </form>
+              ) : null}
+            </li>
           ))}
-        </section>
+        </ul>
       ) : (
-        <div className="studio-empty-state"><ImageIcon aria-hidden="true" size={28} /><h2>{copy.noAssets}</h2></div>
+        <div className="empty-state"><h2>{copy.noAssets}</h2></div>
       )}
     </>
   );

@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { ChevronLeft } from "lucide-react";
 import { categoryLimits, type CategoryRecord } from "@atlasnews/core/editorial/domain/category";
 import type { Locale } from "@/i18n";
 import { saveCategoryAction } from "@/app/[locale]/(studio)/studio/categories/actions";
 import { categoryCopy, type CategoryCopy } from "@/app/[locale]/(studio)/studio/categories/copy";
+import { Note } from "@/components/studio/note";
+import { PageHead } from "@/components/studio/page-head";
 import { StudioSubmitButton } from "@/components/studio/studio-submit-button";
 import { categoryFormValues, idleCategoryActionState, type CategoryTextValues } from "./category-form-state";
-import styles from "./categories.module.css";
 
 function LocaleFields({
   copy,
@@ -25,8 +25,8 @@ function LocaleFields({
   values: CategoryTextValues;
 }) {
   return (
-    <fieldset className={`studio-panel ${styles.localeGroup}`}>
-      <legend className={styles.legend}>{label}</legend>
+    <fieldset className="studio-section">
+      <legend>{label}</legend>
       <label className="studio-field">
         <span>{copy.name}</span>
         <input defaultValue={values.name} maxLength={categoryLimits.name.max} name={`${language}.name`} required />
@@ -66,33 +66,19 @@ export function CategoryForm({ locale, category }: { locale: Locale; category?: 
       {category ? <input name="translationKey" type="hidden" value={category.translationKey} /> : null}
       <input name="locale" type="hidden" value={locale} />
 
-      <header className="studio-page-header studio-editor__header">
-        <div>
-          <Link className="studio-back-link" href={listHref}>
-            <ChevronLeft aria-hidden="true" size={16} />
-            {copy.listTitle}
-          </Link>
-          <p className="studio-kicker">{editing ? copy.editKicker : copy.newKicker}</p>
-          <h1>{category?.translations.en?.name ?? copy.newCategory}</h1>
-        </div>
-        <div className="studio-editor__actions">
-          <Link className="studio-button studio-button--secondary" href={listHref}>{copy.cancel}</Link>
-          <StudioSubmitButton idleLabel={copy.save} pendingLabel={copy.saving} />
-        </div>
-      </header>
+      <PageHead back={{ href: listHref, label: copy.listTitle }} title={category?.translations.en?.name ?? copy.newCategory}>
+        <Link className="button button--quiet" href={listHref}>{copy.cancel}</Link>
+        <StudioSubmitButton idleLabel={copy.save} pendingLabel={copy.saving} />
+      </PageHead>
 
-      {state.status === "error" && state.message ? (
-        <p className="studio-alert studio-alert--error" role="alert" aria-atomic="true">
-          {state.message}
-        </p>
-      ) : null}
+      {state.status === "error" && state.message ? <Note tone="error">{state.message}</Note> : null}
 
-      <div className={styles.locales}>
+      <div className="studio-columns">
         <LocaleFields copy={copy} editing={editing} label={copy.english} language="en" values={values.en} />
         <LocaleFields copy={copy} editing={editing} label={copy.italian} language="it" values={values.it} />
       </div>
 
-      <label className={`studio-field ${styles.position}`}>
+      <label className="studio-field studio-form-width">
         <span>{copy.position}</span>
         <input
           defaultValue={values.position}

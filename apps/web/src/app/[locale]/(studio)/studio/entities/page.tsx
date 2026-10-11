@@ -4,6 +4,8 @@ import { notFound, redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { listEntityItems } from "@/components/studio/entities/entity-data";
 import { EntityList } from "@/components/studio/entities/entity-list";
+import { Note } from "@/components/studio/note";
+import { PageHead } from "@/components/studio/page-head";
 import { isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { entityCopy } from "./copy";
@@ -28,25 +30,20 @@ export default async function StudioEntitiesPage({
 
   return (
     <>
-      <header className="studio-page-header">
-        <div>
-          <p className="studio-kicker">{copy.kicker}</p>
-          <h1>{copy.title}</h1>
-          <p>{copy.description}</p>
-        </div>
-        <Link className="studio-button studio-button--primary" href={`/${locale}/studio/entities/new`}>
-          <Plus aria-hidden="true" size={17} />
+      <PageHead description={copy.description} title={copy.title}>
+        <Link className="button button--primary" href={`/${locale}/studio/entities/new`}>
+          <Plus aria-hidden="true" />
           {copy.newEntity}
         </Link>
-      </header>
+      </PageHead>
 
-      {saved ? <p className="studio-alert studio-alert--success" role="status">{saved}</p> : null}
-      {query.deleted ? <p className="studio-alert studio-alert--success" role="status">{copy.deleted}</p> : null}
+      {saved ? <Note tone="success">{saved}</Note> : null}
+      {query.deleted ? <Note tone="success">{copy.deleted}</Note> : null}
 
       {listed.ok ? (
         <EntityList items={listed.items} locale={locale} />
       ) : (
-        <p className="studio-alert studio-alert--error" role="alert">{copy.loadError}</p>
+        <Note tone="error">{copy.loadError}</Note>
       )}
     </>
   );

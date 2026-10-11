@@ -16,23 +16,21 @@ export function DecisionForm({
   const [state, action, pending] = useActionState(decideAuthorization, idleStudioActionState);
 
   return (
-    <form className="auth-form" action={action}>
+    <form className="auth-actions" action={action}>
       <input name="authorizationId" type="hidden" value={authorizationId} />
       {state.status === "error" && state.message ? (
-        <p className="auth-form__error" role="alert">
+        <p className="auth-note auth-note--error" role="alert">
           {state.message}
         </p>
       ) : null}
-      <div className="consent-actions">
-        {canApprove ? (
-          <button className="auth-submit" disabled={pending} name="decision" type="submit" value="approve">
-            {pending ? labels.approving : labels.approve}
-          </button>
-        ) : null}
-        <button className="auth-submit consent-deny" disabled={pending} name="decision" type="submit" value="deny">
-          {pending ? labels.denying : labels.deny}
+      {canApprove ? (
+        <button className="button button--primary" disabled={pending} name="decision" type="submit" value="approve">
+          {pending ? labels.approving : labels.approve}
         </button>
-      </div>
+      ) : null}
+      <button className="button button--quiet" disabled={pending} name="decision" type="submit" value="deny">
+        {pending ? labels.denying : labels.deny}
+      </button>
     </form>
   );
 }
