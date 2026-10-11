@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>AtlasNews Refinement Plan</title>
+<link rel="stylesheet" href="htmlplan.css">
+<script src="htmlplan.js" defer></script>
+<style data-mock-shared>
+  .ui { font: 14px/1.4 "Helvetica Neue", Arial, sans-serif; color: #111214; background: #fff; padding: 16px; }
+  .ui.dark { background: #0f1012; color: #f3f3ef; }
+  .ui h1, .ui h2, .ui h3, .ui p { margin: 0; }
+  .muted { color: #5c5d59; }
+  .rule { border-top: 1px solid #e3e3de; margin: 10px 0; }
+  .rule2 { border-top: 2px solid #111214; margin: 10px 0 6px; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .between { justify-content: space-between; }
+  .btn { display: inline-flex; align-items: center; height: 36px; padding: 0 12px; border: 1px solid #111214; border-radius: 8px; font-weight: 600; font-size: 13px; }
+  .btn.pri { background: #ffd60a; border-color: #ffd60a; }
+  .btn.quiet { border-color: #b8b8b1; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+  .chip.lg { font-size: 15px; font-weight: 700; }
+  .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+  .chip.lg .bars { height: 16px; gap: 3px; }
+  .bars i { width: 3px; background: #c9c9c4; border-radius: 1px; }
+  .chip.lg .bars i { width: 4px; }
+  .bars i:nth-child(1) { height: 40%; } .bars i:nth-child(2) { height: 60%; } .bars i:nth-child(3) { height: 80%; } .bars i:nth-child(4) { height: 100%; }
+  .bars.l1 i:nth-child(-n+1), .bars.l2 i:nth-child(-n+2), .bars.l3 i:nth-child(-n+3), .bars.l4 i { background: #111214; }
+  .nav a { font-weight: 600; font-size: 13px; padding: 8px 6px; }
+  .nav a.cur { box-shadow: inset 0 -3px 0 #ffd60a; }
+  .mark { display: inline-block; width: 22px; height: 22px; border-radius: 5px; background: #ffd60a; }
+  .field { display: grid; gap: 4px; font-size: 12px; font-weight: 600; }
+  .inp { height: 36px; border: 1px solid #767670; border-radius: 4px; padding: 0 10px; display: flex; align-items: center; font-weight: 400; font-size: 13px; background: #fff; }
+  .badge { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #e6f2e8; color: #1f7a3d; }
+  .badge.gray { background: #eeeeea; color: #5c5d59; }
+  .badge.ink { background: #111214; color: #fff; }
+  .note { border: 1px solid #e3e3de; border-left: 3px solid #b8b8b1; border-radius: 6px; padding: 10px 12px; }
+  .card { border-top: 2px solid #111214; padding-top: 8px; display: grid; gap: 4px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .side { background: #f4f4f1; padding: 12px; width: 150px; font-size: 13px; }
+  .side small { display: block; margin: 10px 0 4px; color: #5c5d59; font-size: 11px; }
+  .side div { padding: 5px 8px; border-radius: 6px; font-weight: 600; }
+  .side div.cur { background: #ffd60a; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.t th { text-align: left; font-weight: 500; color: #5c5d59; font-size: 12px; padding: 6px 4px; border-bottom: 1px solid #b8b8b1; }
+  table.t td { padding: 8px 4px; border-bottom: 1px solid #e3e3de; }
+</style>
+<body>
+<header>
+  <h1>Refining AtlasNews After the Self-Audit</h1>
+  <doc-changes new="6" changed="48"></doc-changes>
+  <details class="thread"><summary>Why · 2 requests</summary>
+    <doc-quote via="prompt" from="Giulio" at="2026-10-11">Ok vi sono ancora aree da perfezionare ma al 75% ci siamo</doc-quote>
+    <doc-quote via="prompt" from="Giulio" at="2026-10-11">Vi sono imprecisioni ed aree da migliorare fatti audit da solo e proponimi modifiche</doc-quote>
+  </details>
+</header>
+<main>
+<doc-plan>
+
+  <doc-claim>
+    <p>A reader sees how firm each story is, and how the product got there.</p>
+    <doc-mock frame="none" w="460" caption="The chip is larger on an article and on the lead. The timeline moves up, below the key points."><template>
+<div class="ui">
+  <p class="muted" style="font-size:12px">‹ Research</p>
+  <div class="row" style="margin:8px 0 6px"><a class="chip lg" data-ref="chip"><span class="bars l2"><i></i><i></i><i></i><i></i></span>In test</a><span class="muted" data-ref="since">ChatGPT · in test since 8 Aug · last change 11 Aug</span></div>
+  <h1 style="font-size:26px;line-height:1.1;letter-spacing:-.02em">A new memory panel shows up for some ChatGPT users</h1>
+  <div class="rule"></div>
+  <div data-ref="sofar"><p style="font-weight:700;font-size:13px">The story so far</p>
+    <div class="row" style="margin-top:6px;font-size:12px"><span class="chip"><span class="bars l1"><i></i><i></i><i></i><i></i></span>2 Aug</span><span class="muted">→</span><span class="chip"><span class="bars l2"><i></i><i></i><i></i><i></i></span>8 Aug</span><span class="muted">→</span><span class="chip"><span class="bars l3"><i></i><i></i><i></i><i></i></span>next</span></div></div>
+</div></template>
+      <doc-pin ref="chip" title="Larger chip, with a link" anchor="tl">It opens the page of that status.</doc-pin>
+      <doc-pin ref="since" title="Dates of the status" anchor="tr"></doc-pin>
+      <doc-pin ref="sofar" title="Timeline, moved up" anchor="bl">Today it sits after the sources.</doc-pin>
+    </doc-mock>
+    <doc-claim>
+      <p>The status chip has three sizes: row, card, and lead or article.</p>
+      <doc-code title="globals.css · sketch" lang="css">
+<script type="text/plain">
+/* Rows keep 0.8125rem. The glyph is in em, so it follows. */
+.status--card { font-size: 0.875rem; }
+.status--lead { font-size: 0.9375rem; font-weight: 700; }
+.status--lead :is(.status__meter, .status__lines) { font-size: 1.25em; }
+.status__meter i { width: 0.24em; background: color-mix(in srgb, currentColor 35%, transparent); }
+</script>
+      </doc-code>
+    </doc-claim>
+    <doc-claim>
+      <p>An article shows “The story so far” below the key points.</p>
+      <doc-calls title="Article page" caption="The block moves. Its data and component do not change.">
+<script type="text/plain">
+~ ArticlePage()                                @ apps/web/src/app/[locale]/(site)/articles/[slug]/page.tsx:131
+    key points
++   <Timeline/> when the product has 2 stories or more   @ apps/web/src/components/site/timeline.tsx:1
+    <MarkdownRenderer/>
+-   <Timeline/> after sources and entity links   @ apps/web/src/components/site/timeline.tsx:1
+</script>
+      </doc-calls>
+    </doc-claim>
+    <doc-claim>
+      <p>A product row shows the latest status and its date.</p>
+      <doc-mock frame="none" w="420" caption="The same row is in “Most covered” and on the products page. A count of zero stays hidden."><template>
+<div class="ui">
+  <p style="font-weight:700;font-size:13px">Most covered</p><div class="rule2"></div>
+  <div class="row between" style="padding:6px 0"><b>ChatGPT</b><span class="row"><span class="chip"><span class="bars l2"><i></i><i></i><i></i><i></i></span>In test</span><span class="muted">8 Aug · 12 stories</span></span></div><div class="rule"></div>
+  <div class="row between" style="padding:6px 0"><b>Claude</b><span class="row"><span class="chip"><span class="bars l4"><i></i><i></i><i></i><i></i></span>Confirmed</span><span class="muted">6 Aug · 9 stories</span></span></div>
+</div></template></doc-mock>
+    </doc-claim>
+    <doc-claim>
+      <p>Rows and cards show that their times are in UTC.</p>
+      <doc-mock frame="none" w="420" caption="One short label on each day heading. The times stay in UTC for all readers."><template>
+<div class="ui"><div class="row between"><b style="font-size:13px">7 August</b><span class="muted" style="font-size:12px">times in UTC</span></div><div class="rule2"></div>
+<div class="row" style="padding:6px 0"><span class="muted" style="width:44px">15:20</span><b>How companies are measuring the ROI of AI</b></div></div></template></doc-mock>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>A reader reaches each section from the header, on a phone also.</p>
+    <doc-mock frame="none" w="480" caption="Top: desktop. Bottom: phone, where a fade shows that the row continues."><template>
+<div class="ui">
+  <div class="row between nav"><span class="row"><span class="mark"></span><b>AtlasNews</b></span><span class="row" style="gap:2px"><a class="cur" data-ref="latest">Latest</a><a>ChatGPT</a><a>Claude</a><a>Gemini</a><a data-ref="products">Products</a></span><span class="btn pri" data-ref="sub">Subscribe</span></div>
+  <div class="rule"></div>
+  <div style="width:250px;border:1px solid #e3e3de;border-radius:10px;padding:10px">
+    <div class="row between"><span class="row"><span class="mark"></span><b>AtlasNews</b></span><span class="btn pri" style="height:30px">Subscribe</span></div>
+    <div class="nav" data-ref="fade" style="white-space:nowrap;overflow:hidden;margin-top:6px;-webkit-mask-image:linear-gradient(90deg,#000 75%,transparent)"><a class="cur">Latest</a><a>Products</a><a>ChatGPT</a><a>Claude</a><a>Copilot</a></div>
+  </div>
+</div></template>
+      <doc-pin ref="latest" title="Latest, with the current page marked" anchor="bl"></doc-pin>
+      <doc-pin ref="products" title="“Products” replaces “All entities”" anchor="br"></doc-pin>
+      <doc-pin ref="sub" title="Opens the band on this page" anchor="tr"></doc-pin>
+      <doc-pin ref="fade" title="Fade at the edge" anchor="r"></doc-pin>
+    </doc-mock>
+    <doc-claim>
+      <p>The header lists Latest, five products, and “Products”.</p>
+      <doc-code src="apps/web/src/components/site/site-header.tsx" lines="14-19" hl="18">
+        <doc-pin line="18" tone="warn" title="Takes the first six of each kind">A company and its product are in the list together.</doc-pin>
+      </doc-code>
+    </doc-claim>
+    <doc-claim>
+      <p>Subscribe opens the newsletter band on the same page.</p>
+      <doc-code src="apps/web/src/components/site/site-header.tsx" lines="47-49" hl="47" wrap>
+        <doc-pin line="47" tone="warn" title="Always goes to the home page">The band moves to the shared layout, so the link is “#newsletter” on each page.</doc-pin>
+      </doc-code>
+    </doc-claim>
+    <doc-claim>
+      <p>An unknown URL shows a page in the reader language, with header and footer.</p>
+      <doc-mock frame="none" w="420" caption="Today the page has no header, and it shows English and Italian together."><template>
+<div class="ui"><div class="row between nav"><span class="row"><span class="mark"></span><b>AtlasNews</b></span><span class="row"><a>Latest</a><a>Products</a></span></div><div class="rule"></div>
+<h1 style="font-size:22px">Page not found</h1><p class="muted" style="margin:6px 0 12px">The page moved, or the address is wrong.</p><span class="btn pri">Go to the latest stories</span></div></template></doc-mock>
+    </doc-claim>
+    <doc-claim>
+      <p>Each concept has one name, in English and in Italian.</p>
+      <doc-schema id="terms" lang="ts" diff title="i18n/messages · reader terms" caption="Red goes away. Green is the proposal. Edit a line to change a word.">
+<script type="text/plain">
+ // en.ts
+-  allEntities: "All entities",            // also "Companies, models and products"
++  allEntities: "Products",                // page title: "Products and companies"
+-  latest.description: "…ranked by relevance…",
++  latest.description: "Every story, newest first.",
+-  home.allTopics: "All topics",           // the link opens /latest
++  home.allTopics: "All stories",
+-  footer.copyright: "© 2026 AtlasNews. Demonstration content; …",
++  footer.copyright: "© 2026 AtlasNews",
+ // it.ts
+-  claimStatus.rumour: "Rumor",
++  claimStatus.rumour: "Indiscrezione",    // status page: "Indiscrezioni"
+-  category policy: "Policy",
++  category policy: "Normativa",
+-  category business: "Aziende",           // same word as the entity kind
++  category business: "Economia",
+-  mostFollowed: "Più raccontati",
++  mostFollowed: "Più seguiti",
+-  endOfResults: "Hai letto tutte le notizie.",
++  endOfResults: "Sei in pari.",
+</script>
+      </doc-schema>
+      <doc-ask id="itterms">
+        <p>Which Italian words do you want for the status and the sections?</p>
+        <label><input type="radio" name="itterms" value="italian" checked> Italian words <small>Indiscrezione, Normativa, Economia</small></label>
+        <label><input type="radio" name="itterms" value="mixed"> Keep “Rumor” and “Policy” <small>only “Aziende” changes to “Economia”</small></label>
+        <label><input type="radio" name="itterms" value="keep"> Keep all the current words</label>
+      </doc-ask>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Each reader page obeys the written design rules.</p>
+    <doc-mock frame="none" w="480" caption="A story without its own picture gets a text card. The yellow tile and the large empty plates go away."><template>
+<div class="ui"><div class="grid3">
+  <div class="card" data-ref="card"><span class="chip"><span class="bars l1"><i></i><i></i><i></i><i></i></span>Rumour</span><b style="font-size:15px;line-height:1.2">Open models and the new race for efficiency</b><span class="muted" style="font-size:12px">Fewer parameters, faster inference.</span></div>
+  <div class="card"><span class="chip"><span class="bars l3"><i></i><i></i><i></i><i></i></span>Rolling out</span><b style="font-size:15px;line-height:1.2">Europe is rewriting the rules for AI</b><span class="muted" style="font-size:12px">Obligations and deadlines.</span></div>
+  <div class="card"><span class="chip"><span class="bars l4"><i></i><i></i><i></i><i></i></span>Confirmed</span><b style="font-size:15px;line-height:1.2">Five AI tools to try this week</b><span class="muted" style="font-size:12px">What each tool does.</span></div>
+</div></div></template>
+      <doc-pin ref="card" title="Text card" anchor="tl">A story with its own picture keeps the picture.</doc-pin>
+    </doc-mock>
+    <doc-claim>
+      <p>A story that has no picture of its own gets a text card.</p>
+      <doc-code src="apps/web/src/components/site/story-cover.tsx" lines="7-13" hl="12">
+        <doc-pin line="12" tone="warn" title="The Tools tint is the marker yellow">A content tile then looks like a primary action.</doc-pin>
+      </doc-code>
+      <doc-ask id="plates">
+        <p>What does a card show when the story has no picture of its own?</p>
+        <label><input type="radio" name="plates" value="text" checked> A text card <small>the plate stays only as a small thumbnail in lists</small></label>
+        <label><input type="radio" name="plates" value="calm"> A lower plate <small>16:6, with a fifth pale tint as an alternative to yellow</small></label>
+        <label><input type="radio" name="plates" value="keep"> Keep the plates as they are</label>
+      </doc-ask>
+    </doc-claim>
+    <doc-claim>
+      <p>The article text is 35rem wide, and its blocks share one right edge.</p>
+      <doc-code diff file="apps/web/src/components/markdown/markdown.css" start="22" caption="Measured today: 76 to 83 characters in a line. The rule is 60 to 72.">
+<script type="text/plain">
+ .markdown-content {
+   width: 100%;
+-  max-width: 68ch;
++  max-width: 35rem;
+ }
+</script>
+      </doc-code>
+    </doc-claim>
+    <doc-claim>
+      <p>An input border has a contrast of 3:1 or more in the two themes.</p>
+      <doc-code diff file="apps/web/src/app/globals.css" start="262" caption="Today: 2.0:1 on white and 2.6:1 on night. The decorative rules keep their colors.">
+<script type="text/plain">
+ .input {
+   width: 100%;
+   min-height: 2.75rem;
+   padding: 0.5rem 0.75rem;
+-  border: 1px solid var(--line-strong);
++  border: 1px solid var(--line-control);
+   border-radius: var(--radius-sm);
+</script>
+      </doc-code>
+    </doc-claim>
+    <doc-claim>
+      <p>A list page shows the status legend one time, and aligns its two columns.</p>
+      <doc-mock frame="none" w="460" caption="The side column starts at the title. Its first rule is level with the first rule of the stream."><template>
+<div class="ui"><div style="display:grid;grid-template-columns:1fr 140px;gap:24px">
+  <div><h1 style="font-size:22px">Latest</h1><p class="muted">Every story, newest first.</p><div class="row" style="margin:8px 0"><span class="inp" style="flex:1">Search stories</span><span class="btn">Search</span></div><b style="font-size:13px">8 August</b><div class="rule2"></div><div class="muted">12:34 · AI agents are entering everyday work</div></div>
+  <div data-ref="aside"><b style="font-size:13px">Most covered</b><div class="rule2"></div><div>ChatGPT</div><div class="rule"></div><div>Claude</div></div>
+</div></div></template>
+        <doc-pin ref="aside" title="No legend here" anchor="tr">The legend stays on the home page and on the status pages.</doc-pin>
+      </doc-mock>
+    </doc-claim>
+    <doc-claim>
+      <p>Yellow marks only a highlight or a primary action.</p>
+      <doc-code src="apps/web/src/styles/site/article.css" lines="224-229" hl="227">
+        <doc-pin line="227" tone="warn" title="A yellow bar as decoration">The quote in the article text has the same bar.</doc-pin>
+      </doc-code>
+      <doc-ask id="yellowbar">
+        <p>What color is the bar of the key points and of a quote?</p>
+        <label><input type="radio" name="yellowbar" value="ink" checked> Ink <small>the written rule stays as it is</small></label>
+        <label><input type="radio" name="yellowbar" value="yellow"> Yellow <small>DESIGN.md then permits this use</small></label>
+      </doc-ask>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>An editor can not publish an incorrect default from the article editor.</p>
+    <doc-mock frame="none" w="300" caption="Phone. The publication fields sit below the excerpt, and the bar names the action."><template>
+<div class="ui" style="padding:12px">
+  <div class="field">Title<span class="inp"></span></div>
+  <div class="field" style="margin-top:8px">Excerpt<span class="inp" style="height:52px"></span></div>
+  <div data-ref="strip" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;padding:10px;background:#f4f4f1;border-radius:8px">
+    <div class="field">Publication<span class="inp">Draft ▾</span></div><div class="field">Category<span class="inp">Research ▾</span></div>
+    <div class="field" style="grid-column:1/-1" data-ref="claim">How firm is the claim<span class="inp"><span class="chip"><span class="bars l1"><i></i><i></i><i></i><i></i></span>Rumour</span>&nbsp;▾</span></div>
+  </div>
+  <div class="field" style="margin-top:10px" data-ref="cover">Cover<span class="inp muted">No cover · Choose from the library</span></div>
+  <div class="row" style="margin-top:14px;padding-top:10px;border-top:1px solid #e3e3de"><span class="btn quiet" style="flex:1;justify-content:center">Cancel</span><span class="btn pri" style="flex:1;justify-content:center" data-ref="save">Save draft</span></div>
+</div></template>
+      <doc-pin ref="strip" title="Publication fields, moved up" anchor="tr">Today they are approximately 3,000px below the title.</doc-pin>
+      <doc-pin ref="claim" title="New name, with the glyph" anchor="l"></doc-pin>
+      <doc-pin ref="cover" title="Empty at the start" anchor="r"></doc-pin>
+      <doc-pin ref="save" title="Names the action" anchor="br">“Publish” or “Schedule” for the other states.</doc-pin>
+    </doc-mock>
+    <doc-claim>
+      <p>A new article starts with no cover.</p>
+      <doc-code src="apps/web/src/components/studio/article-form.tsx" lines="45-48" hl="47" wrap>
+        <doc-pin line="47" tone="risk" title="The demo picture is the default">An article saved without a change shows this picture on the site.</doc-pin>
+      </doc-code>
+    </doc-claim>
+    <doc-claim>
+      <p>The two status fields have different names, and the claim field shows its glyph.</p>
+      <doc-schema id="studioterms" lang="ts" diff title="Studio copy · the article form" caption="The publication state and the claim status are different things.">
+<script type="text/plain">
+-  status: "Status",                    // draft, in review, scheduled, published
++  status: "Publication",               // it: "Pubblicazione"
+-  storyStatus: "Story status",         // rumour, in test, rolling out, confirmed, analysis
++  storyStatus: "How firm is the claim", // it: "Quanto è solida la notizia"
+-  // the claim field defaults to "Analysis" with no sign
++  // the claim field starts on "Choose…" and the form asks for an answer
+</script>
+      </doc-schema>
+    </doc-claim>
+    <doc-claim>
+      <p>On a phone, the publication fields sit below the excerpt.</p>
+      <doc-code src="apps/web/src/components/studio/article-form.tsx" lines="179-186" hl="179">
+        <doc-pin line="179" tone="warn" title="The panel is after the full form">On a phone the fixed Save bar saves before the editor sees these fields.</doc-pin>
+      </doc-code>
+      <doc-ask id="phonepub">
+        <p>How does the phone editor show the publication state?</p>
+        <label><input type="radio" name="phonepub" value="strip" checked> A strip below the excerpt, and a Save button that names the action</label>
+        <label><input type="radio" name="phonepub" value="button"> Only the Save button names the action <small>the fields stay at the end</small></label>
+      </doc-ask>
+    </doc-claim>
+    <doc-claim>
+      <p>Save and delete give clear feedback in the Studio dialog.</p>
+      <doc-mock frame="none" w="360" caption="The dialog is the one that agent approvals use. It names the article."><template>
+<div class="ui"><div class="note" style="border-left-color:#1f7a3d">Saved 1 minute ago · <u>View on the site</u></div>
+<div style="margin-top:12px;border:1px solid #b8b8b1;border-radius:12px;padding:14px"><b>Delete “Five AI tools to try this week”?</b><p class="muted" style="margin:6px 0 12px">The article and its translations go away.</p><div class="row"><span class="btn quiet">Cancel</span><span class="btn" style="border-color:#c0281c;color:#c0281c">Delete</span></div></div></div></template></doc-mock>
+    </doc-claim>
+    <doc-claim>
+      <p>Controls in one row have one height, and no control looks like a browser default.</p>
+      <doc-mock frame="none" w="420" caption="Today a row mixes 36px, 40px and 44px. The select, the checkbox and the file field get the Studio look."><template>
+<div class="ui"><div class="row"><span class="inp" style="flex:1;height:40px">All channels ▾</span><span class="inp" style="flex:1;height:40px">All states ▾</span><span class="btn" style="height:40px">Apply</span></div>
+<div style="margin-top:10px;border:1px dashed #767670;border-radius:8px;padding:14px;text-align:center" class="muted">Drop an image, or choose a file</div></div></template></doc-mock>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Studio shows what needs the editor, and where an agent did the work.</p>
+    <doc-mock frame="none" w="480" caption="The dashboard starts with the work that waits. Zero counts stay hidden."><template>
+<div class="ui" style="padding:0;display:flex">
+  <div class="side" data-ref="nav"><div class="cur">Dashboard</div><small>Content</small><div>Articles</div><div>Entities</div><div>Media</div><small>Audience</small><div>Newsletter</div><div>Comments <span class="badge ink">3</span></div><small>Publishing</small><div>Social</div></div>
+  <div style="padding:14px;flex:1">
+    <div class="row between"><h1 style="font-size:18px">Dashboard</h1><span class="btn pri">New article</span></div>
+    <p style="font-weight:700;font-size:13px;margin-top:12px" data-ref="needs">Needs attention</p><div class="rule2"></div>
+    <div class="row between" style="padding:5px 0"><span>2 drafts wait for review</span><span class="muted">oldest: 3 h ago · <span class="badge gray" data-ref="agent">Agent</span></span></div><div class="rule"></div>
+    <div class="row between" style="padding:5px 0"><span>3 comments wait for moderation</span><span class="muted">›</span></div><div class="rule"></div>
+    <div class="row between" style="padding:5px 0"><span>1 social post did not go out</span><span class="muted">›</span></div>
+  </div>
+</div></template>
+      <doc-pin ref="nav" title="Four groups" anchor="tl"></doc-pin>
+      <doc-pin ref="needs" title="First block of the page" anchor="tr"></doc-pin>
+      <doc-pin ref="agent" title="Shows that an agent wrote it" anchor="br"></doc-pin>
+    </doc-mock>
+    <doc-claim>
+      <p>The article list has search, filters, pages, and columns for claim and author.</p>
+      <doc-mock frame="none" w="480" caption="The Author column shows when an agent wrote the article."><template>
+<div class="ui"><div class="row" style="margin-bottom:8px"><span class="inp" style="flex:1">Search by title</span><span class="row" style="gap:0;border:1px solid #b8b8b1;border-radius:8px;overflow:hidden;font-size:12px;font-weight:600"><span style="padding:8px;background:#ffd60a">All</span><span style="padding:8px">Draft</span><span style="padding:8px">Published</span></span></div>
+<table class="t"><tr><th>Title</th><th>Claim</th><th>Publication</th><th>Author</th><th>Updated</th></tr>
+<tr><td><b>AI agents are entering everyday work</b></td><td><span class="chip"><span class="bars l2"><i></i><i></i><i></i><i></i></span>In test</span></td><td><span class="badge">Published</span></td><td>Elena Riva</td><td class="muted">2 h ago</td></tr>
+<tr><td><b>From prototype to process</b></td><td><span class="chip"><span class="bars l1"><i></i><i></i><i></i><i></i></span>Rumour</span></td><td><span class="badge gray">Draft</span></td><td><span class="badge gray">Agent</span></td><td class="muted">3 h ago</td></tr></table>
+<p class="muted" style="margin-top:8px;font-size:12px">1–25 of 143 · Next ›</p></div></template></doc-mock>
+    </doc-claim>
+    <doc-claim>
+      <p>A page for a feature that is not configured tells the editor the next step.</p>
+      <doc-mock frame="none" w="420" caption="A neutral note. No filters and no empty table below it."><template>
+<div class="ui"><h1 style="font-size:18px">Comments</h1><div class="note" style="margin-top:10px"><b>Comments are off</b><p class="muted" style="margin-top:4px">When they are on, readers write below each article and you approve each comment here. An admin turns them on in the Site settings.</p></div></div></template></doc-mock>
+    </doc-claim>
+    <doc-claim>
+      <p>The navigation has groups, and the language control keeps the page.</p>
+      <doc-mock frame="none" w="420" caption="The control shows the two languages and marks the current one. The page head says which content it lists."><template>
+<div class="ui"><div class="row between"><span class="muted" style="font-size:12px">English articles</span><span class="row" style="gap:0;border:1px solid #b8b8b1;border-radius:8px;overflow:hidden;font-size:12px;font-weight:600"><span style="padding:6px 10px;background:#ffd60a">EN</span><span style="padding:6px 10px">IT</span></span></div></div></template></doc-mock>
+      <doc-ask id="navgroups">
+        <p>How does the Studio navigation group its ten items?</p>
+        <label><input type="radio" name="navgroups" value="groups" checked> Content, Audience, Publishing, Admin <small>“Distribution” gets the name “Social”</small></label>
+        <label><input type="radio" name="navgroups" value="groupskeep"> The same groups, and “Distribution” keeps its name</label>
+        <label><input type="radio" name="navgroups" value="flat"> A flat list, as today</label>
+      </doc-ask>
+    </doc-claim>
+    <doc-claim>
+      <p>Studio text uses one name for each concept, with no system words.</p>
+      <doc-schema id="studiocopy" lang="ts" diff title="Studio copy · examples" caption="Edit a line to change a word.">
+<script type="text/plain">
+-  "Total stories" / "Story" / "Featured story"     // the navigation says "Articles"
++  "Total articles" / "Article" / "Featured article"
+-  nav "Entities" opens the page "Companies, models and products"
++  nav "Entities", title "Entities", subtitle "Companies, models and products"
+-  it: "Outbox", "worker", "job", "Payload valido", "Annulla pending", "Riprova failed"
++  it: "Coda di invio", "processo di invio", "invio", "Contenuto valido", "Annulla invio", "Riprova"
+-  status badges in Italian: "Pending", "Failed", "Sent"
++  status badges in Italian: "In coda", "Non riuscito", "Inviato"
+-  newsletter note: "Delivery uses the configured Resend account through the protected outbox worker."
++  (removed)
+-  empty list with no filter: "No subscriptions match this view."
++  "No subscribers yet. They come from the briefing form."
+</script>
+      </doc-schema>
+    </doc-claim>
+    <doc-claim>
+      <p>The sign-in page tells the reader who can sign in.</p>
+      <doc-mock frame="none" w="300" caption="Three equal buttons, one for each provider. Demo mode shows a neutral note."><template>
+<div class="ui"><div class="row"><span class="mark"></span><b>AtlasNews</b><span class="muted">Studio</span></div>
+<h1 style="font-size:20px;margin-top:12px">Sign in to Studio</h1><p class="muted" style="margin:4px 0 12px">For editors that an admin invited.</p>
+<div style="display:grid;gap:8px"><span class="btn" style="justify-content:center">Continue with ChatGPT</span><span class="btn" style="justify-content:center">Continue with Google</span><span class="btn" style="justify-content:center">Continue with GitHub</span></div></div></template></doc-mock>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim aux="shared">
+    <p>Shared: two new tokens in DESIGN.md.</p>
+    <doc-schema id="tokens" lang="yaml" diff title="DESIGN.md · colors" caption="The second token exists only if the plates stay.">
+<script type="text/plain">
+ colors:
+   rule: "#e3e3de"
+   rule-strong: "#b8b8b1"
++  control: "#767670"          # input and select borders, 4.5:1 on white
++  night-control: "#7a7c82"    # the same on night
+   plate-lilac: "#e4dcff"
++  plate-sand: "#f1e6c8"       # replaces the marker as the Tools tint
+</script>
+    </doc-schema>
+  </doc-claim>
+
+  <doc-claim aux="scope">
+    <p>Not changing: data, tools for agents, and the demo content.</p>
+    <ul>
+      <li>The data model, the server rules and the MCP and WebMCP tools stay as they are.</li>
+      <li>The demo stories stay. All of them are “Analysis” and no story has a product, so the meter and the timelines show little in the demo.</li>
+      <li>The four Studio forms that do not use the shared catalogue stay as they are: article save, campaign, social composer, media upload.</li>
+      <li>The automatic checks found no defect: no overflow from 320px to 2560px, no text contrast below 4.5:1, no title that skips a level.</li>
+    </ul>
+  </doc-claim>
+
+</doc-plan>
+</main>
+</body></html>
