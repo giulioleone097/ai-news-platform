@@ -33,9 +33,9 @@ How it behaves in the browser:
 
 ## Editor tools in the Studio
 
-Inside the Studio (`/{locale}/studio/...`, not the login page) the page registers the content capabilities for articles, categories, entities and media: list, read, create, partial update (PATCH), publish, unpublish, delete and the batch versions. They are the same capabilities as the MCP endpoint, so there is one implementation.
+Inside the Studio (`/{locale}/studio/...`, not the login page) the page registers the content capabilities for articles, categories, entities and media (and the four team tools, `admin_*_editor`, which an editor's session is refused with 403 because they need the admin-only `newsroom.admin` scope): list, read, create, partial update (PATCH), publish, unpublish, delete and the batch versions. They are the same capabilities as the MCP endpoint, so there is one implementation.
 
-- Definition: `editorPageCapabilities` in `@atlasnews/contract/page` (`packages/contract/src/page.ts`), built from the specs in `packages/contract/src/specs/{articles,categories,entities,media}.ts` whose `surfaces` include `page`. Name, title, description, input schema, hints, `scopes` and `confirms` come from there; the web app declares none of them. `parseEditorPageInput` checks the arguments.
+- Definition: `editorPageCapabilities` in `@atlasnews/contract/page` (`packages/contract/src/page.ts`), built from the specs in `packages/contract/src/specs/{articles,categories,entities,media,team}.ts` whose `surfaces` include `page`. Name, title, description, input schema, hints, `scopes` and `confirms` come from there; the web app declares none of them. `parseEditorPageInput` checks the arguments.
 - Execution: on the server. Each tool posts `{ "input": {...}, "confirmed": false }` to `POST /api/capabilities/{name}` (same origin, session cookie) and the route runs `runEditorCapability` (`apps/web/src/server/capabilities.ts`), which checks the editor's scopes. The same function serves the Studio's Server Actions.
 - Handlers: `apps/web/src/components/studio/site-tools/`
   - `studio-site-tools.tsx` is mounted in `app/[locale]/(studio)/studio/layout.tsx`. It renders nothing and loads nothing unless `document.modelContext.registerTool` exists (same `detect.ts` as the reader tools). Leaving the Studio unmounts it, which unregisters the tools.

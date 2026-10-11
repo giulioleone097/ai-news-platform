@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { hasScopes, scopesForRole } from "./capability";
 import { capabilities, mcpCapabilities } from "./catalogue";
 import { editorPageCapabilities, pageCapabilities } from "./page";
 import { pageSpecs } from "./specs/page";
@@ -11,9 +12,9 @@ const source = dirname(fileURLToPath(import.meta.url));
 const reserved = /\b(best|official)\b/i;
 
 describe("capability catalogue", () => {
-  it("offers 68 data capabilities with unique, short, verb-like names", () => {
+  it("offers 75 data capabilities with unique, short, verb-like names", () => {
     const names = capabilities.map((capability) => capability.name);
-    expect(names).toHaveLength(68);
+    expect(names).toHaveLength(75);
     expect(new Set(names).size).toBe(names.length);
     for (const name of names) {
       expect(name.length).toBeLessThanOrEqual(64);
@@ -24,7 +25,7 @@ describe("capability catalogue", () => {
 
   it("keeps the 37 admin tool names that clients already use and adds the content tools", () => {
     const names = capabilities.map((capability) => capability.name);
-    expect(capabilities.filter((capability) => capability.name.startsWith("admin_"))).toHaveLength(59);
+    expect(capabilities.filter((capability) => capability.name.startsWith("admin_"))).toHaveLength(66);
     expect(names).toEqual(expect.arrayContaining([
       "admin_list_articles", "admin_get_article", "admin_create_article", "admin_update_article", "admin_publish_article",
       "admin_delete_article", "admin_list_categories", "admin_list_distribution", "admin_update_distribution",
@@ -102,6 +103,29 @@ describe("capability catalogue", () => {
     expect(scopeOf("admin_upload_media_assets")).toEqual(["newsroom.write"]);
     expect(scopeOf("admin_delete_media_assets")).toEqual(["newsroom.publish"]);
     expect(scopeOf("list_entities")).toEqual([]);
+  });
+
+  it("keeps the team tools to admins: newsroom.admin is granted to the admin role only", () => {
+    const team = capabilities.filter((capability) => /^admin_\w+_editors?$/.test(capability.name));
+    expect(team.map((capability) => capability.name).sort()).toEqual([
+      "admin_invite_editor", "admin_list_editors", "admin_remove_editor", "admin_update_editor",
+    ]);
+    const editor = { kind: "editor", subject: "editor", scopes: scopesForRole("editor") } as const;
+    const admin = { kind: "editor", subject: "admin", scopes: scopesForRole("admin") } as const;
+    for (const capability of team) {
+      expect(capability.scopes, capability.name).toEqual(["newsroom.admin"]);
+      expect(capability.surfaces, capability.name).toEqual(["mcp", "page"]);
+      expect(hasScopes(editor, capability.scopes), capability.name).toBe(false);
+      expect(hasScopes(admin, capability.scopes), capability.name).toBe(true);
+    }
+    // No other capability needs it, and an editor keeps every other scope.
+    expect(capabilities.filter((capability) => capability.scopes.includes("newsroom.admin"))).toHaveLength(team.length);
+    expect(scopesForRole("editor")).toEqual(["newsroom.read", "newsroom.write", "newsroom.publish"]);
+    expect(scopesForRole(undefined)).toEqual([]);
+    expect(scopesForRole("reader")).toEqual([]);
+    const remove = team.find((capability) => capability.name === "admin_remove_editor")!;
+    expect(remove.annotations.destructiveHint).toBe(true);
+    expect(remove.confirmation).toBeDefined();
   });
 
   it("marks every tool that returns visitor-written text as untrusted, in its description and its output", () => {
@@ -234,6 +258,7 @@ describe("@atlasnews/contract/page", () => {
         "@atlasnews/core/editorial/domain/editorial-image",
         "@atlasnews/core/editorial/domain/entity",
         "@atlasnews/core/editorial/domain/errors",
+        "@atlasnews/core/team/domain/team",
       ]).toContain(target);
     }
   });

@@ -117,6 +117,45 @@
   accent-color: var(--coral);
 }
 
+.account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.account strong {
+  color: var(--ink);
+}
+
+.accountLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.providerLink {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--paper-raised);
+  font-size: 0.78rem;
+  font-weight: 720;
+  transition: transform var(--transition);
+}
+
+.providerLink:hover {
+  transform: translateY(-1px);
+}
+
 .formFooter {
   display: flex;
   align-items: center;

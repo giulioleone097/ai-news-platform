@@ -654,6 +654,13 @@ export class D1CommentRepository implements CommentRepository {
     });
   }
 
+  async countByStatus(status: CommentStatus) {
+    return guarded(async () => {
+      const row = await this.statement("SELECT count(*) AS total FROM comments WHERE status = ?", status).first<{ total: number }>();
+      return row?.total ?? 0;
+    });
+  }
+
   async listReports(commentId: string) {
     return guarded(async () => {
       const { results } = await this.statement(

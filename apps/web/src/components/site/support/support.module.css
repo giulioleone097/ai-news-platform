@@ -1,0 +1,201 @@
+.page {
+  padding-block: clamp(2rem, 6vw, 4.5rem) clamp(3rem, 8vw, 6rem);
+}
+
+.column {
+  display: grid;
+  max-width: 44rem;
+  gap: clamp(2rem, 5vw, 3rem);
+}
+
+.intro {
+  max-width: 40rem;
+  color: var(--muted);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+.updated {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.section {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.section h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  font-weight: 720;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.section p,
+.section li {
+  font-family: var(--font-reading);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+.section ul {
+  display: grid;
+  gap: 0.4rem;
+  padding-left: 1.25rem;
+}
+
+.section a,
+.note a,
+.related a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.related {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+}
+
+.related a {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  font-weight: 600;
+}
+
+.contact {
+  display: grid;
+  gap: 0.75rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+
+.contact h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 740;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.contact > p {
+  color: var(--muted);
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field label {
+  font-size: 0.8125rem;
+  font-weight: 680;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 0.5rem;
+  background: var(--paper);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+  border-color: var(--coral-dark);
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--coral) 24%, transparent);
+}
+
+.field [aria-invalid="true"] {
+  border-color: var(--coral-dark);
+}
+
+.field small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.error,
+.summary {
+  color: var(--coral-dark);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.summary {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--coral-dark);
+  border-radius: 0.5rem;
+}
+
+.success {
+  min-height: 1.25rem;
+  color: var(--success);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.note {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.submit {
+  min-height: 3rem;
+  justify-self: start;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--coral);
+  border-radius: 0.125rem;
+  color: var(--ink);
+  background: var(--coral);
+  font-size: 0.9rem;
+  font-weight: 680;
+  transition: color var(--transition), background var(--transition);
+}
+
+.submit:hover:not(:disabled) {
+  color: white;
+  border-color: var(--coral-dark);
+  background: var(--coral-dark);
+}
+
+.submit:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.submit:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+/* The honeypot: off-screen, not display:none, so a bot that fills every visible-looking field takes it. */
+.trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

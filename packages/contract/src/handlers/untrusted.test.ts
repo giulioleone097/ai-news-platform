@@ -19,7 +19,9 @@ function ports(overrides: Partial<CapabilityPorts>): CapabilityPorts {
     moderation: unavailable,
     commentNotifications: unavailable,
     newsletter: unavailable,
+    contact: unavailable,
     social: unavailable,
+    team: unavailable,
     ...overrides,
   };
 }
@@ -67,8 +69,8 @@ describe("visitor-written text is marked untrusted in the result", () => {
   it("is spelled the same way in every description that carries it", () => {
     const marked = capabilities.filter((capability) => "contentTrust" in capability.output.shape);
     expect(marked.map((capability) => capability.name).sort()).toEqual([
-      "admin_list_comment_reports", "admin_list_comments", "admin_list_newsletter_subscriptions",
-      "admin_newsletter_list_recipients", "list_comments",
+      "admin_list_comment_reports", "admin_list_comments", "admin_list_contact_messages",
+      "admin_list_newsletter_subscriptions", "admin_newsletter_list_recipients", "list_comments",
     ]);
     for (const capability of marked) expect(capability.description).toContain("Fields marked in contentTrust.untrustedFields");
   });

@@ -7,6 +7,7 @@ import { entitySpecs } from "./specs/entities";
 import { mediaSpecs } from "./specs/media";
 import { filterFeed, openArticle, pageSpecs, readOpenArticle, saveArticle } from "./specs/page";
 import { searchArticles } from "./specs/search-articles";
+import { teamSpecs } from "./specs/team";
 
 /** A capability of the open page as plain data: safe to serialise and to import in a client bundle. */
 export interface PageCapability {
@@ -53,7 +54,7 @@ export const pageCapabilities: readonly PageCapability[] = pageSpecs.map(describ
  * same specs as the MCP endpoint, so name, text, schema, hints, scopes and confirmation are
  * defined once. The page runs them against the server, which checks the editor's scopes.
  */
-export const editorPageSpecs = [...articleSpecs, ...categorySpecs, ...entitySpecs, ...mediaSpecs]
+export const editorPageSpecs = [...articleSpecs, ...categorySpecs, ...entitySpecs, ...mediaSpecs, ...teamSpecs]
   .filter((spec) => (spec.surfaces as readonly string[]).includes("page"));
 export const editorPageCapabilities: readonly PageCapability[] = editorPageSpecs.map(describe);
 

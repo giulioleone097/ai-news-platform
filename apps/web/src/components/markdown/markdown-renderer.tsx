@@ -6,11 +6,18 @@ import ReactMarkdown, {
 import remarkGfm from "remark-gfm";
 import { isAllowedEditorialImageSource } from "@atlasnews/core/editorial/domain/editorial-image";
 import { markdownHeadingIdsPlugin } from "@/lib/markdown";
+import { markdownCalloutsPlugin } from "./callouts";
+import { EmbedFrame } from "./embed-frame";
+import { markdownEmbedsPlugin } from "./embeds";
+import { rehypeHighlightFences } from "./highlight";
+import { defaultMarkdownLabels, type MarkdownLabels } from "./labels";
 
 type MarkdownRendererProps = {
   className?: string;
   content: string;
   imageUnavailableLabel?: string;
+  /** Callout titles and embed copy in the article locale; English when omitted. */
+  labels?: MarkdownLabels;
 };
 
 const externalUrlPattern = /^(?:https?:)?\/\//i;
@@ -23,6 +30,7 @@ export function MarkdownRenderer({
   className,
   content,
   imageUnavailableLabel = "Image unavailable",
+  labels = defaultMarkdownLabels,
 }: MarkdownRendererProps) {
   const components: Components = {
     a({ node, href, children, ...props }) {
@@ -78,12 +86,20 @@ export function MarkdownRenderer({
       );
     },
   };
+  // `markdown-embed` is the element markdownEmbedsPlugin emits; it is not an HTML tag, so Components omits it.
+  const embedComponents = {
+    ...components,
+    "markdown-embed"({ href }: { href?: string }) {
+      return href ? <EmbedFrame href={href} labels={labels.embeds} /> : null;
+    },
+  } as Components;
 
   return (
     <div className={joinClassNames("markdown-content", className)}>
       <ReactMarkdown
-        components={components}
-        remarkPlugins={[remarkGfm, markdownHeadingIdsPlugin]}
+        components={embedComponents}
+        rehypePlugins={[rehypeHighlightFences]}
+        remarkPlugins={[remarkGfm, markdownHeadingIdsPlugin, [markdownCalloutsPlugin, labels], markdownEmbedsPlugin]}
         skipHtml
         urlTransform={defaultUrlTransform}
       >

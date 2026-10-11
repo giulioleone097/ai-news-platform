@@ -33,9 +33,9 @@
           "Manage newsletter and social queues"
         ],
         "websiteURL": "https://owner-must-supply.invalid/website",
-        "supportURL": "https://owner-must-supply.invalid/support",
-        "privacyPolicyURL": "https://owner-must-supply.invalid/privacy",
-        "termsOfServiceURL": "https://owner-must-supply.invalid/terms",
+        "supportURL": "https://owner-must-supply.invalid/en/support",
+        "privacyPolicyURL": "https://owner-must-supply.invalid/en/privacy",
+        "termsOfServiceURL": "https://owner-must-supply.invalid/en/terms",
         "defaultPrompt": [
           "Show the latest AI news.",
           "Build my AI news briefing.",

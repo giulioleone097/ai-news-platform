@@ -24,6 +24,9 @@ export async function SiteFooter({ locale }: { locale: Locale }) {
             </Link>
           ))}
           <Link href={localizedPath("/search", locale)} prefetch={false}>{messages.footer.search}</Link>
+          <Link href={localizedPath("/support", locale)} prefetch={false}>{messages.footer.support}</Link>
+          <Link href={localizedPath("/privacy", locale)} prefetch={false}>{messages.footer.privacy}</Link>
+          <Link href={localizedPath("/terms", locale)} prefetch={false}>{messages.footer.terms}</Link>
           <Link href={localizedPath("/studio", locale)} prefetch={false}>{messages.footer.studio}</Link>
           <a href={new URL("/info", getPublicMcpUrl()).toString()}>{messages.footer.mcp}</a>
           <Link href={localizedPath("/feed.xml", locale)} prefetch={false}>{messages.footer.rss}</Link>

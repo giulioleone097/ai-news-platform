@@ -2,13 +2,17 @@ import type { Author } from "@atlasnews/core/editorial/domain/article";
 import type { D1Database } from "./cloudflare";
 
 /**
- * Who is signed in, as ChatGPT Sites reports it. The platform owns sign-in (`/signin-with-chatgpt`)
- * and injects these headers on every request of a signed-in visitor, replacing any the client sent;
- * an anonymous request carries none. They are trusted only in `sites` mode, behind that platform.
+ * A signed-in account with an email its provider vouches for: ChatGPT Sites, or an own Google or GitHub
+ * sign-in. Editors are matched by that email, so one person can use any of them.
+ *
+ * For ChatGPT the platform owns sign-in (`/signin-with-chatgpt`) and injects the `oai-authenticated-*`
+ * headers on every request of a signed-in visitor, replacing any the client sent; an anonymous request
+ * carries none. They are trusted only in `sites` mode, behind that platform.
  */
 export interface SitesIdentity {
-  /** `oai-authenticated-user-id`: stable for one person on this Site. */
+  /** Stable for one person at one provider: the `oai-authenticated-user-id`, or `google:<sub>` / `github:<id>`. */
   userId: string;
+  /** Verified by the provider. */
   email: string;
   fullName: string | null;
 }
@@ -75,7 +79,7 @@ function initialsOf(name: string) {
   return letters.join("").slice(0, 2) || "ED";
 }
 
-/** A display name for a new author: the ChatGPT name, else the part of the email before the @. */
+/** A display name for a new author: the account's name, else the part of the email before the @. */
 function authorNameOf(identity: SitesIdentity) {
   const name = (identity.fullName ?? identity.email.split("@")[0] ?? "").trim().slice(0, 120);
   return name.length >= 2 ? name : "Editor";
@@ -94,10 +98,11 @@ function listed(addresses: readonly string[] | undefined, email: string) {
 }
 
 /**
- * The editor profile of a signed-in ChatGPT account, or null for a reader. An editor is found by their
- * Sites user id; an invitation (a row with the email and no user id yet) is claimed at the first
- * sign-in; an address listed in `adminEmails` or `editorEmails` with no row at all gets that role and a
- * new author. An invitation or a listed address already bound to another user id grants nothing.
+ * The editor profile of a signed-in account, or null for a reader. An editor is the row whose email
+ * matches the account's verified email (case-insensitively), whichever provider signed them in: ChatGPT,
+ * Google or GitHub. An invitation is such a row with no user id yet. An address listed in `adminEmails`
+ * or `editorEmails` with no row at all gets that role and a new author at its first sign-in. The user
+ * id of the latest sign-in is stored in `editors.user_id` for reference only; it grants nothing.
  * Removing an address from the lists later does not revoke the row it created.
  */
 export async function resolveSitesEditor(
@@ -106,20 +111,10 @@ export async function resolveSitesEditor(
   options: ResolveEditorOptions = {},
 ): Promise<SitesEditor | null> {
   const select = `SELECT ${editorColumns} FROM editors JOIN authors ON authors.id = editors.author_id`;
-  const bound = await database.prepare(`${select} WHERE editors.user_id = ?`).bind(identity.userId).first<EditorRow>();
-  if (bound) return toEditor(bound, identity.userId);
-
   const now = (options.now ?? (() => new Date()))().toISOString();
-  const invited = await database.prepare(`${select} WHERE editors.email = ? AND editors.user_id IS NULL`)
-    .bind(identity.email)
-    .first<EditorRow>();
-  if (invited) {
-    const claimed = await database.prepare(
-      "UPDATE editors SET user_id = ?, updated_at = ? WHERE id = ? AND user_id IS NULL RETURNING id",
-    ).bind(identity.userId, now, invited.id).first();
-    // Another request bound it first; it is that request's user, so look again by user id.
-    return claimed ? toEditor(invited, identity.userId) : resolveBound(database, select, identity.userId);
-  }
+
+  const existing = await findByEmail(database, select, identity.email);
+  if (existing) return rememberUser(database, existing, identity.userId);
 
   const email = identity.email.toLowerCase();
   const role: EditorRole | null = listed(options.adminEmails, email)
@@ -129,31 +124,45 @@ export async function resolveSitesEditor(
 
   const authorId = crypto.randomUUID();
   const name = authorNameOf(identity);
-  // Both inserts are skipped when the email already has a row: another request bootstrapped it, or an
-  // invitation for it is bound to someone else.
+  // Both inserts are skipped when the email already has a row: another request bootstrapped it first.
   await database.batch([
     database.prepare(
       `INSERT INTO authors (id, name, role, initials, avatar_url, created_at)
-       SELECT ?, ?, 'Editor', ?, NULL, ? WHERE NOT EXISTS (SELECT 1 FROM editors WHERE email = ?)`,
+       SELECT ?, ?, 'Editor', ?, NULL, ? WHERE NOT EXISTS (SELECT 1 FROM editors WHERE email = ? COLLATE NOCASE)`,
     ).bind(authorId, name, initialsOf(name), now, identity.email),
     database.prepare(
       `INSERT INTO editors (id, email, user_id, author_id, role, created_at, updated_at)
-       SELECT ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM editors WHERE email = ?)`,
-    ).bind(crypto.randomUUID(), identity.email, identity.userId, authorId, role, now, now, identity.email),
+       SELECT ?, ?, NULL, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM editors WHERE email = ? COLLATE NOCASE)`,
+    ).bind(crypto.randomUUID(), identity.email, authorId, role, now, now, identity.email),
   ]);
-  return resolveBound(database, select, identity.userId);
+  const created = await findByEmail(database, select, identity.email);
+  return created ? rememberUser(database, created, identity.userId) : null;
 }
 
-async function resolveBound(database: D1Database, select: string, userId: string) {
-  const row = await database.prepare(`${select} WHERE editors.user_id = ?`).bind(userId).first<EditorRow>();
-  return row ? toEditor(row, userId) : null;
+function findByEmail(database: D1Database, select: string, email: string) {
+  return database.prepare(`${select} WHERE editors.email = ? COLLATE NOCASE`).bind(email).first<EditorRow>();
+}
+
+/**
+ * Keeps `user_id` at the latest account seen, written only when it changes. The column is unique, so the
+ * write is skipped (not failed) if another editor row already holds that id, for instance after a person
+ * changed the email of their Google account.
+ */
+async function rememberUser(database: D1Database, row: EditorRow, userId: string) {
+  if (row.user_id !== userId) {
+    await database.prepare(
+      `UPDATE editors SET user_id = ?1 WHERE id = ?2
+       AND NOT EXISTS (SELECT 1 FROM editors other WHERE other.user_id = ?1 AND other.id <> ?2)`,
+    ).bind(userId, row.id).run();
+  }
+  return toEditor(row, userId);
 }
 
 function emailList(value: string | undefined) {
   return (value ?? "").split(",").map((address) => address.trim()).filter((address) => address.includes("@"));
 }
 
-/** The accounts `resolveSitesEditor` lets in at their first sign-in, from the environment. */
+/** The accounts `resolveSitesEditor` lets in at their first sign-in (any provider), from the environment. */
 export function getEditorAllowList(environment: Record<string, string | undefined> = process.env) {
   return {
     adminEmails: emailList(environment.ATLASNEWS_ADMIN_EMAILS),

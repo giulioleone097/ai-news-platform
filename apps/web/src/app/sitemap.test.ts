@@ -53,4 +53,16 @@ describe("sitemap", () => {
     expect(urls).toContain(`${base}/en/entities/openai`);
     expect(urls).toContain(`${base}/it/entities/openai`);
   });
+
+  it("lists the support, privacy and terms pages in both languages", async () => {
+    const byUrl = new Map((await sitemap()).map((entry) => [entry.url, entry]));
+    for (const page of ["support", "privacy", "terms"]) {
+      expect(byUrl.get(`${base}/en/${page}`)?.alternates?.languages).toEqual({
+        en: `${base}/en/${page}`,
+        it: `${base}/it/${page}`,
+        "x-default": `${base}/en/${page}`,
+      });
+      expect(byUrl.get(`${base}/it/${page}`)).toBeDefined();
+    }
+  });
 });

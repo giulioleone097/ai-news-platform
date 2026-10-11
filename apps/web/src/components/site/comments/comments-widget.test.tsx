@@ -63,6 +63,23 @@ describe("comment owner UX", () => {
     expect(available).toContain('type="checkbox"');
   });
 
+  it("prefills the display name of a signed-in reader and leaves it empty for a guest", () => {
+    const form = (defaultName?: string) => renderToStaticMarkup(
+      <CommentForm
+        articleId={articleId}
+        defaultName={defaultName}
+        locale="en"
+        notificationsEnabled={false}
+        onCreated={() => undefined}
+        parentId={null}
+        text={commentCopy.en}
+      />,
+    );
+
+    expect(form("Giulia Rossi")).toContain('value="Giulia Rossi"');
+    expect(form()).not.toContain("value=");
+  });
+
   it("keeps approved ownership on the public card and standalone non-public states", () => {
     const approvedId = "014fb7a4-97db-4566-9200-13bf795c78fd";
     const pendingId = "e44aeccf-94bd-40e8-8364-e430a6ba20a5";

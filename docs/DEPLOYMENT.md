@@ -40,6 +40,7 @@ Never point a Preview deployment at the production database.
 | `WHATSAPP_WEBHOOK_SECRET` / `WHATSAPP_VERIFY_TOKEN` | Empty | Independent test values | Preview values | Production values | Server-only |
 | `ATLASNEWS_ENABLE_DEMO_STUDIO` | Empty | Empty | Empty unless the preview is intentionally ephemeral | Empty | Server-only |
 | `ATLASNEWS_CLIENT_IP_HEADER` | Empty | Empty | Name of the edge's client-address header | Name of the edge's client-address header | Server-only, `apps/web` and `apps/mcp`; [below](#client-address-and-rate-limits) |
+| `ATLASNEWS_SUPABASE_OAUTH_PROVIDERS` | Empty | Empty or `google,github` | `google,github`, only those enabled in the Preview project | `google,github`, only those enabled in the Production project | Server-only, `apps/web`; lists the providers the login page and the comment section offer ([below](#sign-in-with-google-and-github)) |
 | `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` | Empty | Empty | Pre-registered client ids | Pre-registered client ids | Server-only, `apps/mcp`; [MCP.md](MCP.md#sign-in-with-supabase-auth) |
 | `ATLASNEWS_OAUTH_REDIRECT_HOSTS` | Empty (default hosts) | Empty | Empty unless a client needs another host | Empty unless a client needs another host | Server-only, `apps/web`; [MCP.md](MCP.md#sign-in-with-supabase-auth) |
 | `ATLASNEWS_MCP_EVENTS_MAX_PER_HOST` / `_MAX_PER_DOMAIN` / `_MAX_SUBSCRIPTIONS` / `_SUBSCRIBES_PER_MINUTE` | Empty (25 / 100 / 1000 / 30) | Empty | Empty | Tune from observed ChatGPT callback hosts | Server-only, `apps/mcp`; [OPENAI_EXTENSIONS.md](OPENAI_EXTENSIONS.md#abuse-limits) |
@@ -151,6 +152,17 @@ https://<canonical-host>/it/auth/callback
 
 Add exact protected Preview callback origins only to the Preview Supabase project. Avoid a broad production wildcard. Keep email/password Auth enabled for the studio and public sign-up disabled.
 
+### Sign-in with Google and GitHub
+
+In `supabase` mode Google and GitHub sign-in is Supabase Auth's own: there are no `GOOGLE_*`, `GITHUB_*` or `ATLASNEWS_SESSION_SECRET` variables and no cookie of ours (those are for [Sites](SITES.md#sign-in-and-editors)). The site starts it at `/api/auth/<provider>/start`, which calls `signInWithOAuth` on the server, and the existing `/{locale}/auth/callback` finishes it. To turn it on:
+
+1. Register an OAuth client with each provider, with the Supabase callback as redirect: `https://<project-ref>.supabase.co/auth/v1/callback` (Google: Cloud Console, Credentials, OAuth client ID, Web application; GitHub: Developer settings, OAuth Apps).
+2. In Supabase **Authentication → Sign In / Providers** enable Google and GitHub with that client id and secret.
+3. Keep `https://<canonical-host>/en/auth/callback` and `/it/auth/callback` in the redirect allow-list (above). No wildcard is needed: the page to come back to travels in a short-lived cookie, not in the URL.
+4. Set `ATLASNEWS_SUPABASE_OAUTH_PROVIDERS=google,github` (the ones you enabled) so the site offers them; nothing is offered while it is empty.
+
+Readers who sign in this way can comment as signed-in users but are not editors: the Studio still requires a `profiles` row with the `editor` or `admin` role, and a Google or GitHub sign-in from the Studio login page of a user without one is signed out again. Supabase links an identity to an existing user with the same verified email, so an editor invited by email can also sign in with Google or GitHub. A Google or GitHub account that is new to the project needs sign-ups allowed (**Authentication → Sign In / Providers**, "Allow new users to sign up"; `enable_signup` in `supabase/config.toml` for local work). New users get no profile, so they cannot reach the Studio. With sign-ups off, only users that already exist can sign in with a provider.
+
 ## Bootstrap the first editor
 
 1. In Supabase Dashboard, create or invite the user under **Authentication → Users**. Prefer invite/verified-email flows; do not insert a password into SQL.
@@ -187,7 +199,7 @@ join public.authors as a on a.id = p.author_id
 where u.id = '<AUTH_USER_UUID>'::uuid;
 ```
 
-Use `editor` for routine staff and reserve `admin` by operating convention. Both roles currently satisfy the same RLS editor predicate; a future permission split requires a migration and authorization tests. Remove access by deleting the `public.profiles` row; do not share Auth accounts. Public sign-up is disabled in the committed local Auth configuration and should remain disabled for an invite-only production studio.
+The first admin is created this way; after that an admin can invite editors, change roles and remove access from the Studio (**Team**) or with the `admin_*_editor` MCP tools, using the service-role key. Migration `20261015090000_team_management_grants.sql` gives that key the writes on `public.profiles` and `public.authors` it needs. An invitation creates the Auth user and sends Supabase's invite email; removing someone deletes only their `public.profiles` row. The invite email's link does not lead to a set-password page: the Studio login has no such step. Invited editors sign in with Google or GitHub (Supabase links the identity by verified email, see above), or an admin sets their password under **Authentication → Users**. Use `editor` for routine staff and reserve `admin` by operating convention. Both roles satisfy the same RLS editor predicate; only managing the team differs, and that is checked in the delivery layer (`newsroom.admin`), not by RLS. Any further permission split requires a migration and authorization tests. Remove access by deleting the `public.profiles` row; do not share Auth accounts. Public sign-up is disabled in the committed local Auth configuration and should remain disabled for an invite-only production studio.
 
 ## Deploy the three apps
 

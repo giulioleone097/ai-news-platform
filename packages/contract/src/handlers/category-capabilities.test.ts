@@ -36,6 +36,7 @@ describe("admin_list_categories", () => {
       moderation: unavailable,
       commentNotifications: unavailable,
       newsletter: unavailable,
+      contact: unavailable,
       social: unavailable,
     } as unknown as CapabilityPorts;
 

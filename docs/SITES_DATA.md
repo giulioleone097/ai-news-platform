@@ -21,6 +21,7 @@ The schema lives in `apps/web/drizzle/` in the layout the Sites tooling expects:
 | `0004_social_outbox` | `social-publishing/d1-*.ts` |
 | `0005_mcp_events` | `mcp-events/d1-*.ts` |
 | `0006_jobs` | `sites/jobs.ts`: the lease that keeps one job run at a time |
+| `0007_contact_messages` | `support/d1-contact-repository.ts`: messages from the contact form and their rate-limit buckets |
 
 ## Conventions
 

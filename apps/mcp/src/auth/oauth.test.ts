@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { exportJWK, generateKeyPair, SignJWT, type JWK, type CryptoKey } from "jose";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { scopes } from "@atlasnews/contract";
+import { scopes, scopesForRole } from "@atlasnews/contract";
 
 import {
   bearerChallenge,
@@ -231,9 +231,11 @@ describe("editors", () => {
     return verifier.verify(await mint({ signer, issuer: double.issuer, subject }), { resource: "http://localhost/mcp" });
   }
 
-  it("gives a signed-in editor or admin every newsroom scope and their author id", async () => {
+  it("gives a signed-in editor the editorial scopes and an admin also newsroom.admin, with their author id", async () => {
     const double = await supabase();
-    await expect(bearer(double, editorId)).resolves.toEqual({ subject: editorId, scopes, authorId: editorAuthorId });
+    const editorial = scopes.filter((scope) => scope !== "newsroom.admin");
+    expect(scopesForRole("editor")).toEqual(editorial);
+    await expect(bearer(double, editorId)).resolves.toEqual({ subject: editorId, scopes: editorial, authorId: editorAuthorId });
     await expect(bearer(double, adminId)).resolves.toEqual({ subject: adminId, scopes, authorId: editorAuthorId });
   });
 
@@ -377,7 +379,7 @@ describe("the configured server", () => {
     await expect(resolvePrincipal(request, defaultAccessTokenVerifier())).resolves.toEqual({
       kind: "editor",
       subject: editorId,
-      scopes,
+      scopes: scopesForRole("editor"),
       authorId: editorAuthorId,
     });
   });

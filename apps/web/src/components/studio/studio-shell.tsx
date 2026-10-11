@@ -16,7 +16,7 @@ export function StudioShell({
   locale: Locale;
   messages: Messages;
   editor: EditorIdentity;
-  /** On Sites the platform signs out: a plain form POST to its path. Otherwise the Supabase action. */
+  /** On Sites a plain form POST to the sign-out path of whatever signed the editor in (ChatGPT's or ours). Otherwise the Supabase action. */
   signOutPath?: string;
 }) {
   const alternateLocale = locale === "en" ? "it" : "en";
@@ -29,7 +29,7 @@ export function StudioShell({
           <small>STUDIO</small>
         </Link>
 
-        <StudioNavigation copy={messages.studio} locale={locale} />
+        <StudioNavigation copy={messages.studio} isAdmin={editor.role === "admin"} locale={locale} />
 
         <div className="studio-sidebar__footer">
           <div className="studio-user">

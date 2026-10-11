@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { StudioActionState } from "@/components/studio/action-state";
+import { editorImageTypes, maxEditorImageBytes } from "@/components/studio/markdown-media";
 import { studioSupplementalCopy } from "@/components/studio/studio-copy";
 import { getMessages, locales } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
@@ -24,7 +25,9 @@ import {
 } from "@atlasnews/core/editorial/domain/editorial-operations";
 import { getStudioEditorialRepositories } from "@/server/composition";
 import { invalidatePublicEditorialCache } from "@/lib/editorial-cache";
+import { runEditorCapability } from "@/server/capabilities";
 import { ArticleCommandService } from "@atlasnews/core/editorial/application/article-commands";
+import { MediaCommandService } from "@atlasnews/core/editorial/application/media-commands";
 
 const imageSourceSchema = z
   .string()
@@ -113,13 +116,17 @@ const mediaMutationSchema = z.object({
   path: z.string().trim().min(1).max(256).regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/),
 });
 
-const allowedMediaTypes = new Set([
-  "image/avif",
-  "image/gif",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
+const allowedMediaTypes = new Set<string>(editorImageTypes);
+
+export type EditorMediaItem = { path: string; url: string; name: string; mimeType: string };
+
+export type EditorMediaListResult =
+  | { ok: true; writable: boolean; items: EditorMediaItem[] }
+  | { ok: false; error: string };
+
+export type EditorMediaUploadResult =
+  | { ok: true; asset: EditorMediaItem }
+  | { ok: false; error: "type" | "size" | "configuration" | "upload" };
 
 function getFieldErrors(error: z.ZodError): Record<string, string[]> {
   const flattened = error.flatten().fieldErrors as Record<string, string[] | undefined>;
@@ -299,7 +306,7 @@ export async function uploadMediaAction(formData: FormData) {
   const locale = z.enum(locales).catch("en").parse(formData.get("locale"));
   await requireEditor(locale);
   const asset = formData.get("asset");
-  if (!(asset instanceof File) || !asset.size || asset.size > 8_388_608 || !allowedMediaTypes.has(asset.type)) {
+  if (!(asset instanceof File) || !asset.size || asset.size > maxEditorImageBytes || !allowedMediaTypes.has(asset.type)) {
     redirect(`/${locale}/studio/media?error=file`);
   }
   const bytes = new Uint8Array(await asset.arrayBuffer());
@@ -341,4 +348,53 @@ export async function deleteMediaAction(formData: FormData) {
   await repositories.media.deleteAsset(input.path);
   revalidatePath(`/${input.locale}/studio/media`);
   redirect(`/${input.locale}/studio/media?deleted=1`);
+}
+
+/**
+ * The media library for the Markdown editor's image picker: the `admin_list_media` capability, so the
+ * editor check and the `newsroom.read` scope are the ones the MCP endpoint applies.
+ */
+export async function listEditorMediaAction(locale: string): Promise<EditorMediaListResult> {
+  await requireEditor(z.enum(locales).catch("en").parse(locale));
+  const outcome = await runEditorCapability("admin_list_media", {});
+  if (!outcome.ok) return { ok: false, error: outcome.error };
+
+  const { writable, items } = outcome.result as { writable: boolean; items: EditorMediaItem[] };
+  return {
+    ok: true,
+    writable,
+    items: items.map(({ path, url, name, mimeType }) => ({ path, url, name, mimeType })),
+  };
+}
+
+/**
+ * Uploads one image dropped or pasted into the Markdown editor. The same checks and storage as
+ * `uploadMediaAction`, returning the stored URL for the editor to insert instead of redirecting.
+ * Images are up to 8 MiB, larger than the `admin_upload_media` capability takes over MCP.
+ */
+export async function uploadEditorMediaAction(formData: FormData): Promise<EditorMediaUploadResult> {
+  const locale = z.enum(locales).catch("en").parse(formData.get("locale"));
+  await requireEditor(locale);
+  const asset = formData.get("asset");
+  if (!(asset instanceof File) || !allowedMediaTypes.has(asset.type)) return { ok: false, error: "type" };
+  if (!asset.size || asset.size > maxEditorImageBytes) return { ok: false, error: "size" };
+  const bytes = new Uint8Array(await asset.arrayBuffer());
+  if (!hasExpectedImageSignature(bytes, asset.type)) return { ok: false, error: "type" };
+
+  const repositories = await getStudioEditorialRepositories();
+  if (!repositories.media.writable) return { ok: false, error: "configuration" };
+  try {
+    const stored = await new MediaCommandService(repositories.media).uploadOne({
+      name: asset.name.slice(0, 160),
+      mimeType: asset.type,
+      bytes,
+    });
+    revalidatePath(`/${locale}/studio/media`);
+    return {
+      ok: true,
+      asset: { path: stored.path, url: stored.url, name: stored.name, mimeType: stored.mimeType },
+    };
+  } catch {
+    return { ok: false, error: "upload" };
+  }
 }

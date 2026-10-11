@@ -3,6 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, Plus } from "lucide-react";
 import { ArticleList } from "@/components/studio/article-list";
+import { countActiveSubscribers, countPendingComments } from "@/components/studio/dashboard-counts";
+import { DashboardSignals, SignalCard } from "@/components/studio/dashboard-signals";
+import { countNewContactMessages } from "@/components/studio/inbox/inbox-data";
 import { studioSupplementalCopy } from "@/components/studio/studio-copy";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
@@ -20,7 +23,12 @@ export default async function StudioDashboardPage({
 
   await requireEditor(locale);
   const repositories = await getStudioEditorialRepositories();
-  const articles = await repositories.articles.listForStudio(locale);
+  const [articles, pendingComments, subscribers, newMessages] = await Promise.all([
+    repositories.articles.listForStudio(locale),
+    countPendingComments(),
+    countActiveSubscribers(repositories.newsletter),
+    countNewContactMessages(),
+  ]);
   const messages = getMessages(locale);
   const copy = studioSupplementalCopy[locale];
   const counts = {
@@ -66,6 +74,27 @@ export default async function StudioDashboardPage({
           <p>{copy.draftStories}</p>
         </article>
       </section>
+
+      <DashboardSignals>
+        <SignalCard
+          href={`/${locale}/studio/comments?status=pending`}
+          index="05"
+          label={messages.studio.pendingComments}
+          value={pendingComments}
+        />
+        <SignalCard
+          href={`/${locale}/studio/newsletter`}
+          index="06"
+          label={messages.studio.activeSubscribers}
+          value={subscribers}
+        />
+        <SignalCard
+          href={`/${locale}/studio/inbox?status=new`}
+          index="07"
+          label={messages.studio.newContactMessages}
+          value={newMessages}
+        />
+      </DashboardSignals>
 
       <section className="studio-section" aria-labelledby="recent-stories-title">
         <div className="studio-section__header">

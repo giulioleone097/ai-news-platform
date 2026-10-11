@@ -9,7 +9,15 @@ const active = new WeakMap<object, () => void>();
  * and returns the function that unregisters them. Name, text, schema and hints come from the
  * catalogue; only the handlers belong to the Studio.
  */
-export function registerEditorTools(context: ModelContextLike, env: EditorToolsEnvironment): () => void {
+export function registerEditorTools(
+  context: ModelContextLike,
+  env: EditorToolsEnvironment,
+  options: { isAdmin: boolean },
+): () => void {
   const tools = createEditorTools(env);
-  return registerCapabilities(context, editorPageCapabilities, (name) => tools[name], active);
+  // The server refuses the admin-only tools to an editor anyway; not offering them keeps the agent's list honest.
+  const capabilities = options.isAdmin
+    ? editorPageCapabilities
+    : editorPageCapabilities.filter((capability) => !capability.scopes.includes("newsroom.admin"));
+  return registerCapabilities(context, capabilities, (name) => tools[name], active);
 }

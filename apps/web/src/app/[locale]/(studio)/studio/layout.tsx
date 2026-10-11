@@ -4,8 +4,8 @@ import { StudioSiteTools } from "@/components/studio/site-tools/studio-site-tool
 import { StudioShell } from "@/components/studio/studio-shell";
 import { getMessages, isLocale } from "@/i18n";
 import { getContentMode } from "@atlasnews/adapters/config/env";
-import { requireEditor } from "@/lib/editor-auth";
-import { chatGPTSignOutPath } from "@/lib/sites/editor-auth";
+import { signOutPath } from "@/lib/auth/paths";
+import { getSignedInUser, requireEditor } from "@/lib/editor-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,16 +21,19 @@ export default async function StudioLayout({
 
   const editor = await requireEditor(locale);
   const messages = getMessages(locale);
+  // On Sites the sign-out is a form POST to the path of whatever signed the editor in: the platform for
+  // ChatGPT, ours for Google and GitHub. Elsewhere the shell uses the Supabase action.
+  const user = getContentMode() === "sites" ? await getSignedInUser() : null;
 
   return (
     <StudioShell
       editor={editor}
       locale={locale}
       messages={messages}
-      signOutPath={getContentMode() === "sites" ? chatGPTSignOutPath(`/${locale}`) : undefined}
+      signOutPath={user ? signOutPath(user.provider, `/${locale}`) : undefined}
     >
       {children}
-      <StudioSiteTools locale={locale} />
+      <StudioSiteTools isAdmin={editor.role === "admin"} locale={locale} />
     </StudioShell>
   );
 }

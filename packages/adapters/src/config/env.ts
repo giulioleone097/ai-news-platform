@@ -1,3 +1,4 @@
+import { oauthProviderIds, type OAuthCredentials, type OAuthProviderId } from "../auth/oauth";
 import { getSitesBindings } from "../sites/bindings";
 import {
   isLocalHostname,
@@ -217,6 +218,41 @@ export function getMcpEventsSubscribeRate() {
 
 export function getCronSecret() {
   return serverValue("CRON_SECRET", 16);
+}
+
+/**
+ * Own Google and GitHub sign-in (`sites` and `demo`): a provider is on only when its client id and secret
+ * are both set, and none works without the secret that signs the session cookies. Null when nothing is on.
+ */
+export function getOAuthSignInEnvironment() {
+  const sessionSecret = serverValue("ATLASNEWS_SESSION_SECRET", 32);
+  if (!sessionSecret) return null;
+  const credentials = (prefix: "GOOGLE" | "GITHUB"): OAuthCredentials | null => {
+    const clientId = serverValue(`${prefix}_CLIENT_ID`);
+    const clientSecret = serverValue(`${prefix}_CLIENT_SECRET`);
+    return clientId && clientSecret ? { clientId, clientSecret } : null;
+  };
+  const providers: Partial<Record<OAuthProviderId, OAuthCredentials>> = {};
+  const google = credentials("GOOGLE");
+  const github = credentials("GITHUB");
+  if (google) providers.google = google;
+  if (github) providers.github = github;
+  return google || github ? { sessionSecret, providers } : null;
+}
+
+/**
+ * The providers people can sign in with here: in `supabase` mode those the operator listed in
+ * `ATLASNEWS_SUPABASE_OAUTH_PROVIDERS` (enabled in the Supabase dashboard, which holds their credentials),
+ * otherwise those with own credentials.
+ */
+export function getSignInProviders(): OAuthProviderId[] {
+  if (getContentMode() === "supabase") {
+    if (!hasSupabaseEnvironment()) return [];
+    const listed = (listValue("ATLASNEWS_SUPABASE_OAUTH_PROVIDERS") ?? []).map((item) => item.toLowerCase());
+    return oauthProviderIds.filter((id) => listed.includes(id));
+  }
+  const own = getOAuthSignInEnvironment();
+  return own ? oauthProviderIds.filter((id) => id in own.providers) : [];
 }
 
 export function getCommentEnvironment() {

@@ -2,15 +2,32 @@ import "server-only";
 
 import { isDemoStudioEnabled } from "@atlasnews/adapters/config/env";
 import { seedAuthor } from "@atlasnews/adapters/editorial/seed";
+import type { SignedInUser } from "@/lib/auth/signed-in-user";
 import type { EditorIdentity } from "@/lib/editor-identity";
 import { createServerSupabaseClient } from "./server";
 
-/** The Supabase Auth user signed in, editor or not. */
-export async function getSignedInUserId(): Promise<string | null> {
+function metadataText(metadata: Record<string, unknown> | undefined, ...keys: string[]) {
+  for (const key of keys) {
+    const value = metadata?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+/** The Supabase Auth user signed in, editor or not, and how they signed in (email, Google or GitHub). */
+export async function getSupabaseUser(): Promise<SignedInUser | null> {
   const client = await createServerSupabaseClient();
   if (!client) return null;
   const { data, error } = await client.auth.getUser();
-  return !error && data.user ? data.user.id : null;
+  if (error || !data.user) return null;
+
+  const provider = data.user.app_metadata?.provider;
+  return {
+    userId: data.user.id,
+    email: data.user.email ?? null,
+    name: metadataText(data.user.user_metadata, "full_name", "name", "user_name"),
+    provider: provider === "google" || provider === "github" ? provider : "email",
+  };
 }
 
 export async function getCurrentEditor(): Promise<EditorIdentity | null> {

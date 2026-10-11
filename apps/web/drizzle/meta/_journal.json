@@ -50,6 +50,13 @@
       "when": 1791720006000,
       "tag": "0006_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1791720007000,
+      "tag": "0007_contact_messages",
+      "breakpoints": true
     }
   ]
 }
