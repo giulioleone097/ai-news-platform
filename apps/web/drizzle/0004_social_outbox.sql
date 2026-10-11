@@ -1,0 +1,1 @@
+-- 0004_social_outbox: placeholder, filled in by the Sites adapter work.

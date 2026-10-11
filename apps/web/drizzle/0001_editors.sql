@@ -1,0 +1,1 @@
+-- 0001_editors: placeholder, filled in by the Sites adapter work.

@@ -1,0 +1,1 @@
+-- 0000_content: placeholder, filled in by the Sites adapter work.

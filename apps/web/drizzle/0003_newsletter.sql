@@ -1,0 +1,1 @@
+-- 0003_newsletter: placeholder, filled in by the Sites adapter work.

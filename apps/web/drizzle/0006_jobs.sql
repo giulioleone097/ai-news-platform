@@ -1,0 +1,1 @@
+-- 0006_jobs: placeholder, filled in by the Sites adapter work.

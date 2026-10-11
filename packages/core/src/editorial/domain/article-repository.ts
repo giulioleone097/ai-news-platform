@@ -69,7 +69,7 @@ export interface EditorialRepositories {
   newsletter: NewsletterRepository;
   distribution: DistributionRepository;
   media: MediaRepository;
-  mode: "demo" | "supabase";
+  mode: "demo" | "sites" | "supabase";
 }
 
 export type AdminEditorialRepository = ArticleRepository

@@ -1,0 +1,1 @@
+-- 0002_comments: placeholder, filled in by the Sites adapter work.

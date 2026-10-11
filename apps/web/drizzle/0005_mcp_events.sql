@@ -1,0 +1,1 @@
+-- 0005_mcp_events: placeholder, filled in by the Sites adapter work.

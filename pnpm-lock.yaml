@@ -326,6 +326,10 @@ importers:
       zod:
         specifier: ^4.4.3
         version: 4.4.3
+    devDependencies:
+      miniflare:
+        specifier: 4.20260515.0
+        version: 4.20260515.0
 
   packages/contract:
     dependencies:
