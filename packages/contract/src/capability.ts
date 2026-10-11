@@ -5,16 +5,20 @@ import { EditorialRuleError } from "@atlasnews/core/editorial/domain/errors";
 import type { CapabilityPorts } from "./ports";
 
 /** What a caller may do. An empty `scopes` list on a capability means anonymous access. */
-export const scopes = ["newsroom.read", "newsroom.write", "newsroom.publish"] as const;
+export const scopes = ["newsroom.read", "newsroom.write", "newsroom.publish", "newsroom.admin"] as const;
 export type Scope = (typeof scopes)[number];
+
+/** What an editor may do: everything except managing the team. */
+const editorScopes: readonly Scope[] = scopes.filter((scope) => scope !== "newsroom.admin");
 
 /**
  * The newsroom scopes of a signed-in person with a profile `role`. Supabase Auth cannot grant custom
- * scopes, so the role decides: editors and admins have the same editorial rights, anyone else gets none.
- * The MCP endpoint and the web app both read this one rule.
+ * scopes, so the role decides: editors have the editorial rights, admins also `newsroom.admin` (the
+ * team), anyone else gets none. The MCP endpoint and the web app both read this one rule.
  */
 export function scopesForRole(role: string | undefined): readonly Scope[] {
-  return role === "editor" || role === "admin" ? scopes : [];
+  if (role === "admin") return scopes;
+  return role === "editor" ? editorScopes : [];
 }
 
 /** Where a capability is offered: the MCP endpoint, and/or tools of the open web page. */
@@ -30,7 +34,13 @@ export interface Annotations {
 
 export type Principal =
   | { readonly kind: "anonymous"; readonly scopes: readonly Scope[] }
-  | { readonly kind: "editor"; readonly subject: string; readonly scopes: readonly Scope[] };
+  | {
+      readonly kind: "editor";
+      readonly subject: string;
+      readonly scopes: readonly Scope[];
+      /** The author that the editor's writes are attributed to, when the caller names one. */
+      readonly authorId?: string;
+    };
 
 export const anonymous: Principal = { kind: "anonymous", scopes: [] };
 

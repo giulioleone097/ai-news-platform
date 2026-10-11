@@ -1,6 +1,7 @@
 import {
   commentPolicy,
   type CommentActor,
+  type CommentStatus,
   type CommentReportInput,
   type CreateCommentInput,
   type ModerateCommentInput,
@@ -47,6 +48,10 @@ export class CommentService {
 
   listModeration(query: ModerationCommentQuery): Promise<ModerationCommentPage> {
     return this.repository.listModeration(query);
+  }
+
+  countByStatus(status: CommentStatus) {
+    return this.repository.countByStatus(status);
   }
 
   listReports(commentId: string) {

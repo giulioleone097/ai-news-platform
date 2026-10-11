@@ -5,8 +5,10 @@ import {
 } from "@modelcontextprotocol/server";
 
 import { MemoryEditorialRepository } from "@atlasnews/adapters/editorial/memory-editorial-repository";
+import { MemoryEditorDirectory } from "@atlasnews/adapters/team/memory-editor-directory";
 import { siteLinks, type CapabilityPorts } from "@atlasnews/contract";
 import type { EditorialCacheInvalidator } from "@atlasnews/core/editorial/application/cache-port";
+import type { EditorDirectory } from "@atlasnews/core/team/domain/ports";
 
 import { apiKeyVerifier, type AccessTokenVerifier } from "./auth";
 import { handleMcpRequest } from "./http";
@@ -18,6 +20,7 @@ export const testApiKey = "test-only-admin-key-with-at-least-32-characters";
 export function memoryPorts(
   repository = new MemoryEditorialRepository(),
   invalidateCache: EditorialCacheInvalidator = () => undefined,
+  team: EditorDirectory = new MemoryEditorDirectory(),
 ): CapabilityPorts {
   const unavailable = async () => {
     throw new Error("not configured");
@@ -32,7 +35,9 @@ export function memoryPorts(
     moderation: unavailable,
     commentNotifications: unavailable,
     newsletter: unavailable,
+    contact: unavailable,
     social: unavailable,
+    team: async () => team,
   };
 }
 

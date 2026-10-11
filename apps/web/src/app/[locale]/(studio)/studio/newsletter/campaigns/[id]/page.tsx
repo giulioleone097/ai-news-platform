@@ -7,7 +7,7 @@ import {
   campaignStatusClass,
   deliveryStatusClass,
 } from "@/components/studio/newsletter-campaigns/campaign-status";
-import { isLocale } from "@/i18n";
+import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { getStudioNewsletterCampaignService } from "@/server/composition";
 
@@ -54,7 +54,7 @@ export default async function NewsletterCampaignPage({
       {campaign.status !== "draft" ? (
         <section className="studio-panel" aria-labelledby="campaign-preview-title">
           <div className="studio-panel__heading"><span>05</span><h2 id="campaign-preview-title">{labels.preview}</h2></div>
-          <MarkdownRenderer className="markdown-content" content={campaign.contentMarkdown} />
+          <MarkdownRenderer className="markdown-content" content={campaign.contentMarkdown} labels={getMessages(locale).markdown} />
         </section>
       ) : null}
 

@@ -442,6 +442,8 @@ describe("D1CommentRepository moderation", () => {
     const article = await seedPublishedArticle(database);
     const ids: string[] = [];
     for (let index = 0; index < 3; index += 1) ids.push((await createComment(guest(), { articleId: article, body: `Queued remark ${index}.` })).id);
+    expect(await repository.countByStatus("pending")).toBe(await count("SELECT count(*) AS n FROM comments WHERE status = 'pending'"));
+    expect(await repository.countByStatus("pending")).toBeGreaterThanOrEqual(3);
     const first = await repository.listModeration({ status: "pending", locale: "en", cursor: null, limit: 2 });
     expect(first.items).toHaveLength(2);
     const second = await repository.listModeration({ status: "pending", locale: "en", cursor: decodeCommentCursor(first.nextCursor!), limit: 2 });

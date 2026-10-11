@@ -15,7 +15,7 @@ import {
 import { locales, type Locale } from "@atlasnews/core/locale";
 import { getEditorIdentity, isSignedIn } from "@/lib/editor-auth";
 import { invalidatePublicEditorialCache } from "@/lib/editorial-cache";
-import { getPublicEditorialRepositories, getStudioAdminEditorialRepository } from "@/server/composition";
+import { getPublicEditorialRepositories, getStudioAdminEditorialRepository, getStudioEditorDirectory } from "@/server/composition";
 
 /**
  * Runs one catalogue capability (`@atlasnews/contract`) for the editor who is signed in to the
@@ -79,7 +79,9 @@ function createPorts(invalidations: Map<Locale, Set<string>>): CapabilityPorts {
     moderation: notOnThePage,
     commentNotifications: notOnThePage,
     newsletter: notOnThePage,
+    contact: notOnThePage,
     social: notOnThePage,
+    team: getStudioEditorDirectory,
   };
 }
 
@@ -117,6 +119,7 @@ export async function runEditorCapability(
     kind: "editor",
     subject: editor.userId,
     scopes: scopesForRole(editor.role),
+    authorId: editor.author.id,
   };
   if (!hasScopes(principal, capability.scopes)) {
     return fail(403, `This account lacks the ${capability.scopes.join(", ")} permission that ${name} needs.`);

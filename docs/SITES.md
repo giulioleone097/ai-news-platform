@@ -58,11 +58,28 @@ Versions pinned in `apps/web/package.json` (the set the spike proved against Ope
 
 ### Sign-in and editors
 
-Sites owns sign-in. The Studio's login page links to `/signin-with-chatgpt?return_to=…` (a top-level navigation) and sign-out posts to `/signout-with-chatgpt`. For a signed-in visitor the platform adds `oai-authenticated-user-id`, `oai-authenticated-user-email` and the encoded full name to each request; `packages/adapters/src/sites/editors.ts` turns them into an editor:
+There are three ways to sign in, and one person can use any of them:
 
-- An account whose email is in `ATLASNEWS_ADMIN_EMAILS` becomes an admin, one in `ATLASNEWS_EDITOR_EMAILS` an editor, each with its own author, the first time it signs in. The row then belongs to that ChatGPT account: another account with the same email gets nothing, and removing the address from the list does not revoke it.
-- A row in `editors` with an email and no user id is an invitation and binds the same way.
-- Every other account is a reader: the login page says it is not an editor and offers to switch account. Readers can still comment as signed-in users.
+| | Who runs it | Identity |
+| --- | --- | --- |
+| ChatGPT | the platform: the login page and the comment section link to `/signin-with-chatgpt?return_to=…` (a top-level navigation), sign-out posts to `/signout-with-chatgpt` | the platform adds `oai-authenticated-user-id`, `oai-authenticated-user-email` and the encoded full name to each request |
+| Google | `packages/adapters/src/auth/google.ts` (OpenID Connect, PKCE) | the email, only when Google says `email_verified` |
+| GitHub | `packages/adapters/src/auth/github.ts` (OAuth app, PKCE) | the primary email of `/user/emails`, only when GitHub marks it verified; an account without one is refused |
+
+Google and GitHub sign-in is ours and turns on per provider when its client id and secret are set together with `ATLASNEWS_SESSION_SECRET` ([variables](#environment-variables)). The routes are `GET /api/auth/<provider>/start?return_to=…`, `GET /api/auth/<provider>/callback` and `POST /api/auth/signout` (same-origin only); `/callback`, `/signin-with-chatgpt` and `/signout-with-chatgpt` stay the platform's. `start` stores a random `state` and the PKCE verifier in a signed, ten-minute cookie; the callback accepts the provider's answer only for that attempt, swaps the code for a verified profile and sets a stateless session cookie: HMAC-SHA256 signed, `__Host-` prefixed, HttpOnly, Secure, SameSite=Lax, 30 days (a loopback `http` site gets neither the prefix nor Secure). `return_to` must be a path on this site; anything else, and the auth paths themselves, become `/`. Signing out clears the cookie; because the session has no server-side record, a copy someone kept stays valid until it expires, and changing `ATLASNEWS_SESSION_SECRET` ends every session.
+
+`GET /api/auth/session` tells the comment section how to sign in here and who is signed in (their display name, never the email).
+
+`packages/adapters/src/sites/editors.ts` turns whichever identity is present into an editor, in the order ChatGPT headers, then our session cookie. Editors are keyed by verified email, not by user id:
+
+- An account whose email is in `ATLASNEWS_ADMIN_EMAILS` becomes an admin, one in `ATLASNEWS_EDITOR_EMAILS` an editor, each with its own author, the first time it signs in with any provider. Removing the address from the list does not revoke the row.
+- The row is found by its email (case-insensitive), so the same person is the same editor with ChatGPT, Google or GitHub. `editors.user_id` records the user id of the latest sign-in (`google:<sub>`, `github:<id>` or the ChatGPT id) for reference only and grants nothing. An editor who changes the email of their account must be invited again under the new address.
+- A row in `editors` with an email and no user id is an invitation: whoever signs in with that verified email is that editor.
+- Every other account is a reader: the login page says it is not an editor and offers to switch account. Readers can comment as signed-in users: the comment section lists the sign-in options next to guest commenting and prefills the display name.
+
+Admins invite, promote and remove editors from the Studio (**Team**, `/{locale}/studio/team`; admins only, an editor gets a 404) or with the `admin_*_editor` MCP tools ([MCP.md](MCP.md#team)). **Invite** takes an email, a role (editor or admin) and an optional display name (the part of the address before the @ if left out); it inserts an author and an `editors` row with the address and no user id, in one batch, so the invitation is the row described above. **No email is sent** on Sites: tell the person to sign in with that address (ChatGPT, Google or GitHub). A team member is *invited* until someone has signed in with the address, then *active*. **Remove** deletes the row, which ends access at once, and the author too when it has no articles; an author with articles stays. The team keeps at least one active admin (the last one cannot be demoted or removed), an admin cannot remove themselves, and an address cannot be invited twice. Removal does not undo the bootstrap lists: an address in `ATLASNEWS_ADMIN_EMAILS` or `ATLASNEWS_EDITOR_EMAILS` is created again at its next sign-in, so removing someone listed there also needs the variable edited and the Site redeployed.
+
+The email is the identity, so it is trusted only as far as the provider verified it. This is why unverified Google emails and GitHub accounts without a verified primary email are refused.
 
 D1 has no row-level security, so the Studio receives its repositories only after the editor check (`apps/web/src/server/composition.ts`), and the MCP server maps the same editor to its scopes (`apps/mcp/src/auth.ts`).
 
@@ -96,6 +113,9 @@ Runtime:
 | --- | --- | --- |
 | `ATLASNEWS_ADMIN_EMAILS` | yes | the ChatGPT account(s) that become admins at first sign-in |
 | `ATLASNEWS_EDITOR_EMAILS` | optional | accounts that become editors at first sign-in |
+| `ATLASNEWS_SESSION_SECRET` | for Google and GitHub sign-in | signs the sign-in cookies, at least 32 characters (`openssl rand -hex 32`) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional | turn on Google sign-in (with the session secret) |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | optional | turn on GitHub sign-in (with the session secret) |
 | `ATLASNEWS_COMMENT_GUEST_SECRET` | yes | signs guest commenter identities (`openssl rand -hex 32`) |
 | `ATLASNEWS_CLIENT_IP_HEADER` | yes | `cf-connecting-ip`; keys the per-network limits of comments, newsletter and MCP events |
 | `NEXT_PUBLIC_SITE_URL` | yes | same value as at build time; the server and the MCP server read it at run time |
@@ -104,6 +124,13 @@ Runtime:
 | `CRON_SECRET` | only for an external schedule | guards `/internal/*` |
 | `ATLASNEWS_MCP_ADMIN_API_KEY` | optional | Bearer key for CI or scripts calling the newsroom tools without ChatGPT sign-in |
 | `ATLASNEWS_OPENAI_APPS_CHALLENGE`, `ATLASNEWS_MCP_UI_DOMAIN` | for public plugin submission | [AGENT_PLUGIN.md](AGENT_PLUGIN.md) |
+
+What the owner registers for Google and GitHub (`<site>` is the origin in `NEXT_PUBLIC_SITE_URL`):
+
+- Google: in Google Cloud Console, APIs and Services, Credentials, create an OAuth client ID of type Web application. Authorized redirect URI: `https://<site>/api/auth/google/callback`. The consent screen needs the `openid`, `email` and `profile` scopes (all non-sensitive).
+- GitHub: Settings, Developer settings, OAuth Apps, New OAuth App. Authorization callback URL: `https://<site>/api/auth/github/callback`. Generate a client secret.
+
+Sign in on the canonical origin (`NEXT_PUBLIC_SITE_URL`): the callback and the cookies live there, so a custom domain needs the redirect URI registered for it.
 
 Not used on Sites: every `SUPABASE_*` and `NEXT_PUBLIC_SUPABASE_*` variable, `NEXT_PUBLIC_MCP_URL` (defaults to the site origin), `ATLASNEWS_MCP_OAUTH_*`, `ATLASNEWS_OAUTH_REDIRECT_HOSTS`, `ATLASNEWS_REVALIDATE_SECRET` (the MCP server runs in the same Worker). `GET /api/health` reports the mode and lists every capability still unconfigured; it answers 503 until all are.
 
@@ -189,3 +216,4 @@ Measured locally on the demo build, phone viewport (390 px, device pixel ratio 3
 6. Platform limits: Worker size, startup and request CPU, subrequests per request, request body size (the Studio upload allows 9 MB), D1 and R2 plan limits.
 7. Background jobs driven by traffic on a real Site, and provider sends (Resend, LinkedIn, X, WhatsApp) with real credentials.
 8. Behaviour of `vinext 1.0.0-beta.5` on routes the checks did not time (ISR expiry), and any upgrade to vinext 1.1.0.
+9. Google and GitHub sign-in against the real providers. The adapters, the cookie codec and the route handlers are tested with mocked `fetch`; the Worker's handling of `__Host-` cookies and of the provider redirects on a real Site was not exercised.

@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { defaultMarkdownLabels } from "@/components/markdown/labels";
 import { MarkdownRenderer } from "@/components/markdown/markdown-renderer";
 import { extractMarkdownHeadings } from "@/lib/markdown";
 import { applyMarkdownCommand } from "@/lib/markdown-editor";
@@ -109,5 +110,204 @@ describe("MarkdownRenderer", () => {
 
     expect(html).toContain("Immagine non disponibile");
     expect(html).not.toContain("images.example.com");
+  });
+
+  describe("code highlighting", () => {
+    it("highlights registered languages and their aliases on the server", () => {
+      const html = renderToStaticMarkup(
+        <MarkdownRenderer content={"```ts\nconst answer: number = 42; // done\n```\n\n```sh\necho \"hi\"\n```"} />,
+      );
+
+      expect(html).toContain('<code class="hljs language-ts">');
+      expect(html).toContain('<span class="hljs-keyword">const</span>');
+      expect(html).toContain('<span class="hljs-comment">// done</span>');
+      expect(html).toContain('<span class="hljs-string">&quot;hi&quot;</span>');
+    });
+
+    it("leaves unknown languages and untagged fences plain", () => {
+      const html = renderToStaticMarkup(
+        <MarkdownRenderer content={"```cobol\nMOVE 1 TO X\n```\n\n```\nconst a = 1;\n```"} />,
+      );
+
+      expect(html).not.toContain("<span");
+      expect(html).toContain("MOVE 1 TO X");
+      expect(html).toContain("const a = 1;");
+    });
+
+    it("escapes code instead of interpreting it as HTML", () => {
+      const html = renderToStaticMarkup(<MarkdownRenderer content={"```html\n<script>alert(1)</script>\n```"} />);
+
+      expect(html).not.toContain("<script>");
+      expect(html).toContain("&lt;");
+    });
+  });
+
+  describe("callouts", () => {
+    it("renders every GitHub alert kind as a labelled aside", () => {
+      for (const [kind, label] of [["NOTE", "Note"], ["TIP", "Tip"], ["IMPORTANT", "Important"], ["WARNING", "Warning"], ["CAUTION", "Caution"]]) {
+        const html = renderToStaticMarkup(<MarkdownRenderer content={`> [!${kind}]\n> Mind **this**.`} />);
+
+        expect(html).toContain(`<aside class="markdown-callout markdown-callout--${kind.toLowerCase()}" role="note">`);
+        expect(html).toContain(`<p class="markdown-callout__title">${label}</p>`);
+        expect(html).toContain("<p>Mind <strong>this</strong>.</p>");
+        expect(html).not.toContain("[!");
+        expect(html).not.toContain("<blockquote");
+      }
+    });
+
+    it("uses the labels of the article locale and accepts a lower-case marker", () => {
+      const html = renderToStaticMarkup(
+        <MarkdownRenderer
+          content={"> [!warning]\n> Attenzione."}
+          labels={{ ...defaultMarkdownLabels, callouts: { ...defaultMarkdownLabels.callouts, warning: "Avviso" } }}
+        />,
+      );
+
+      expect(html).toContain('<p class="markdown-callout__title">Avviso</p>');
+    });
+
+    it("keeps the body paragraphs and an empty callout intact", () => {
+      const body = renderToStaticMarkup(<MarkdownRenderer content={"> [!TIP]\n> One\n>\n> Two\n>\n> - item"} />);
+      const empty = renderToStaticMarkup(<MarkdownRenderer content="> [!TIP]" />);
+
+      expect(body).toContain("<p>One</p>");
+      expect(body).toContain("<p>Two</p>");
+      expect(body).toContain("<li>item</li>");
+      expect(empty).toContain("markdown-callout--tip");
+      expect(empty).not.toContain("[!TIP]");
+    });
+
+    it("leaves ordinary, nested and unknown quotes as blockquotes", () => {
+      const html = renderToStaticMarkup(
+        <MarkdownRenderer
+          content={[
+            "> Plain quote",
+            "",
+            "> > [!NOTE]",
+            "> > nested",
+            "",
+            "> [!INFO]",
+            "> unknown",
+            "",
+            "> [!NOTE] inline text",
+            "",
+            "- > [!NOTE]",
+            "  > in a list",
+          ].join("\n")}
+        />,
+      );
+
+      expect(html).not.toContain("<aside");
+      expect(html.match(/<blockquote>/g)?.length).toBeGreaterThanOrEqual(5);
+      expect(html).toContain("[!INFO]");
+    });
+  });
+
+  describe("embeds", () => {
+    it("turns a lone YouTube URL into a facade without any third-party request", () => {
+      for (const url of [
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s",
+        "https://youtu.be/dQw4w9WgXcQ?si=abc",
+        "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+        "<https://m.youtube.com/watch?v=dQw4w9WgXcQ>",
+      ]) {
+        const html = renderToStaticMarkup(<MarkdownRenderer content={`Before\n\n${url}\n\nAfter`} />);
+
+        expect(html).toContain('class="markdown-embed markdown-embed--youtube"');
+        expect(html).toContain("<button");
+        expect(html).toContain("Load video");
+        expect(html).toContain('href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"');
+        expect(html).toContain('rel="noopener noreferrer"');
+        expect(html).not.toContain("<iframe");
+        expect(html).not.toContain("youtube-nocookie");
+        expect(html).not.toContain("ytimg");
+      }
+    });
+
+    it("turns a lone X status URL into a facade linking to the post", () => {
+      const html = renderToStaticMarkup(
+        <MarkdownRenderer content="https://twitter.com/atlas_news/status/1790000000000000001" />,
+      );
+
+      expect(html).toContain('class="markdown-embed markdown-embed--x"');
+      expect(html).toContain('href="https://x.com/atlas_news/status/1790000000000000001"');
+      expect(html).toContain("@atlas_news");
+      expect(html).toContain("Load post");
+      expect(html).not.toContain("<iframe");
+      expect(html).not.toContain("platform.twitter.com");
+      expect(html).not.toContain("widgets.js");
+    });
+
+    it("uses the embed copy of the article locale", () => {
+      const html = renderToStaticMarkup(
+        <MarkdownRenderer
+          content="https://youtu.be/dQw4w9WgXcQ"
+          labels={{
+            ...defaultMarkdownLabels,
+            embeds: { ...defaultMarkdownLabels.embeds, youtube: { load: "Carica il video", open: "Guarda su YouTube", title: "Video" } },
+          }}
+        />,
+      );
+
+      expect(html).toContain("Carica il video");
+      expect(html).toContain("Guarda su YouTube");
+    });
+
+    it("keeps everything that is not an exact, lone video or status URL as a link", () => {
+      const cases = [
+        "Watch https://youtu.be/dQw4w9WgXcQ now",
+        "[A video](https://youtu.be/dQw4w9WgXcQ)",
+        "- https://youtu.be/dQw4w9WgXcQ",
+        "> https://youtu.be/dQw4w9WgXcQ",
+        "https://youtu.be/dQw4w9WgXcQx",
+        "https://youtu.be/dQw4w9WgXc",
+        "https://youtu.be/dQw4w9WgXc!",
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ%22onload",
+        "https://www.youtube.com/watch?list=PL123",
+        "https://www.youtube.com/playlist?list=PL123",
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        "https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ",
+        "https://evil.example/https://youtu.be/dQw4w9WgXcQ",
+        "https://user:pw@youtu.be/dQw4w9WgXcQ",
+        "https://x.com/atlas/status/123abc",
+        "https://x.com/atlas/status/",
+        "https://x.com/atlas/likes",
+        "https://x.com/waytoolongusername12345/status/123",
+        "https://x.com.evil.example/atlas/status/123",
+        "https://example.com/atlas/status/123",
+        "ftp://youtu.be/dQw4w9WgXcQ",
+      ];
+
+      for (const content of cases) {
+        const html = renderToStaticMarkup(<MarkdownRenderer content={content} />);
+
+        expect(html, content).not.toContain("markdown-embed");
+        expect(html, content).not.toContain("<iframe");
+        expect(html, content).not.toContain("<button");
+      }
+      expect(renderToStaticMarkup(<MarkdownRenderer content="https://youtu.be/dQw4w9WgXcQx" />)).toContain("<a ");
+    });
+
+    it("never renders a frame from a forged embed element", () => {
+      const html = renderToStaticMarkup(
+        <MarkdownRenderer content={'<markdown-embed href="https://youtu.be/dQw4w9WgXcQ"></markdown-embed>'} />,
+      );
+
+      expect(html).not.toContain("markdown-embed");
+      expect(html).not.toContain("youtube");
+    });
+  });
+
+  it("keeps raw HTML skipped next to the new syntax", () => {
+    const html = renderToStaticMarkup(
+      <MarkdownRenderer
+        content={'<iframe src="https://evil.example"></iframe>\n\n<aside class="markdown-callout">x</aside>\n\n> [!NOTE]\n> <img src=x onerror=alert(1)>'}
+      />,
+    );
+
+    expect(html).not.toContain("<iframe");
+    expect(html).not.toContain("evil.example");
+    expect(html).not.toContain("onerror");
+    expect(html.match(/<aside/g)).toHaveLength(1);
   });
 });

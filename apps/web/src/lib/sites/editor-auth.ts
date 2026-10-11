@@ -10,36 +10,17 @@ export async function getSitesUser() {
   return readSitesIdentity(await headers());
 }
 
-/** The signed-in ChatGPT account's editor profile, or null for a reader or an anonymous visitor. */
-export async function getSitesEditor(): Promise<EditorIdentity | null> {
-  const identity = await getSitesUser();
-  if (!identity) return null;
-  const editor = await resolveSitesEditor(requireSitesBindings().database, identity, getEditorAllowList());
-  return editor ? { userId: editor.userId, role: editor.role, author: editor.author, isDemo: false } : null;
-}
-
-const reservedPaths = new Set(["/signin-with-chatgpt", "/signout-with-chatgpt", "/callback"]);
-
-/** A same-origin path to come back to; anything else, or a platform auth path, becomes `/`. */
-function safeReturnPath(value: string) {
-  if (!value.startsWith("/") || value.startsWith("//")) return "/";
-  try {
-    const url = new URL(value, "https://site.invalid");
-    if (url.origin !== "https://site.invalid" || reservedPaths.has(url.pathname)) return "/";
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return "/";
-  }
-}
-
 /**
- * Sign-in and sign-out belong to the platform. They must start as a top-level navigation (a plain
- * link or form with `target="_top"`), never a fetch or a client-side route change.
+ * The editor profile of a signed-in account (ChatGPT, Google or GitHub, matched by its verified email),
+ * or null for a reader.
  */
-export function chatGPTSignInPath(returnTo: string) {
-  return `/signin-with-chatgpt?return_to=${encodeURIComponent(safeReturnPath(returnTo))}`;
-}
-
-export function chatGPTSignOutPath(returnTo: string) {
-  return `/signout-with-chatgpt?return_to=${encodeURIComponent(safeReturnPath(returnTo))}`;
+export async function getSitesEditor(
+  account: { userId: string; email: string; name: string | null },
+): Promise<EditorIdentity | null> {
+  const editor = await resolveSitesEditor(
+    requireSitesBindings().database,
+    { userId: account.userId, email: account.email, fullName: account.name },
+    getEditorAllowList(),
+  );
+  return editor ? { userId: editor.userId, role: editor.role, author: editor.author, isDemo: false } : null;
 }

@@ -7,10 +7,12 @@ import {
   FileText,
   Gauge,
   Images,
+  Inbox,
   Mail,
   MessageSquareText,
   Send,
   Tags,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import type { Locale, Messages } from "@/i18n";
@@ -26,9 +28,12 @@ interface NavigationItem {
 export function StudioNavigation({
   locale,
   copy,
+  isAdmin,
 }: {
   locale: Locale;
   copy: Messages["studio"];
+  /** Only admins manage the team; the page answers 404 to everybody else. */
+  isAdmin: boolean;
 }) {
   const pathname = usePathname();
   const root = `/${locale}/studio`;
@@ -42,6 +47,8 @@ export function StudioNavigation({
     { href: `${root}/distribution`, label: copy.distribution, icon: Send },
     { href: `${root}/newsletter`, label: copy.newsletter, icon: Mail },
     { href: `${root}/comments`, label: copy.comments, icon: MessageSquareText },
+    { href: `${root}/inbox`, label: copy.inbox, icon: Inbox },
+    ...(isAdmin ? [{ href: `${root}/team`, label: copy.team, icon: Users }] : []),
   ];
 
   return (

@@ -4,9 +4,11 @@ import type { EditorialCacheInvalidator } from "@atlasnews/core/editorial/applic
 import type { CommentService } from "@atlasnews/core/comments/application/comment-service";
 import type { CommentNotificationDeliveryService } from "@atlasnews/core/comments/application/comment-notification-delivery";
 import type { NewsletterCampaignService, NewsletterDeliveryService } from "@atlasnews/core/newsletter/application/service";
+import type { ContactMessageService } from "@atlasnews/core/support/application/contact-service";
 import type { SocialOutboxProcessor } from "@atlasnews/core/social-publishing/application/outbox-processor";
 import type { SocialPublishingService } from "@atlasnews/core/social-publishing/application/social-publishing-service";
 import type { SocialProviderRegistry } from "@atlasnews/core/social-publishing/domain/ports";
+import type { EditorDirectory } from "@atlasnews/core/team/domain/ports";
 
 export type PublicArticleReader = Pick<
   ArticleRepository,
@@ -38,11 +40,15 @@ export interface CapabilityPorts {
     delivery: NewsletterDeliveryService;
     authorId: string;
   }>;
+  /** The contact-form inbox; the visitors' messages need an editor sign-in, which the caller has checked. */
+  contact(): Promise<ContactMessageService>;
   social(): Promise<{
     service: SocialPublishingService;
     processor: SocialOutboxProcessor;
     providers: SocialProviderRegistry;
   }>;
+  /** The newsroom team. Full access: only the `newsroom.admin` capabilities may use it. */
+  team(): Promise<EditorDirectory>;
 }
 
 export interface SiteLinks {

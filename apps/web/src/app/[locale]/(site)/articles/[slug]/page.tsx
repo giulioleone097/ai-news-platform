@@ -306,6 +306,7 @@ export default async function ArticlePage({
             className="article-body markdown-content"
             content={article.content}
             imageUnavailableLabel={messages.errors.imageUnavailable}
+            labels={messages.markdown}
           />
         </div>
 

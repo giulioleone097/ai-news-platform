@@ -11,6 +11,7 @@ import type {
 import {
   commentPolicy,
   type CommentActor,
+  type CommentStatus,
   type CommentReportInput,
   type CreateCommentInput,
   type CreatedComment,
@@ -364,6 +365,15 @@ export class SupabaseCommentRepository implements CommentRepository {
       createdAt: row.created_at,
     }));
     return reports;
+  }
+
+  async countByStatus(status: CommentStatus) {
+    const { count, error } = await this.service()
+      .from("comments")
+      .select("id", { count: "exact", head: true })
+      .eq("status", status);
+    if (error) throw repositoryError(error);
+    return count ?? 0;
   }
 
   async listAudit(query: ModerationAuditQuery) {

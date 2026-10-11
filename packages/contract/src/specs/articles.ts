@@ -58,7 +58,12 @@ const articleFields = {
   title: z.string().trim().min(8).max(180),
   slug: slugSchema.optional(),
   excerpt: z.string().trim().min(20).max(360),
-  content: z.string().trim().min(20).max(100_000),
+  content: z.string().trim().min(20).max(100_000).describe(
+    "Article body in Markdown (GFM). Raw HTML is dropped. Beyond GFM: fenced code with a language (ts, js, json, bash, "
+    + "python, sql, yaml, html, css, diff, go, rust) is highlighted; > [!NOTE], [!TIP], [!IMPORTANT], [!WARNING] or "
+    + "[!CAUTION] on the first line of a quote makes a callout; a paragraph holding only a YouTube or X status URL "
+    + "becomes a click-to-load embed.",
+  ),
   categorySlug: slugSchema,
   featured: z.boolean().optional(),
   coverImage: z.string().trim().min(1).max(2_048)

@@ -46,6 +46,8 @@ export interface CommentRepository {
   deleteOwn(id: string, actor: OwnCommentMutationInput["actor"]): Promise<void>;
   report(input: CommentReportInput): Promise<void>;
   listModeration(query: ModerationCommentQuery): Promise<ModerationCommentPage>;
+  /** How many comments are in `status`, for the moderation badge. */
+  countByStatus(status: CommentStatus): Promise<number>;
   listReports(commentId: string): Promise<ModerationReport[]>;
   moderate(input: ModerateCommentInput): Promise<void>;
   listAudit(query: ModerationAuditQuery): Promise<ModerationAuditPage>;

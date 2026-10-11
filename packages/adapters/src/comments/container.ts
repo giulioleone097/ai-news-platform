@@ -61,6 +61,7 @@ function publicCommentRepository(repository: CommentRepository): CommentReposito
     deleteOwn: refuse,
     report: refuse,
     listModeration: refuse,
+    countByStatus: refuse,
     listReports: refuse,
     moderate: refuse,
     listAudit: refuse,

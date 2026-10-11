@@ -6,6 +6,8 @@ import { mediaCapabilities } from "./handlers/media";
 import { newsroomCapabilities } from "./handlers/newsroom";
 import { operationsCapabilities } from "./handlers/operations";
 import { publicCapabilities } from "./handlers/public";
+import { supportCapabilities } from "./handlers/support";
+import { teamCapabilities } from "./handlers/team";
 
 /**
  * Every capability the server offers, defined once. Adapters (the MCP endpoint today, the
@@ -19,6 +21,8 @@ export const capabilities: readonly Capability[] = [
   ...mediaCapabilities,
   ...newsroomCapabilities,
   ...operationsCapabilities,
+  ...supportCapabilities,
+  ...teamCapabilities,
 ];
 
 export const mcpCapabilities = capabilities.filter((capability) => capability.surfaces.includes("mcp"));

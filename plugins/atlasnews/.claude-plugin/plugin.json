@@ -17,7 +17,7 @@
   ],
   "icon": "./assets/logo.svg",
   "documentationUrl": "https://owner-must-supply.invalid/docs",
-  "supportUrl": "https://owner-must-supply.invalid/support",
-  "privacyPolicyUrl": "https://owner-must-supply.invalid/privacy",
-  "termsOfServiceUrl": "https://owner-must-supply.invalid/terms"
+  "supportUrl": "https://owner-must-supply.invalid/en/support",
+  "privacyPolicyUrl": "https://owner-must-supply.invalid/en/privacy",
+  "termsOfServiceUrl": "https://owner-must-supply.invalid/en/terms"
 }

@@ -22,6 +22,7 @@ vi.mock("@/lib/editorial-cache", () => ({
 vi.mock("@/server/composition", () => ({
   getStudioEditorialRepositories: async () => ({ articles: { findById: mocks.findById } }),
 }));
+vi.mock("@/server/capabilities", () => ({ runEditorCapability: vi.fn() }));
 vi.mock("@atlasnews/core/editorial/application/article-commands", () => ({
   ArticleCommandService: class {
     save = mocks.save;

@@ -22,7 +22,7 @@ afterEach(() => vi.restoreAllMocks());
 describe("registerEditorTools", () => {
   it("registers each editor capability once, with the catalogue's own text, schema and hints", () => {
     const { context, tools, calls } = createFakeModelContext();
-    registerEditorTools(context, env);
+    registerEditorTools(context, env, { isAdmin: true });
 
     expect(editorPageCapabilities.length).toBeGreaterThan(30);
     expect(calls).toEqual(editorPageCapabilities.map((capability) => capability.name));
@@ -36,18 +36,29 @@ describe("registerEditorTools", () => {
     }
   });
 
+  it("leaves the admin-only team tools out for an editor", () => {
+    const { context, calls } = createFakeModelContext();
+    registerEditorTools(context, env, { isAdmin: false });
+
+    const adminOnly = editorPageCapabilities.filter((capability) => capability.scopes.includes("newsroom.admin"));
+    expect(adminOnly.map((capability) => capability.name)).toContain("admin_invite_editor");
+    expect(calls).toEqual(
+      editorPageCapabilities.filter((capability) => !adminOnly.includes(capability)).map((capability) => capability.name),
+    );
+  });
+
   it("does not register twice when it is mounted again, and unregisters everything on cleanup", () => {
     const { context, tools, calls } = createFakeModelContext();
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
-    const first = registerEditorTools(context, env);
-    expect(registerEditorTools(context, env)).toBe(first);
+    const first = registerEditorTools(context, env, { isAdmin: true });
+    expect(registerEditorTools(context, env, { isAdmin: true })).toBe(first);
     expect(calls).toHaveLength(editorPageCapabilities.length);
 
     first();
     expect(tools.size).toBe(0);
 
-    const again = registerEditorTools(context, env);
+    const again = registerEditorTools(context, env, { isAdmin: true });
     expect(tools.size).toBe(editorPageCapabilities.length);
     expect(warn).not.toHaveBeenCalled();
     again();
@@ -55,7 +66,7 @@ describe("registerEditorTools", () => {
 
   it("lives beside the reader tools: no name is shared, so both can be registered in one page", () => {
     const { context, tools } = createFakeModelContext();
-    const disposeEditor = registerEditorTools(context, env);
+    const disposeEditor = registerEditorTools(context, env, { isAdmin: true });
     const reader = new Set(pageCapabilities.map((capability) => capability.name));
     expect(editorPageCapabilities.some((capability) => reader.has(capability.name))).toBe(false);
     disposeEditor();
@@ -64,7 +75,7 @@ describe("registerEditorTools", () => {
 
   it("reports a refused registration instead of throwing", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const stays = registerEditorTools({ registerTool: () => Promise.reject(new Error("blocked")) }, env);
+    const stays = registerEditorTools({ registerTool: () => Promise.reject(new Error("blocked")) }, env, { isAdmin: true });
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(warn).toHaveBeenCalledTimes(editorPageCapabilities.length);
     stays();
@@ -78,7 +89,7 @@ describe("where the editor tools are mounted", () => {
   });
 
   it("is mounted by the Studio layout and not by the reader layout", () => {
-    expect(read("../../../app/[locale]/(studio)/studio/layout.tsx")).toContain("<StudioSiteTools locale={locale} />");
+    expect(read("../../../app/[locale]/(studio)/studio/layout.tsx")).toContain('<StudioSiteTools isAdmin={editor.role === "admin"} locale={locale} />');
     expect(read("../../../app/[locale]/(site)/layout.tsx")).not.toMatch(/StudioSiteTools|studio\/site-tools/);
   });
 

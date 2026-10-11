@@ -8,6 +8,9 @@ import {
 } from "@/lib/editorial-queries";
 import { getCoveredEntities } from "@/lib/feeds/data";
 
+/** Pages with no data behind them: help and the two policies. */
+const infoPages = ["/support", "/privacy", "/terms"] as const;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getPublicSiteUrl();
   const localizedData = await Promise.all(
@@ -38,6 +41,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entityLanguages = (slug: string) => withDefault(Object.fromEntries(
     locales.map((locale) => [locale, absolute(localizedPath(`/entities/${slug}`, locale))]),
   ));
+  const infoLanguages = (path: string) => withDefault(Object.fromEntries(
+    locales.map((locale) => [locale, absolute(localizedPath(path, locale))]),
+  ));
   const statusLanguages = (status: ClaimStatus) => withDefault(Object.fromEntries(
     locales.map((locale) => [locale, absolute(localizedPath(`/status/${status}`, locale))]),
   ));
@@ -62,6 +68,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.7,
         alternates: { languages: entitiesLanguages },
       },
+      ...infoPages.map((path) => ({
+        url: absolute(localizedPath(path, locale)),
+        changeFrequency: "yearly" as const,
+        priority: 0.3,
+        alternates: { languages: infoLanguages(path) },
+      })),
       ...claimStatuses.map((status) => ({
         url: absolute(localizedPath(`/status/${status}`, locale)),
         changeFrequency: "daily" as const,

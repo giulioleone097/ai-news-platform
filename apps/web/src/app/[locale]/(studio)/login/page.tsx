@@ -3,13 +3,52 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowRight, LockKeyhole, Sparkles } from "lucide-react";
 import { LoginForm } from "@/components/studio/login-form";
-import { getContentMode, isStudioAvailable } from "@atlasnews/adapters/config/env";
-import { getMessages, isLocale } from "@/i18n";
-import { getEditorIdentity } from "@/lib/editor-auth";
-import { chatGPTSignInPath, chatGPTSignOutPath, getSitesUser } from "@/lib/sites/editor-auth";
+import type { OAuthProviderId } from "@atlasnews/adapters/auth/oauth";
+import { getContentMode, getSignInProviders, isStudioAvailable } from "@atlasnews/adapters/config/env";
+import { getMessages, isLocale, type Messages } from "@/i18n";
+import { signInPath, signOutPath } from "@/lib/auth/paths";
+import type { SignedInUser } from "@/lib/auth/signed-in-user";
+import { getEditorIdentity, getSignedInUser } from "@/lib/editor-auth";
 
-// Identity comes from per-request headers on Sites.
+// Identity comes from per-request headers on Sites and from cookies elsewhere.
 export const dynamic = "force-dynamic";
+
+/** A provider that redirects: a plain link, because sign-in starts as a top-level navigation. */
+function ProviderLinks({ copy, locale, providers }: { copy: Messages["auth"]; locale: string; providers: OAuthProviderId[] }) {
+  if (!providers.length) return null;
+  const label = { google: copy.signInWithGoogle, github: copy.signInWithGitHub } as const;
+  return (
+    <>
+      <p className="auth-divider">{copy.orSignInWith}</p>
+      {providers.map((provider) => (
+        <a className="auth-provider" href={signInPath(provider, `/${locale}/studio`)} key={provider}>
+          {label[provider]}
+          <ArrowRight aria-hidden="true" size={18} />
+        </a>
+      ))}
+    </>
+  );
+}
+
+/** Signs the person out of whatever they signed in with and comes back to this page. */
+function SwitchAccount({ copy, locale, user }: { copy: Messages["auth"]; locale: string; user: SignedInUser }) {
+  if (user.provider === "chatgpt") {
+    return (
+      <a className="auth-submit" href={signOutPath("chatgpt", `/${locale}/login`)} target="_top">
+        {copy.switchAccount}
+        <ArrowRight aria-hidden="true" size={18} />
+      </a>
+    );
+  }
+  return (
+    <form action={signOutPath(user.provider, `/${locale}/login`)} method="post">
+      <button className="auth-submit" type="submit">
+        {copy.switchAccount}
+        <ArrowRight aria-hidden="true" size={18} />
+      </button>
+    </form>
+  );
+}
 
 export async function generateMetadata({
   params,
@@ -35,14 +74,21 @@ export default async function LoginPage({
   const studioAvailable = isStudioAvailable();
   const editor = studioAvailable ? await getEditorIdentity() : null;
   if (editor && !editor.isDemo) redirect(`/${locale}/studio`);
-  const sitesUser = studioAvailable && getContentMode() === "sites" ? await getSitesUser() : null;
+  const mode = getContentMode();
+  const user = studioAvailable && mode === "sites" ? await getSignedInUser() : null;
+  const providers = getSignInProviders();
 
+  const errorMessages: Record<string, string> = {
+    forbidden: messages.errors.forbiddenDescription,
+    oauth_failed: messages.auth.oauthFailed,
+    oauth_denied: messages.auth.oauthDenied,
+    oauth_email: messages.auth.oauthEmail,
+  };
   const callbackError = query.error
-    ? query.error === "forbidden"
-      ? messages.errors.forbiddenDescription
-      : locale === "it"
+    ? errorMessages[query.error]
+      ?? (locale === "it"
         ? "Il collegamento di accesso non è valido o è scaduto."
-        : "The sign-in link is invalid or has expired."
+        : "The sign-in link is invalid or has expired.")
     : null;
 
   return (
@@ -94,27 +140,36 @@ export default async function LoginPage({
               <ArrowRight aria-hidden="true" size={18} />
             </Link>
           </div>
-        ) : getContentMode() === "sites" ? (
+        ) : mode === "sites" ? (
           <div className="auth-form">
-            {sitesUser ? (
-              <p className="auth-form__error" role="alert">
-                {messages.auth.notAnEditor.replace("{email}", sitesUser.email)}
-              </p>
+            {user ? (
+              <>
+                <p className="auth-form__error" role="alert">
+                  {messages.auth.notAnEditor.replace("{email}", user.email ?? "")}
+                </p>
+                <SwitchAccount copy={messages.auth} locale={locale} user={user} />
+              </>
             ) : (
-              <p>{messages.auth.chatgptDescription}</p>
+              <>
+                <p>{messages.auth.chatgptDescription}</p>
+                {/* The platform owns sign-in: a plain top-level link, never a client-side navigation. */}
+                <a className="auth-submit" href={signInPath("chatgpt", `/${locale}/studio`)} target="_top">
+                  {messages.auth.signInWithChatGPT}
+                  <ArrowRight aria-hidden="true" size={18} />
+                </a>
+                <ProviderLinks copy={messages.auth} locale={locale} providers={providers} />
+              </>
             )}
-            {/* The platform owns sign-in: a plain top-level link, never a client-side navigation. */}
-            <a
-              className="auth-submit"
-              href={sitesUser ? chatGPTSignOutPath(`/${locale}/login`) : chatGPTSignInPath(`/${locale}/studio`)}
-              target="_top"
-            >
-              {sitesUser ? messages.auth.switchAccount : messages.auth.signInWithChatGPT}
-              <ArrowRight aria-hidden="true" size={18} />
-            </a>
           </div>
         ) : (
-          <LoginForm copy={messages.auth} locale={locale} />
+          <>
+            <LoginForm copy={messages.auth} locale={locale} />
+            {providers.length ? (
+              <div className="auth-form">
+                <ProviderLinks copy={messages.auth} locale={locale} providers={providers} />
+              </div>
+            ) : null}
+          </>
         )}
       </section>
 

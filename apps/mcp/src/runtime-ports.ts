@@ -65,6 +65,22 @@ export function createRuntimePorts(principal?: AuthenticatedPrincipal): Capabili
       };
     },
 
+    async contact() {
+      const { getContactMessageService } = await import("@atlasnews/adapters/support/container");
+      const service = getContactMessageService();
+      if (!service) throw new Error("The contact inbox is not configured.");
+      return service;
+    },
+
+    async team() {
+      const { getEditorDirectory } = await import("@atlasnews/adapters/team/container");
+      try {
+        return getEditorDirectory();
+      } catch {
+        throw new CapabilityFailure("Team management is not configured.");
+      }
+    },
+
     async social() {
       const { createSocialPublishingRuntime } = await import("@atlasnews/adapters/social-publishing/runtime");
       const { service, processor, providers } = createSocialPublishingRuntime();

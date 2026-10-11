@@ -74,7 +74,9 @@ function ports(overrides: Partial<CapabilityPorts> = {}): CapabilityPorts {
     moderation: unavailable,
     commentNotifications: unavailable,
     newsletter: unavailable,
+    contact: unavailable,
     social: unavailable,
+    team: unavailable,
     ...overrides,
   };
 }
