@@ -60,6 +60,12 @@
   border-color: var(--fg);
 }
 
+@media (pointer: coarse) {
+  .status-filter a {
+    min-height: 2.75rem;
+  }
+}
+
 .status-filter a[aria-current="page"] {
   border-color: var(--accent);
   color: var(--on-accent);

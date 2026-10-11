@@ -47,6 +47,13 @@
   }
 }
 
+/* Very wide screens get a wider shell instead of wider margins. */
+@media (min-width: 110rem) {
+  :root {
+    --shell: 90rem;
+  }
+}
+
 *,
 *::before,
 *::after {
@@ -236,6 +243,13 @@ h4 {
   min-height: 2.25rem;
   padding: 0.375rem 0.75rem;
   font-size: 0.875rem;
+}
+
+/* Touch screens: every button is a 44px target. */
+@media (pointer: coarse) {
+  .button--small {
+    min-height: 2.75rem;
+  }
 }
 
 .button:disabled,

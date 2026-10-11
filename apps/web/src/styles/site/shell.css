@@ -175,6 +175,13 @@
   }
 }
 
+/* Touch screens wide enough for it: the two language links become full 44px targets. */
+@media (pointer: coarse) and (min-width: 30rem) {
+  .locale-switcher a {
+    min-width: 2.75rem;
+  }
+}
+
 /* Page heading shared by list and support pages. */
 .page-head {
   display: grid;
@@ -262,6 +269,12 @@
   align-items: center;
   color: var(--fg-muted);
   font-size: 0.9375rem;
+}
+
+@media (pointer: coarse) {
+  .site-footer__nav a {
+    min-height: 2.75rem;
+  }
 }
 
 .site-footer__nav a:hover {
