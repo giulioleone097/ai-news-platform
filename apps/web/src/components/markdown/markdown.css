@@ -1,0 +1,189 @@
+/* BEGIN markdown extensions: code highlighting, callouts, embeds (components/markdown) */
+
+/* Code blocks are a dark surface in both themes, so one palette of the light "-ink" tokens serves both. */
+.markdown-content pre code.hljs {
+  --code-keyword: var(--atlasnews-color-claim-rollout-ink);
+  --code-string: var(--atlasnews-color-claim-confirmed-ink);
+  --code-number: var(--atlasnews-color-claim-rumour-ink);
+  --code-name: var(--atlasnews-color-claim-test-ink);
+  --code-meta: var(--atlasnews-color-claim-analysis-ink);
+  --code-comment: color-mix(in srgb, var(--atlasnews-color-claim-analysis-ink) 62%, #151515);
+}
+
+.markdown-content .hljs-keyword,
+.markdown-content .hljs-selector-tag,
+.markdown-content .hljs-doctag,
+.markdown-content .hljs-deletion {
+  color: var(--code-keyword);
+}
+
+.markdown-content .hljs-string,
+.markdown-content .hljs-regexp,
+.markdown-content .hljs-addition,
+.markdown-content .hljs-symbol {
+  color: var(--code-string);
+}
+
+.markdown-content .hljs-number,
+.markdown-content .hljs-literal,
+.markdown-content .hljs-built_in,
+.markdown-content .hljs-bullet {
+  color: var(--code-number);
+}
+
+.markdown-content .hljs-title,
+.markdown-content .hljs-type,
+.markdown-content .hljs-class,
+.markdown-content .hljs-attr,
+.markdown-content .hljs-attribute,
+.markdown-content .hljs-name,
+.markdown-content .hljs-section,
+.markdown-content .hljs-selector-class,
+.markdown-content .hljs-selector-id,
+.markdown-content .hljs-variable,
+.markdown-content .hljs-property {
+  color: var(--code-name);
+}
+
+.markdown-content .hljs-meta,
+.markdown-content .hljs-params {
+  color: var(--code-meta);
+}
+
+.markdown-content .hljs-comment,
+.markdown-content .hljs-quote {
+  color: var(--code-comment);
+  font-style: italic;
+}
+
+.markdown-content .hljs-section,
+.markdown-content .hljs-strong {
+  font-weight: 700;
+}
+
+.markdown-content .hljs-emphasis {
+  font-style: italic;
+}
+
+.markdown-callout {
+  --callout: var(--info);
+  margin-block: 1.75rem;
+  padding: 0.9rem 1.15rem 1rem;
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--callout);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--callout) 7%, var(--paper-raised));
+}
+
+.markdown-callout--tip {
+  --callout: var(--success);
+}
+
+.markdown-callout--important {
+  --callout: var(--ink);
+}
+
+.markdown-callout--warning {
+  --callout: var(--warning);
+}
+
+.markdown-callout--caution {
+  --callout: var(--coral);
+}
+
+.markdown-content .markdown-callout__title {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 760;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.markdown-callout > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-callout p:not(.markdown-callout__title) {
+  font-family: var(--font-reading);
+  font-size: clamp(1.02rem, 3.4vw, 1.15rem);
+  line-height: 1.55;
+}
+
+.markdown-callout p + p {
+  margin-top: 0.75rem;
+}
+
+.markdown-callout .markdown-callout__title + p {
+  margin-top: 0.35rem;
+}
+
+.markdown-embed {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 100%;
+  margin-block: 1.75rem;
+}
+
+.markdown-embed--x {
+  max-width: 34rem;
+}
+
+.markdown-embed iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-media);
+  background: var(--paper-raised);
+}
+
+.markdown-embed--youtube iframe,
+.markdown-embed--youtube .markdown-embed__load {
+  aspect-ratio: 16 / 9;
+}
+
+.markdown-embed--x iframe,
+.markdown-embed--x .markdown-embed__load {
+  min-height: 22rem;
+}
+
+.markdown-embed__load {
+  display: grid;
+  width: 100%;
+  place-content: center;
+  justify-items: center;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-media);
+  color: var(--ink);
+  background: var(--paper-raised);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color var(--transition), background-color var(--transition);
+}
+
+.markdown-embed__load:hover {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
+}
+
+.markdown-embed__load span {
+  font-family: var(--font-ui);
+  font-weight: 700;
+}
+
+.markdown-embed__load small {
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+}
+
+.markdown-content a.markdown-embed__source {
+  justify-self: start;
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+}
+
+/* END markdown extensions */

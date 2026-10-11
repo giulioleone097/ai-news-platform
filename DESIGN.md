@@ -1,83 +1,82 @@
 ---
 version: alpha
 name: AtlasNews
-description: Contemporary product-led editorial design for an international English-first AI publication and bilingual newsroom.
+description: A fast-scanning AI news desk. White page, black type, one yellow marker, and a four-step meter that shows how firmly each story stands.
 colors:
-  primary: "#151719"
-  paper: "#f3f5f6"
-  paper-raised: "#ffffff"
-  ink: "#151719"
-  muted: "#626970"
-  rule: "#d7dce0"
-  rule-strong: "#aeb5bb"
-  coral: "#c64a3b"
-  coral-dark: "#a93629"
-  success: "#397a32"
-  warning: "#c17a10"
-  info: "#23759a"
+  primary: "#111214"
+  paper: "#ffffff"
+  paper-sunken: "#f4f4f1"
+  ink: "#111214"
+  muted: "#5c5d59"
+  rule: "#e3e3de"
+  rule-strong: "#b8b8b1"
+  marker: "#ffd60a"
+  marker-deep: "#f5c400"
+  success: "#1f7a3d"
+  warning: "#a85b00"
+  danger: "#c0281c"
+  info: "#1d5fd1"
   white: "#ffffff"
-  claim-confirmed: "#1e3a1c"
-  claim-confirmed-ink: "#9fd699"
-  claim-rollout: "#3d211d"
-  claim-rollout-ink: "#f0a497"
-  claim-test: "#1b3442"
-  claim-test-ink: "#93cbe6"
-  claim-rumour: "#43301a"
-  claim-rumour-ink: "#f0c27a"
-  claim-analysis: "#2a2e32"
-  claim-analysis-ink: "#c9ced3"
+  night: "#0f1012"
+  night-raised: "#1a1b1e"
+  night-rule: "#2d2f33"
+  night-rule-strong: "#55575c"
+  night-ink: "#f3f3ef"
+  night-muted: "#a4a59f"
+  plate-sky: "#c9e4ff"
+  plate-leaf: "#d7f2d0"
+  plate-peach: "#ffd4c7"
+  plate-lilac: "#e4dcff"
 typography:
-  display-xl-mobile:
-    fontFamily: Inter Variable
-    fontSize: 3.35rem
-    fontWeight: 760
-    lineHeight: 0.94
-    letterSpacing: -0.055em
-  display-xl-desktop:
-    fontFamily: Inter Variable
-    fontSize: 6.25rem
-    fontWeight: 760
-    lineHeight: 0.92
-    letterSpacing: -0.06em
-  display-lg:
-    fontFamily: Inter Variable
-    fontSize: 5.25rem
-    fontWeight: 750
-    lineHeight: 0.94
-    letterSpacing: -0.055em
-  headline:
-    fontFamily: Inter Variable
-    fontSize: 3.5rem
-    fontWeight: 720
-    lineHeight: 0.98
-    letterSpacing: -0.045em
-  section:
-    fontFamily: Inter Variable
+  display:
+    fontFamily: Schibsted Grotesk Variable
+    fontSize: 3rem
+    fontWeight: 800
+    lineHeight: 1.05
+    letterSpacing: -0.03em
+  display-mobile:
+    fontFamily: Schibsted Grotesk Variable
     fontSize: 2rem
+    fontWeight: 800
+    lineHeight: 1.1
+    letterSpacing: -0.025em
+  headline:
+    fontFamily: Schibsted Grotesk Variable
+    fontSize: 1.75rem
     fontWeight: 700
-    lineHeight: 1
-    letterSpacing: -0.035em
-  body:
-    fontFamily: Source Serif 4 Variable
-    fontSize: 1.2rem
-    fontWeight: 400
-    lineHeight: 1.55
-  ui:
-    fontFamily: Inter Variable
-    fontSize: 0.9rem
-    fontWeight: 600
+    lineHeight: 1.15
+    letterSpacing: -0.02em
+  title:
+    fontFamily: Schibsted Grotesk Variable
+    fontSize: 1.125rem
+    fontWeight: 700
     lineHeight: 1.25
+    letterSpacing: -0.01em
+  deck:
+    fontFamily: Schibsted Grotesk Variable
+    fontSize: 1.125rem
+    fontWeight: 400
+    lineHeight: 1.45
+  body:
+    fontFamily: Newsreader Variable
+    fontSize: 1.1875rem
+    fontWeight: 400
+    lineHeight: 1.6
+  ui:
+    fontFamily: Schibsted Grotesk Variable
+    fontSize: 0.9375rem
+    fontWeight: 600
+    lineHeight: 1.3
   label:
-    fontFamily: Inter Variable
-    fontSize: 0.75rem
-    fontWeight: 750
-    lineHeight: 1.2
-    letterSpacing: 0.04em
+    fontFamily: Schibsted Grotesk Variable
+    fontSize: 0.8125rem
+    fontWeight: 500
+    lineHeight: 1.3
 rounded:
   none: 0px
-  sm: 8px
-  md: 12px
-  media: 16px
+  sm: 4px
+  md: 8px
+  lg: 12px
   full: 999px
 spacing:
   xxs: 4px
@@ -92,125 +91,184 @@ spacing:
   gutter-desktop: 40px
 components:
   button-primary:
-    backgroundColor: "{colors.coral}"
-    textColor: "{colors.white}"
+    backgroundColor: "{colors.marker}"
+    textColor: "{colors.ink}"
     typography: "{typography.ui}"
-    rounded: "{rounded.sm}"
-    padding: 12px 20px
-    height: 48px
+    rounded: "{rounded.md}"
+    padding: 10px 16px
+    height: 44px
   button-primary-hover:
-    backgroundColor: "{colors.coral-dark}"
-    textColor: "{colors.white}"
-  button-quiet:
+    backgroundColor: "{colors.marker-deep}"
+    textColor: "{colors.ink}"
+  button-secondary:
     backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
     typography: "{typography.ui}"
     rounded: "{rounded.md}"
     height: 44px
+  button-danger:
+    backgroundColor: "{colors.danger}"
+    textColor: "{colors.white}"
+    typography: "{typography.ui}"
+    rounded: "{rounded.md}"
   header:
     backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
-    height: 76px
-  media-frame:
-    backgroundColor: "{colors.ink}"
-    rounded: "{rounded.media}"
+    height: 64px
+  status-chip:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.sm}"
   newsletter-band:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.white}"
-    padding: 20px 24px
-  focus-ring:
-    backgroundColor: "{colors.coral}"
-    size: 3px
-  surface-raised:
-    backgroundColor: "{colors.paper-raised}"
+    backgroundColor: "{colors.marker}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.lg}"
+    padding: 24px 32px
+  surface-sunken:
+    backgroundColor: "{colors.paper-sunken}"
     textColor: "{colors.primary}"
   metadata:
+    backgroundColor: "{colors.paper}"
     textColor: "{colors.muted}"
     typography: "{typography.label}"
+  metadata-sunken:
+    backgroundColor: "{colors.paper-sunken}"
+    textColor: "{colors.muted}"
   divider:
     backgroundColor: "{colors.rule}"
     height: 1px
   divider-strong:
     backgroundColor: "{colors.rule-strong}"
     height: 1px
+  story-title:
+    textColor: "{colors.ink}"
+    typography: "{typography.title}"
+  story-deck:
+    textColor: "{colors.muted}"
+    typography: "{typography.deck}"
+  article-title:
+    textColor: "{colors.ink}"
+    typography: "{typography.display}"
+  article-title-mobile:
+    textColor: "{colors.ink}"
+    typography: "{typography.display-mobile}"
+  section-title:
+    textColor: "{colors.ink}"
+    typography: "{typography.headline}"
+  article-body:
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+  media-frame:
+    backgroundColor: "{colors.paper-sunken}"
+    rounded: "{rounded.md}"
+  cover-plate-marker:
+    backgroundColor: "{colors.marker}"
+    textColor: "{colors.ink}"
+  cover-plate-sky:
+    backgroundColor: "{colors.plate-sky}"
+    textColor: "{colors.ink}"
+  cover-plate-leaf:
+    backgroundColor: "{colors.plate-leaf}"
+    textColor: "{colors.ink}"
+  cover-plate-peach:
+    backgroundColor: "{colors.plate-peach}"
+    textColor: "{colors.ink}"
+  cover-plate-lilac:
+    backgroundColor: "{colors.plate-lilac}"
+    textColor: "{colors.ink}"
   status-success:
     backgroundColor: "{colors.success}"
     textColor: "{colors.white}"
   status-warning:
     backgroundColor: "{colors.warning}"
-    textColor: "{colors.ink}"
+    textColor: "{colors.white}"
   status-info:
     backgroundColor: "{colors.info}"
     textColor: "{colors.white}"
-  claim-chip-confirmed:
-    backgroundColor: "{colors.claim-confirmed}"
-    textColor: "{colors.claim-confirmed-ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.sm}"
-  claim-chip-rollout:
-    backgroundColor: "{colors.claim-rollout}"
-    textColor: "{colors.claim-rollout-ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.sm}"
-  claim-chip-test:
-    backgroundColor: "{colors.claim-test}"
-    textColor: "{colors.claim-test-ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.sm}"
-  claim-chip-rumour:
-    backgroundColor: "{colors.claim-rumour}"
-    textColor: "{colors.claim-rumour-ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.sm}"
-  claim-chip-analysis:
-    backgroundColor: "{colors.claim-analysis}"
-    textColor: "{colors.claim-analysis-ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.sm}"
+  night-page:
+    backgroundColor: "{colors.night}"
+    textColor: "{colors.night-ink}"
+  night-surface:
+    backgroundColor: "{colors.night-raised}"
+    textColor: "{colors.night-ink}"
+  night-metadata:
+    backgroundColor: "{colors.night}"
+    textColor: "{colors.night-muted}"
+  night-divider:
+    backgroundColor: "{colors.night-rule}"
+    height: 1px
+  night-divider-strong:
+    backgroundColor: "{colors.night-rule-strong}"
+    height: 1px
 ---
 
 ## Overview
 
-AtlasNews is a contemporary AI intelligence product with editorial depth. The public experience must feel decisive, visual, fast, and authored without borrowing the visual codes of a printed newspaper. The studio translates the same identity into a dense newsroom tool without becoming a generic SaaS dashboard.
+AtlasNews follows AI products from the first rumour to the release. A reader arrives to answer two questions fast: what changed today, and how much of it is real. The design is a news desk, not a magazine: a white page, black type, pictures where a story has one, and a single yellow marker that points at what matters.
 
-Mobile is the base composition. Desktop adds columns and rails; it never changes content hierarchy. Public pages render useful HTML before client JavaScript.
+The signature is the status meter. Every story carries four small bars that fill as its claim firms up: rumour, in test, rolling out, confirmed. It is the one device no other AI news site has, so it appears wherever a story does and nothing else competes with it.
+
+Studio, the editors' side, uses the same tokens at tool density: small sentence-case headings, tables, and forms. Most editing happens through AI assistants, so Studio stays lean.
 
 ## Colors
 
-The neutral palette is cool and precise, moving from silver-grey canvas to clean raised surfaces. Ink carries all primary text and large surfaces. Coral is the only expressive accent: primary actions, focus, selected state, and small editorial signals. Muted and rule tokens create hierarchy without glow or decorative gradients.
+Paper is white and ink is near-black. Sunken paper marks bands, inputs and quiet panels. Muted ink is for metadata only. Rules separate; they never decorate.
 
-Semantic colors appear for operational status inside Studio. On public surfaces the only added colors are the five claim chips, which tell a reader how firmly a story stands: confirmed, rolling out, in test, rumour, analysis. Each chip is a dark pill with light text and keeps at least 4.5:1 contrast on both the light and the dark page; it always carries its word, never color alone. Nothing else on a public page uses them.
+Marker yellow is the only accent. It fills the primary button, the newsletter band, the selected navigation item, the wordmark stroke, and the highlight that appears under a headline on hover. Yellow is always a background behind ink; it is never a text color on a light page.
+
+Four pale plate tints (sky, leaf, peach, lilac) plus the marker color fill cover plates: the typographic tile a story gets when it has no picture of its own. A category always gets the same tint, so the tint reads as the section. Plates keep their light tints and ink text in the dark theme, as pictures do.
+
+Success, warning, danger and info are for operational states in Studio and for form feedback. The status meter uses ink, not color, so it reads the same in both themes and for every kind of vision.
+
+The dark theme follows the system setting. It swaps paper for night, ink for night-ink, and keeps the marker as it is.
 
 ## Typography
 
-Barlow Condensed is reserved for the wordmark when it is used. Inter Variable owns display headlines, decks, navigation, metadata, controls, and Studio chrome. Source Serif 4 Variable is confined to long-form article body copy.
+Schibsted Grotesk, a typeface drawn for news interfaces, sets everything a reader scans: headlines, decks, navigation, metadata, controls and all of Studio. Newsreader sets the body of an article and nothing else.
 
-Display sizes scale fluidly between the mobile and desktop tokens. Reading measure stays between 58 and 72 characters. Control type is always explicit; browser-default typography is prohibited.
+Headlines are heavy and tight, in sentence case. The largest size on the site is the article title at 3rem; there are no poster-sized headings. Labels and metadata are sentence case at normal tracking. Uppercase is not used for labels, eyebrows or headings.
+
+Reading measure for article body is 60 to 72 characters. Card and row titles wrap to at most three lines.
 
 ## Layout
 
-The maximum public shell is 1536px. Gutters are 20px on mobile, 32px on tablet, and 40px on desktop. Public pages use asymmetric product grids, contained media, structured streams, and a small number of raised modules. Cards exist only where containment clarifies hierarchy.
+The public shell is 1280px wide with 20px gutters on phones and 40px on desktop. The header is one row: wordmark, the products readers follow, then search, language and Subscribe. On a phone the products scroll sideways on a second row.
 
-The home hierarchy is header, entity navigation, status filter, one static lead story, then one dated stream grouped by day, with the briefing and topics after it. At least seven stories show on a 375 by 812 phone before any scroll. Studio uses navigation rail, article list, and inspector; these become drawer, list, and full-screen sheet on mobile. Interactive targets are at least 44px.
+The home page reads in three steps of decreasing size. First the lead story with its picture. Then three stories as cards with a picture or a cover plate. Then every other story as a dated stream of compact rows, with a side column that explains the status meter and lists the most covered products. The newsletter band and the topics close the page.
+
+An article is one column: status, title, deck, byline row, picture, then the body beside a sticky table of contents on wide screens. Lists (products, search, a topic, a status) reuse the stream rows so every list on the site scans the same way.
+
+Studio is a narrow navigation column and one working area. Lists are tables. Forms put the content on the left and the publishing settings in a side panel. Interactive targets are at least 44px on touch screens.
 
 ## Elevation & Depth
 
-Depth comes from typography, restrained raised surfaces, image contrast, sticky navigation, and cool tinted shadows. No glass surfaces, neon, blurred cards, or decorative glow.
+Flat. Hierarchy comes from size, weight and rules. Only overlays (menus, dialogs, the sticky header) carry a shadow or a border to separate them from the page.
 
 ## Shapes
 
-Controls use 8px rounding, product modules use 12px, and editorial media uses 16px. Avatars and icon-only controls may be circular. Rules are 1px; active navigation and focus accents are 2-3px coral.
+Corners are small: 4px on chips and inputs, 8px on buttons, pictures and panels, 12px on the newsletter band and dialogs. Nothing is pill-shaped except the avatar and the on/off switch.
 
 ## Components
 
-Header contains brand, essential navigation, search, and one account action. Feature stories use one dominant local image, category, headline, deck, primary read action, save, and share. Story feeds read as compact product streams: time, claim chip, primary entity and headline on every row, a thumbnail only on the lead, and deliberate hover states. The product pages (entities) show a timeline from oldest to newest so a reader sees a rumour become a release.
+Status chip: the four-bar meter followed by the status word. Rumour fills one bar, in test two, rolling out three, confirmed four. Analysis is not a claim, so it shows the word alone. The word is always present.
 
-Newsletter is one near-black band with a coral mail block and a single email action. Studio uses a real table/list and inspector; metrics remain secondary. Social distribution always offers preview and deliberate publish state, never silent automatic posting.
+Cover: the story's picture at 16:10. When a story has no picture of its own, or its picture already appears higher on the page, the cover is a plate: the section tint with the product or section name set large.
 
-Icons use Lucide at 1.75px stroke when the metaphor exists. Brand marks such as `in`, `X`, and `WA` use restrained monochrome text, not unrelated generic icons.
+Story row: status chip, product or section, time, headline. The whole row is one link. Story card: cover, the same meta line, headline, deck.
+
+Buttons: primary is marker yellow with ink text; secondary is an ink outline; destructive actions are danger red and always ask first. One primary button per view.
+
+Newsletter band: marker yellow, one email field, one button.
+
+Icons are Lucide at 1.75px stroke. Brand marks such as `in`, `X` and `WA` are set as text.
 
 ## Do's and Don'ts
 
-Do preserve the above-the-fold copy lock, sharp typography, stable image ratios, visible focus, dual-mode contrast, and reduced-motion behavior.
-
-Do not add hero eyebrows, fake metrics, neon, glassmorphism, blue-purple gradients, giant rounded wrappers, decorative status dots, color overlays on hero art, or client-side data fetching for content available on the server.
+- Do show the status chip on every story, everywhere.
+- Do write labels and headings in sentence case.
+- Do let a list be a list: rows and rules, not a grid of boxes.
+- Don't use yellow as text on a light page, or for anything that is not a highlight or a primary action.
+- Don't number sections or steps unless they are a real sequence.
+- Don't show a count that is zero; leave the count out.
+- Don't add a second accent color, a gradient, or a decorative illustration.

@@ -41,7 +41,8 @@ export const en = {
     statusEmptyTitle: "Nothing here yet",
     statusEmptyDescription: "No story has this status right now. See every story instead.",
     seeAll: "See all stories",
-    mostFollowed: "Most followed",
+    mostFollowed: "Most covered",
+    legendTitle: "How firm is each story",
     statusPageTitle: {
       confirmed: "Confirmed stories",
       rollout: "Stories rolling out",
@@ -158,6 +159,7 @@ export const en = {
     rss: "RSS",
     linkedIn: "LinkedIn",
     x: "X",
+    groups: { sections: "Sections", publication: "AtlasNews", tools: "For editors and AI" },
     copyright: "© 2026 AtlasNews. Demonstration content; the platform is ready for an editorial team.",
   },
   errors: {

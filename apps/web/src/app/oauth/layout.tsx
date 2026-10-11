@@ -6,13 +6,13 @@ import "../globals.css";
 import { normalizeLocale } from "@/i18n";
 
 // The consent page is not under /[locale]: Supabase Auth sends the browser to one fixed path.
-const inter = localFont({
-  src: "../../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+const grotesk = localFont({
+  src: "../../../node_modules/@fontsource-variable/schibsted-grotesk/files/schibsted-grotesk-latin-wght-normal.woff2",
   display: "swap",
-  fallback: ["Inter", "sans-serif"],
+  fallback: ["Helvetica Neue", "Arial", "sans-serif"],
   preload: false,
   style: "normal",
-  weight: "100 900",
+  weight: "400 900",
 });
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -23,7 +23,7 @@ export default async function OAuthLayout({ children }: { children: React.ReactN
     <html
       lang={locale}
       style={{
-        "--font-ui": inter.style.fontFamily,
+        "--font-ui": grotesk.style.fontFamily,
       } as React.CSSProperties}
     >
       <body>{children}</body>

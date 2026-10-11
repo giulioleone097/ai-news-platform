@@ -10,6 +10,7 @@ import { markdownCalloutsPlugin } from "./callouts";
 import { EmbedFrame } from "./embed-frame";
 import { markdownEmbedsPlugin } from "./embeds";
 import { rehypeHighlightFences } from "./highlight";
+import "./markdown.css";
 import { defaultMarkdownLabels, type MarkdownLabels } from "./labels";
 
 type MarkdownRendererProps = {

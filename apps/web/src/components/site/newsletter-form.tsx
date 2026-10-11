@@ -30,19 +30,18 @@ export function NewsletterForm({
   const messageId = `newsletter-message-${source}`;
 
   return (
-    <section className="newsletter" aria-labelledby="newsletter-title">
+    <section className="newsletter" id="newsletter" aria-labelledby="newsletter-title">
       <div className="newsletter__intro">
-        <span className="newsletter__icon" aria-hidden="true"><Mail /></span>
-        <div>
-          <h2 id="newsletter-title">{copy.title}</h2>
-          <p>{copy.description}</p>
-        </div>
+        <Mail aria-hidden="true" />
+        <h2 id="newsletter-title">{copy.title}</h2>
+        <p>{copy.description}</p>
       </div>
-      <form action={action}>
+      <form className="newsletter__form" action={action}>
         <input type="hidden" name="source" value={source} />
         <input type="hidden" name="locale" value={locale} />
         <label className="sr-only" htmlFor={emailId}>{copy.emailLabel}</label>
         <input
+          className="input"
           id={emailId}
           name="email"
           type="email"
@@ -53,7 +52,7 @@ export function NewsletterForm({
           aria-describedby={state.message ? messageId : undefined}
           aria-invalid={state.status === "error" || undefined}
         />
-        <button type="submit" disabled={pending}>
+        <button className="button" type="submit" disabled={pending}>
           {pending ? copy.submitting : copy.submit}
         </button>
         <small>{copy.privacy}</small>
