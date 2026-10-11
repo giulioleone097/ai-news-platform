@@ -1,6 +1,6 @@
 # Site tools (WebMCP)
 
-An AI agent that looks at the reader site in a browser can use the site through five tools that the page registers itself. The agent and the reader share one live page: when the agent searches, the page shows the results. In the Studio, a signed-in editor's agent gets the content tools too (see [Editor tools in the Studio](#editor-tools-in-the-studio)).
+An AI agent that looks at the reader site in a browser can use the site through five tools that the page registers itself. The agent and the reader share one live page: when the agent searches, the page shows the results. In the Studio, a signed-in editor's agent gets the content and operations tools too (see [Editor tools in the Studio](#editor-tools-in-the-studio)).
 
 ## The tools
 
@@ -33,9 +33,19 @@ How it behaves in the browser:
 
 ## Editor tools in the Studio
 
-Inside the Studio (`/{locale}/studio/...`, not the login page) the page registers the content capabilities for articles, categories, entities and media (and the four team tools, `admin_*_editor`, which an editor's session is refused with 403 because they need the admin-only `newsroom.admin` scope): list, read, create, partial update (PATCH), publish, unpublish, delete and the batch versions. They are the same capabilities as the MCP endpoint, so there is one implementation.
+Inside the Studio (`/{locale}/studio/...`, not the login page) the page registers what an editor can do in the Studio, as the same capabilities as the MCP endpoint, so there is one implementation:
 
-- Definition: `editorPageCapabilities` in `@atlasnews/contract/page` (`packages/contract/src/page.ts`), built from the specs in `packages/contract/src/specs/{articles,categories,entities,media,team}.ts` whose `surfaces` include `page`. Name, title, description, input schema, hints, `scopes` and `confirms` come from there; the web app declares none of them. `parseEditorPageInput` checks the arguments.
+- Content: articles, categories, entities and media (list, read, create, partial update (PATCH), publish, unpublish, delete and the batch versions).
+- Comment moderation: `admin_list_comments`, `admin_list_comment_reports`, `admin_list_comment_audit`, `admin_moderate_comment`.
+- Inbox: `admin_list_contact_messages`, `admin_update_contact_message`, `admin_delete_contact_message`.
+- Distribution and newsletter subscribers: `admin_list_distribution`, `admin_update_distribution`, `admin_list_newsletter_subscriptions`, `admin_update_newsletter_subscription`, `admin_newsletter_request_subscription` (a double-opt-in confirmation email to that address).
+- Newsletter campaigns: `admin_newsletter_list_campaigns`, `admin_newsletter_get_campaign`, `admin_newsletter_list_recipients`, `admin_newsletter_save_campaign_draft`, `admin_newsletter_send_campaign`, `admin_newsletter_schedule_campaign`, `admin_newsletter_cancel_campaign`.
+- Social outbox: `admin_social_preview`, `admin_social_enqueue`, `admin_social_requeue`, `admin_social_list`, `admin_social_get`, `admin_social_cancel`, `admin_social_retry`.
+- The four team tools, `admin_*_editor`, which an editor's session is refused with 403 because they need the admin-only `newsroom.admin` scope; they are registered for admins only.
+
+Not on the page, because no Studio screen does it: `admin_comment_process_notifications`, `admin_newsletter_process_outbox` and `admin_social_process_outbox` (outbox workers), `admin_newsletter_erase_subscription`, and the public `list_comments`. Comments, the newsletter and the social outbox need their backends configured; without them a tool answers with the capability's "not configured" message (503), as in demo mode.
+
+- Definition: `editorPageCapabilities` in `@atlasnews/contract/page` (`packages/contract/src/page.ts`), built from the specs in `packages/contract/src/specs/{articles,categories,entities,media,newsroom,operations,support,team}.ts` whose `surfaces` include `page`. Name, title, description, input schema, hints, `scopes` and `confirms` come from there; the web app declares none of them. `parseEditorPageInput` checks the arguments.
 - Execution: on the server. Each tool posts `{ "input": {...}, "confirmed": false }` to `POST /api/capabilities/{name}` (same origin, session cookie) and the route runs `runEditorCapability` (`apps/web/src/server/capabilities.ts`), which checks the editor's scopes. The same function serves the Studio's Server Actions.
 - Handlers: `apps/web/src/components/studio/site-tools/`
   - `studio-site-tools.tsx` is mounted in `app/[locale]/(studio)/studio/layout.tsx`. It renders nothing and loads nothing unless `document.modelContext.registerTool` exists (same `detect.ts` as the reader tools). Leaving the Studio unmounts it, which unregisters the tools.
@@ -44,7 +54,7 @@ Inside the Studio (`/{locale}/studio/...`, not the login page) the page register
 
 ### Confirmation is the person's, not the agent's
 
-Publishing, unpublishing and deleting (`confirms: true` in the catalogue) never run on the agent's word.
+Whatever the catalogue marks `confirms: true` (publishing, unpublishing, deleting, moderating a comment, sending, scheduling or cancelling a campaign, queueing or retrying a social post, sending a confirmation email) never runs on the agent's word.
 
 1. The first call to the route always sends `confirmed: false`. The server answers 409 with the question to ask.
 2. The page opens a modal `<dialog>` (focus on Decline, Escape declines, labelled by its heading and question, 44px buttons, English or Italian by the page locale) showing the server's question, the tool and one line per argument, so the person sees what will be affected.
@@ -60,7 +70,7 @@ The agent has no way around it: the input schemas published to the agent have no
 
 Editor tools (needs an editor account and storage configured):
 
-1. Sign in to the Studio in the built-in browser and open any Studio page, such as `/en/studio`. Select **Site tools**: the `admin_*` tools and `list_entities` should be listed. Opening the login page or the reader site should not list them.
+1. Sign in to the Studio in the built-in browser and open any Studio page, such as `/en/studio`. Select **Site tools**: the `admin_*` tools and `list_entities` should be listed (the four team tools only for an admin). Opening the login page or the reader site should not list them.
 2. Ask: "Create a draft article in English titled 'WebMCP test', then change its excerpt." The tools run without a dialog; the article list on screen refreshes by itself.
 3. Ask: "Publish that article." A dialog must appear in the page with the question, the tool name and the arguments. Press **Decline**: the agent reports that the person declined, and the article stays a draft. Ask again and press **Approve**: the article is published and the view refreshes.
 4. Ask the agent to delete two entities at once: one dialog at a time, each with its own list. Press Escape on the first: only that one is declined.

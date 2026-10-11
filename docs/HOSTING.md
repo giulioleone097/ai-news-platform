@@ -76,7 +76,7 @@ curl -sS -o /dev/null -w '%{http_code}\n' -X POST http://localhost:18787/mcp \
   --data '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}'   # 200
 ```
 
-The full `tools/list` body from that request lists 50 tools. The complete request, with its headers, is in [MCP.md](MCP.md).
+The full `tools/list` body from that request lists every tool. The complete request, with its headers, is in [MCP.md](MCP.md).
 
 `apps/jobs`:
 

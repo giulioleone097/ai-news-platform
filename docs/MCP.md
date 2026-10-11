@@ -7,7 +7,7 @@ AtlasNews exposes one stateless Streamable HTTP endpoint, `POST /mcp`, served by
 Every data capability is defined once, in `packages/contract` (`@atlasnews/contract`): name, title, description, zod input and output, the four annotation hints, required scopes, surfaces, an optional confirmation question, an optional UI resource, and the handler. Adapters read that catalogue and declare nothing of their own:
 
 - `apps/mcp/src/adapter.ts` registers every capability whose surfaces include `mcp`. It is the only generic `registerTool` call. `/info` and `tools/list` derive from the same list.
-- `@atlasnews/contract/page` is the browser-safe view for capabilities whose surfaces include `page`: plain data (name, title, description, JSON Schema of the input, annotations). It imports no handler, use case or Node API, and a test enforces that. The site registers these as WebMCP tools.
+- `@atlasnews/contract/page` is the browser-safe view for capabilities whose surfaces include `page`: plain data (name, title, description, JSON Schema of the input, annotations). It imports no handler, use case or Node API, and a test enforces that. The reader site and, for a signed-in editor, the Studio register these as WebMCP tools; the Studio gets everything an editor does there ([SITE_TOOLS.md](SITE_TOOLS.md)). Workers (comment-notification, newsletter and social outbox processing) and newsletter erasure are MCP-only.
 - The MCP Apps entrypoints (`open_newsroom`, `open_news_panel`, `build_briefing`, `search_mentions`) are MCP Apps specific and stay in `apps/mcp/src/apps`.
 
 To add a capability: define a spec in `packages/contract/src/specs`, implement it in `packages/contract/src/handlers`, and add it to the list there. The MCP endpoint, `/info` and the tests pick it up.
@@ -48,7 +48,7 @@ curl --request POST "$MCP/mcp" \
   --data '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0.0"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
 ```
 
-Use `MCP-Method: server/discover` with `method: "server/discover"` for the server identity and capabilities. `tools/list` returns all 50 tools to every caller, so a host can find the editor tools and start sign-in. Each tool carries all four annotation hints and its security scheme in `_meta.securitySchemes`.
+Use `MCP-Method: server/discover` with `method: "server/discover"` for the server identity and capabilities. `tools/list` returns every tool to every caller (`apps/mcp/src/mcp-endpoint.test.ts` pins the count), so a host can find the editor tools and start sign-in. Each tool carries all four annotation hints and its security scheme in `_meta.securitySchemes`.
 
 ## Authentication
 
