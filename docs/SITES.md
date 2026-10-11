@@ -1,8 +1,10 @@
-# Deploying the reader site on ChatGPT Sites
+# Deploying AtlasNews on ChatGPT Sites
 
-`apps/web` (the reader site, Studio and the public API routes) is built as a Next.js app and runs on ChatGPT Sites as a Cloudflare-style Worker. Content stays in Supabase over HTTPS: `apps/web/.openai/hosting.json` declares no D1 and no R2. The background workers and the MCP server do not run on Sites ([below](#what-does-not-run-on-sites)).
+ChatGPT Sites is the default deployment, and it needs no Supabase. One Worker built from `apps/web` serves everything: the reader site and the Studio, the MCP server at `/mcp`, and the background workers. Records live in the Site's own D1 database, uploads in its R2 bucket, and editors sign in with ChatGPT. This is `ATLASNEWS_CONTENT_MODE=sites` ([SITES_DATA.md](SITES_DATA.md) has the data layer).
 
-Everything here was verified locally in `workerd` (`wrangler dev --local`). Nothing was deployed. See [Not verified without a real deployment](#not-verified-without-a-real-deployment).
+The Supabase deployment stays available and complete for leaving Sites: `ATLASNEWS_CONTENT_MODE=supabase` with the MCP server and the workers as containers ([DEPLOYMENT.md](DEPLOYMENT.md), [HOSTING.md](HOSTING.md)). Both backends implement the same core ports; switching is configuration, not code. Moving existing content between them is not automated.
+
+Verified locally only (Miniflare D1/R2 and `workerd`); nothing was deployed. See [Not verified without a real deployment](#not-verified-without-a-real-deployment).
 
 ## How the build works
 
@@ -22,9 +24,11 @@ Files that make it work:
 
 | File | Role |
 | --- | --- |
-| `apps/web/vite.config.ts` | vinext + Cloudflare plugins, copies `.openai/hosting.json` to `dist/.openai/`, lists the pre-sized media widths for the image redirect |
-| `apps/web/build/sites-worker.ts` | Worker entry (`export default { fetch }`), plus the `/_next/image` redirect for pre-sized media |
-| `apps/web/.openai/hosting.json` | Sites manifest: `project_id` (set after the Site exists), `d1: null`, `r2: null` |
+| `apps/web/vite.config.ts` | vinext, Cloudflare and Sites plugins, local D1/R2 stand-ins, defaults the mode to `sites`, lists the pre-sized media widths for the image redirect |
+| `apps/web/build/sites-vite-plugin.ts` | OpenAI's Sites Vite plugin (MIT, vendored unchanged): copies `.openai/hosting.json` and `drizzle/` to `dist/.openai/`, simulates Sign in with ChatGPT on loopback in `vinext dev` |
+| `apps/web/build/sites-worker.ts` | Worker entry (`export default { fetch }`): hands the bindings to the adapters, routes `/mcp` to the MCP server and `/internal/*` to the workers, runs due jobs in the background, redirects `/_next/image` for pre-sized media |
+| `apps/web/.openai/hosting.json` | Sites manifest: `project_id` (set after the Site exists), `"d1": "DB"`, `"r2": "BUCKET"`, `"capabilities": ["mcp"]` |
+| `apps/web/drizzle/` | D1 schema migrations, applied by Sites before each deployment ([SITES_DATA.md](SITES_DATA.md)) |
 | `apps/web/next.config.ts` | read by both builds, holds the production guard ([below](#build-guard)) |
 | `apps/web/src/app/not-found.tsx`, `global-not-found.tsx` | HTML 404 page, both languages (`experimental.globalNotFound`) |
 
@@ -36,27 +40,72 @@ From the installed Sites plugin (`~/.codex/plugins/cache/openai-curated-remote/s
 - A Worker build must produce `dist/server/index.js` (an ES module with `export default { fetch(request, env, ctx) }`), `dist/client/` (static assets, served by the platform) and `dist/.openai/hosting.json`. `dist/` must contain no symlinks. The build here also writes `dist/server/wrangler.json` (`compatibility_date 2026-05-15`, flag `nodejs_compat`, assets from `../client`).
 - Packaging is `tar -czf archive dist`. The archive and the commit SHA go to the native Sites save and deploy calls. The Sites plugin does this when you ask it to deploy.
 - Runtime facts OpenAI states: Cloudflare Workers, 128 MB per isolate, HTTP, HTTPS and WebSockets only (no raw TCP). Size and CPU limits are not published.
-- The platform owns `/signin-with-chatgpt`, `/signout-with-chatgpt` and `/callback`. The site does not use them.
+- The platform owns `/signin-with-chatgpt`, `/signout-with-chatgpt` and `/callback`. The site links to the first two for editors ([below](#sign-in-and-editors)) and never serves them.
 
-Measured on the current tree (demo build): `dist/server` 3.4 MiB in 256 files (JS 2.46 MB raw, 0.73 MB gzip, `index.js` 344 KB), `dist/client` 1.7 MiB in 96 files, archive made by the plugin's own `package-site.sh` 1.6 MB, no symlinks.
+Measured before the Sites content mode (demo build): `dist/server` 3.4 MiB in 256 files (JS 2.46 MB raw, 0.73 MB gzip, `index.js` 344 KB), `dist/client` 1.7 MiB in 96 files, archive made by the plugin's own `package-site.sh` 1.6 MB, no symlinks.
 
 Versions pinned in `apps/web/package.json` (the set the spike proved against OpenAI's starter): `vinext 1.0.0-beta.5`, `vite 8.0.13`, `@vitejs/plugin-react 6.0.2`, `@vitejs/plugin-rsc 0.5.26`, `react-server-dom-webpack 19.2.8` (must equal `react`), `@cloudflare/vite-plugin 1.37.1`, `@cloudflare/workers-types 4.20260702.1`, `wrangler 4.92.0`. `next` stays at `16.3.0`; vinext has no peer range on it and the build works with it. vinext 1.1.0 exists and was not tried; upgrade only with a full re-check.
 
+## What runs on the Site
+
+| Part | Where on Sites | Self-hosted equivalent |
+| --- | --- | --- |
+| Reader site, Studio, public API (`apps/web`) | every path not listed below | `next start` or the same Worker |
+| MCP server (`apps/mcp`) | `/mcp`, `/info`, `/.well-known/openai-apps-challenge` | `apps/mcp` container |
+| Workers (`apps/jobs`): social outbox, newsletter, comment notifications, MCP events | in the background of requests, and `/internal/*` | `apps/jobs` container + `pg_cron` |
+| Data | D1 (`DB`), R2 (`BUCKET`) | Supabase Postgres and Storage |
+| Sign-in | Sign in with ChatGPT | Supabase Auth |
+
+### Sign-in and editors
+
+Sites owns sign-in. The Studio's login page links to `/signin-with-chatgpt?return_to=…` (a top-level navigation) and sign-out posts to `/signout-with-chatgpt`. For a signed-in visitor the platform adds `oai-authenticated-user-id`, `oai-authenticated-user-email` and the encoded full name to each request; `packages/adapters/src/sites/editors.ts` turns them into an editor:
+
+- An account whose email is in `ATLASNEWS_ADMIN_EMAILS` becomes an admin, one in `ATLASNEWS_EDITOR_EMAILS` an editor, each with its own author, the first time it signs in. The row then belongs to that ChatGPT account: another account with the same email gets nothing, and removing the address from the list does not revoke it.
+- A row in `editors` with an email and no user id is an invitation and binds the same way.
+- Every other account is a reader: the login page says it is not an editor and offers to switch account. Readers can still comment as signed-in users.
+
+D1 has no row-level security, so the Studio receives its repositories only after the editor check (`apps/web/src/server/composition.ts`), and the MCP server maps the same editor to its scopes (`apps/mcp/src/auth.ts`).
+
+### MCP server
+
+The `mcp` capability in `hosting.json` tells Sites the Site serves an MCP endpoint at `/mcp`. Sites handles the OAuth for MCP clients and forwards the same identity headers, so editor tools work for the editor signed in through the client, and anonymous clients get the read tools. Sites can create a private ChatGPT plugin for the Site (`get_site` with `include_mcp_connection`, then `suggest_plugins`). Other MCP clients connect to `https://<site>/mcp`.
+
+### Background jobs
+
+Sites has no cron. The Worker calls `runDueJobsOnSites` (`apps/jobs/src/scheduled.ts`) in `ctx.waitUntil` after each request: each isolate looks every 30 seconds at most, and a lease in D1 (`job_leases`) lets one run start per minute across all isolates. A Site without traffic runs its jobs when the next request arrives. For a fixed rhythm, set `CRON_SECRET` and call `POST /internal/<job>` from an external scheduler (a Sites schedule or any cron), as [DEPLOYMENT.md](DEPLOYMENT.md#schedule-the-workers) describes for the containers.
+
+### Caching
+
+`POST /api/revalidate` and `revalidatePath` / `updateTag` act only on the isolate that receives them. Pages with `revalidate` (60 s for home, latest, categories, status, entities; 300 s for articles) are cached in isolate memory, so another isolate shows a change after at most its own TTL.
+
 ## Environment variables
 
-The Sites build runs `pnpm run build` in `apps/web`, so the values the build needs must be visible to that command. Everything else is set in the Site settings (More actions, Settings; owner only), never in files or `hosting.json`. After a change, redeploy.
+Set them in the Site settings (More actions, Settings; owner only), never in files or `hosting.json`, then redeploy. Names and meaning are in [`.env.example`](../.env.example).
 
-Build time (frozen into the bundles; changing one needs a new deployment):
+Build time (frozen into the bundles; a change needs a new deployment):
 
 | Variable | Why |
 | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | canonical origin: metadata, sitemap, feeds, `/api/health`. Measured: a runtime value does not override the built one |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | inlined into the browser bundle (login, Studio) |
-| `ATLASNEWS_CONTENT_MODE=supabase` | read by the [build guard](#build-guard) |
+| `NEXT_PUBLIC_SITE_URL` | canonical origin: metadata, sitemap, feeds, `/api/health`, the MCP origin. Measured: a runtime value does not override the built one |
 
-If the Sites build cannot see variables set in the Site settings, put the three public values and the mode in `apps/web/.env.production` (verified: the vinext build reads it and the guard sees it). The URL and the anon key are public by design, but `.gitignore` excludes `.env*`, so un-ignore the file on purpose.
+If the Sites build cannot see the Site settings, put it in `apps/web/.env.production` (verified: the vinext build reads it). `.gitignore` excludes `.env*`, so add that one file on purpose. `ATLASNEWS_CONTENT_MODE` needs no value: the Sites build defaults it to `sites`, and at run time the `DB` binding selects it.
 
-Runtime (Site settings): `ATLASNEWS_CLIENT_IP_HEADER=cf-connecting-ip` (keys the per-network comment and newsletter limits; empty switches them off, see [DEPLOYMENT.md](DEPLOYMENT.md#client-address-and-rate-limits)), `ATLASNEWS_OAUTH_REDIRECT_HOSTS` (optional, the consent page's redirect allowlist), `ATLASNEWS_CONTENT_MODE=supabase`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the server reads them at run time; verified in `workerd`), `SUPABASE_SERVICE_ROLE_KEY`, `ATLASNEWS_COMMENT_GUEST_SECRET`, `ATLASNEWS_REVALIDATE_SECRET`, `ATLASNEWS_MCP_ADMIN_API_KEY`, `ATLASNEWS_MCP_ADMIN_AUTHOR_ID`, `MCP_ALLOWED_ORIGINS`, `NEXT_PUBLIC_MCP_URL`, and the optional newsletter, WhatsApp, LinkedIn and X values. Names, meaning and which are required are in [`.env.example`](../.env.example) and [DEPLOYMENT.md](DEPLOYMENT.md). `GET /api/health` lists what is still missing and returns 503 until the deployment is ready.
+Runtime:
+
+| Variable | Required | Why |
+| --- | --- | --- |
+| `ATLASNEWS_ADMIN_EMAILS` | yes | the ChatGPT account(s) that become admins at first sign-in |
+| `ATLASNEWS_EDITOR_EMAILS` | optional | accounts that become editors at first sign-in |
+| `ATLASNEWS_COMMENT_GUEST_SECRET` | yes | signs guest commenter identities (`openssl rand -hex 32`) |
+| `ATLASNEWS_CLIENT_IP_HEADER` | yes | `cf-connecting-ip`; keys the per-network limits of comments, newsletter and MCP events |
+| `NEXT_PUBLIC_SITE_URL` | yes | same value as at build time; the server and the MCP server read it at run time |
+| `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `NEWSLETTER_FROM_EMAIL`, `NEWSLETTER_REPLY_TO`, `NEWSLETTER_UNSUBSCRIBE_SECRET` | for the newsletter and comment emails | Resend delivery |
+| `LINKEDIN_*`, `X_USER_ACCESS_TOKEN`, `WHATSAPP_*` | for social publishing | provider credentials |
+| `CRON_SECRET` | only for an external schedule | guards `/internal/*` |
+| `ATLASNEWS_MCP_ADMIN_API_KEY` | optional | Bearer key for CI or scripts calling the newsroom tools without ChatGPT sign-in |
+| `ATLASNEWS_OPENAI_APPS_CHALLENGE`, `ATLASNEWS_MCP_UI_DOMAIN` | for public plugin submission | [AGENT_PLUGIN.md](AGENT_PLUGIN.md) |
+
+Not used on Sites: every `SUPABASE_*` and `NEXT_PUBLIC_SUPABASE_*` variable, `NEXT_PUBLIC_MCP_URL` (defaults to the site origin), `ATLASNEWS_MCP_OAUTH_*`, `ATLASNEWS_OAUTH_REDIRECT_HOSTS`, `ATLASNEWS_REVALIDATE_SECRET` (the MCP server runs in the same Worker). `GET /api/health` reports the mode and lists every capability still unconfigured; it answers 503 until all are.
 
 ### Package manager
 
@@ -71,20 +120,37 @@ The dependencies' install scripts are blocked by default in pnpm. None of them i
 
 ### Build guard
 
-`next.config.ts` runs in both builds (verified: a failing guard stops `vinext build` and `next build`). For a production build it applies when `NEXT_PUBLIC_SITE_URL` is a public HTTPS origin or `NEXT_PUBLIC_SUPABASE_URL` is a hosted HTTPS origin. Then it requires `ATLASNEWS_CONTENT_MODE=supabase`, a valid Supabase URL and key, a non-local HTTPS Supabase origin and a non-local HTTPS canonical origin, so a public build cannot ship demo data or localhost metadata. Demo builds (CI, local review) and local-Supabase builds are not affected. A build with no variables at all is a demo build and passes; `/api/health` returning 503 `not-ready` is what catches a deployment that forgot its environment.
+`next.config.ts` runs in both builds (verified: a failing guard stops `vinext build` and `next build`). A production build whose `NEXT_PUBLIC_SITE_URL` is a public HTTPS origin, or whose Supabase URL is a hosted one, must use `sites` or `supabase` (never demo data) and a non-local HTTPS canonical origin; `supabase` also needs a valid hosted Supabase URL and key. Demo builds (CI, local review) are not affected.
 
 ## What the owner does in ChatGPT
 
-Only the owner can publish the first version, change the audience, the URL, secrets and the domain. Sites is in public beta on Plus, Pro, Business, Enterprise and Edu. Requires Work chats on ChatGPT web or Work/Codex in the ChatGPT desktop app.
+Only the owner can publish the first version and change the audience, URL, secrets and domain. Sites is in public beta on Plus, Pro, Business, Enterprise and Edu, from Work chats on ChatGPT web or Work/Codex in the ChatGPT desktop app. The step-by-step handoff for ChatGPT is kept with the project files (`handoff/chatgpt-deploy.md`); in short:
 
-1. On the machine that will run the build, clone the repository and install from the root: `pnpm install --frozen-lockfile`. pnpm links the `@atlasnews/*` workspace packages into `apps/web/node_modules`, so `apps/web` cannot be built from a copy of the folder alone (see [Package manager](#package-manager)).
-2. In ChatGPT (Work, or Codex in the desktop app), open the repository and ask: `@Sites deploy the project in apps/web as it is, with pnpm run build; do not change the code`. The plugin registers the Site (private, unpublished), writes the returned `project_id` into `apps/web/.openai/hosting.json`, runs `pnpm run build`, packages `dist/`, and saves and deploys a version. Commit the `project_id` change.
-3. Open `chatgpt.com/sites`, pick the Site, More actions, Settings. Set the runtime variables above. If build-time variables are supported there, set the build-time ones too, with `NEXT_PUBLIC_SITE_URL` set to the Site URL (or the custom domain, see 5).
-4. Ask Sites to rebuild and redeploy the saved version. Check `https://<site>/api/health` returns 200 with `"status":"ready"`, then open `/en`, `/it`, an article and `/en/feed.xml`.
-5. Custom domain: Settings, Add domain, enter the apex or subdomain you own, and create the DNS records Sites shows. Sites does not register domains and the option is not available in Enterprise workspaces at launch. Then set `NEXT_PUBLIC_SITE_URL` to the new origin, redeploy (it is built in), and update the Supabase Auth site URL and redirect URLs, `MCP_ALLOWED_ORIGINS`, and anything else that names the old host (the MCP server's `NEXT_PUBLIC_SITE_URL`, which `apps/mcp` uses for links and revalidation).
-6. Audience: new Sites are private. To publish, change the audience to anyone on the internet (an Enterprise workspace admin must allow that). Enterprise network policies must allow the Supabase hostname (`*.supabase.co` or your custom domain); raw TCP is blocked in every policy.
+1. Clone the repository and install from the root: `pnpm install --frozen-lockfile` (`apps/web` cannot be built from a copy of the folder alone, see [Package manager](#package-manager)).
+2. Ask `@Sites` to deploy the project in `apps/web` as it is with `pnpm run build`. The plugin registers the Site, writes `project_id` into `apps/web/.openai/hosting.json` (commit it), provisions D1 and R2, applies the migrations, builds, packages and deploys.
+3. Set the variables above in the Site settings and redeploy.
+4. Open the Site, sign in with an `ATLASNEWS_ADMIN_EMAILS` account at `/en/login`, and check `/api/health`, the Studio and `/mcp`.
+5. Optional: custom domain (Settings, Add domain; then set `NEXT_PUBLIC_SITE_URL` to it and redeploy), audience public, private ChatGPT plugin for `/mcp`.
 
-Local equivalent of step 2, with the plugin's own scripts (build, then package; no deploy): from `apps/web`, `pnpm build`, then `bash ~/.codex/plugins/cache/openai-curated-remote/sites/1.0.0/skills/sites/scripts/package-site.sh "$PWD" /tmp/atlasnews-sites.tar.gz`.
+## Local development with Sites behaviour
+
+Build once, give the local D1 its schema, then run the artifact with the bindings (`--persist-to` keeps the data between runs):
+
+```sh
+cd apps/web
+NEXT_PUBLIC_SITE_URL=http://127.0.0.1:4410 pnpm build
+for file in drizzle/0*.sql; do
+  pnpm exec wrangler d1 execute DB --local --persist-to .wrangler/state --config dist/server/wrangler.json --file "$file" -y
+done
+WRANGLER_SEND_METRICS=false pnpm exec wrangler dev --config dist/server/wrangler.json --local \
+  --persist-to .wrangler/state --ip 127.0.0.1 --port 4410 --inspector-port 0 \
+  --var ATLASNEWS_ADMIN_EMAILS:owner@example.com --var NEXT_PUBLIC_SITE_URL:http://127.0.0.1:4410 \
+  --var ATLASNEWS_COMMENT_GUEST_SECRET:$(openssl rand -hex 32)
+```
+
+Nothing signs you in locally: send the headers the platform would add, for example `curl -H 'oai-authenticated-user-id: u-owner' -H 'oai-authenticated-user-email: owner@example.com' http://127.0.0.1:4410/en/studio`. In `vinext dev` the vendored Sites plugin simulates the sign-in pages instead, as `seedy@sites.test`. Checked this way: pages in both languages, the Studio for an admin (a reader is sent to the login page, which says it is not an editor), MCP `tools/list`, a 401 challenge for an anonymous editor tool, category and article create and publish through MCP, search, the article page with Markdown, a cover upload served from `/media-store/`, a guest comment and the moderation queue (401 anonymous, 403 reader, 200 admin), `/internal/mcp-events` with and without `CRON_SECRET`, and the background job lease.
+
+A new Site starts empty: migrations hold no seed rows. The first admin creates the categories (Studio or the `admin_create_category` tool) before the first article. Pages cached with `revalidate` show a write after their TTL (60 s for lists), because the MCP server cannot reach the isolate cache of the page that served earlier.
 
 ## Running the artifact locally
 
@@ -98,17 +164,11 @@ WRANGLER_SEND_METRICS=false pnpm exec wrangler dev --config dist/server/wrangler
 
 `wrangler dev --local` needs no account. `dist/` is self-contained: it also ran from a copy outside the repository. Do not rebuild `dist/` while a server runs from it; the server then reads chunks of the new build and fails with missing-module errors or 404s on `_next/static`. `vinext start` serves the same `dist/` on Node and is fine for a quick look.
 
-## What does not run on Sites
-
-- `apps/jobs` (newsletter delivery, social publishing, outbox workers) and `apps/mcp` (the MCP server) are Node processes. They run from the container image described in [HOSTING.md](HOSTING.md); the schedule that calls the workers is Supabase `pg_cron`, see [DEPLOYMENT.md](DEPLOYMENT.md#schedule-the-workers).
-- There is no cron or background work inside the Site, and nothing durable besides Supabase: no D1, no R2, no KV.
-- `POST /api/revalidate` and `revalidatePath` / `updateTag` act only on the isolate that receives them. Pages with `revalidate` (60 s for home, latest, categories, status, entities; 300 s for articles) are cached in isolate memory, so another isolate shows a change after at most its own TTL. Pages are never stale for longer than that.
-
 ## Differences from the plain Next build
 
 Measured locally on the demo build, phone viewport (390 px, device pixel ratio 3):
 
-- `/_next/image` does not resize on Sites; vinext answers with a redirect to the original. The home page's lead thumbnail (`/media/neura-agents-hero.webp`) therefore downloaded 129,446 B instead of 4,047 B. `build/sites-worker.ts` now redirects `/_next/image` for local media that ship pre-sized (`/media/<name>-{480,672,750,1200,1536}.webp`) to the smallest variant that is wide enough: 14,045 B on the home page (4,047 B on plain Next, 129,446 B before the fix). The article page is the same on both builds (16.6 KB; the bundled hero already uses a `<picture>` of pre-sized files). Covers uploaded to Supabase Storage are still delivered at full size: the Worker cannot resize them. Fix when it matters: Supabase image transformations or pre-sized uploads in Studio.
+- `/_next/image` does not resize on Sites; vinext answers with a redirect to the original. The home page's lead thumbnail (`/media/neura-agents-hero.webp`) therefore downloaded 129,446 B instead of 4,047 B. `build/sites-worker.ts` now redirects `/_next/image` for local media that ship pre-sized (`/media/<name>-{480,672,750,1200,1536}.webp`) to the smallest variant that is wide enough: 14,045 B on the home page (4,047 B on plain Next, 129,446 B before the fix). The article page is the same on both builds (16.6 KB; the bundled hero already uses a `<picture>` of pre-sized files). Covers uploaded in the Studio (R2, served at `/media-store/<file>`) are still delivered at full size: the Worker cannot resize them. Fix when it matters: pre-sized uploads in Studio.
 - A `q` that Next would reject (for example `q=80`) is answered with the redirect for pre-sized media instead of 400.
 - `og:locale:alternate` is not emitted (vinext ignores `alternateLocale`).
 - `experimental.inlineCss` is ignored: CSS is a linked 39 KB file, not inlined, so the first paint differs slightly and the plain build's CSS budget does not apply to this artifact.
@@ -121,11 +181,11 @@ Measured locally on the demo build, phone viewport (390 px, device pixel ratio 3
 
 ## Not verified without a real deployment
 
-1. That Sites accepts and runs this artifact end to end. Only the plugin's `package-site.sh` (which runs the same layout checks as the packaging step) and a local `workerd` were used.
-2. How the ChatGPT app treats a monorepo project root. `apps/web` depends on `@atlasnews/core`, `contract` and `adapters`. The plugin's own `install-dependencies.mjs`, `build-site.mjs` and `package-site.mjs`, run from `apps/web` in a copy of the repository without `.git` or `node_modules`, installed the whole workspace, built and packaged it (see [Package manager](#package-manager)), so a full checkout works. A Site created from a copy of `apps/web` alone would fail to install. The managed Linux environment of the ChatGPT app was not available: see the pnpm version note in [Package manager](#package-manager).
-3. Whether Sites passes variables to the build step, or only to the runtime. If only to the runtime, use `.env.production`.
-4. Platform limits: Worker size, startup CPU, request CPU and time, subrequests per request, request body size. The Studio media upload action allows 9 MB (`serverActions.bodySizeLimit`); vinext honouring that limit was not tested.
-5. That Sites deploys with the `compatibility_date` and `nodejs_compat` flag of `dist/server/wrangler.json` (the artifact needs `nodejs_compat`), and serves `dist/client/_headers` and the cache headers like Cloudflare Assets do.
-6. Outbound HTTPS from the deployed Worker to the real Supabase project; Supabase Auth cookies, login, the Studio flow, `getClaims()` against real GoTrue, media upload to Storage, comments with real data, newsletter and WhatsApp delivery. Only a local HTTP stand-in for PostgREST was used (home, article, entities, latest, feed and `/api/articles` rendered its rows, and 18 requests reached it).
-7. The effect of an Enterprise network allow-list, and the Sites usage limits of the plan.
-8. Behaviour of `vinext 1.0.0-beta.5` on routes the checks did not time (ISR expiry of the article, latest and category pages), and any upgrade to vinext 1.1.0.
+1. That Sites accepts and runs this artifact end to end, provisions D1 and R2 from `hosting.json` and applies `dist/.openai/drizzle` before the upload.
+2. That the platform strips client-sent `oai-authenticated-*` headers before adding its own. The code relies on it, as OpenAI's starter does.
+3. How MCP clients other than ChatGPT authenticate to a Site's `/mcp` (anonymous read tools do not need it).
+4. How the ChatGPT app treats a monorepo project root. The plugin's own install, build and package scripts worked from `apps/web` in a full checkout; a copy of `apps/web` alone fails to install. The managed environment's pnpm was not checked (see [Package manager](#package-manager)).
+5. Whether Sites passes variables to the build step, or only to the runtime. If only to the runtime, use `.env.production`.
+6. Platform limits: Worker size, startup and request CPU, subrequests per request, request body size (the Studio upload allows 9 MB), D1 and R2 plan limits.
+7. Background jobs driven by traffic on a real Site, and provider sends (Resend, LinkedIn, X, WhatsApp) with real credentials.
+8. Behaviour of `vinext 1.0.0-beta.5` on routes the checks did not time (ISR expiry), and any upgrade to vinext 1.1.0.

@@ -1,11 +1,19 @@
 const localMediaPath = /^\/media\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/;
 const storagePathPrefix = "/storage/v1/object/public/editorial-media/";
+/** Uploads on ChatGPT Sites live in R2 and are served by the site itself, from its own origin. */
+const siteMediaPrefix = "/media-store/";
+const siteMediaPath = /^\/media-store\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
+
+function isSiteMediaPath(source: string) {
+  return siteMediaPath.test(source) && !source.includes("..");
+}
 
 export function getEditorialMediaReferenceKey(value: string) {
   const source = value.trim();
   if (localMediaPath.test(source) && !source.split("/").includes("..")) {
     return source.slice(1);
   }
+  if (isSiteMediaPath(source)) return source.slice(siteMediaPrefix.length);
 
   try {
     const candidate = new URL(source);
@@ -20,6 +28,7 @@ export function getEditorialMediaReferenceKey(value: string) {
 export function isAllowedEditorialImageSource(value: string) {
   const source = value.trim();
   if (localMediaPath.test(source) && !source.split("/").includes("..")) return true;
+  if (isSiteMediaPath(source)) return true;
 
   const configured = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   if (!configured) return false;

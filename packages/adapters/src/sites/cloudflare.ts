@@ -58,5 +58,11 @@ export interface R2Bucket {
   ): Promise<R2Object | null>;
   /** Deletes up to 1000 keys in one call. */
   delete(keys: string | string[]): Promise<void>;
-  list(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<R2Objects>;
+  list(options?: {
+    prefix?: string;
+    cursor?: string;
+    limit?: number;
+    /** Returns the metadata of each object too; R2 omits it otherwise. */
+    include?: ("httpMetadata" | "customMetadata")[];
+  }): Promise<R2Objects>;
 }

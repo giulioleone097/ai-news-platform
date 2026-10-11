@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  getContentMode,
   getNewsletterDeliveryEnvironment,
   getPublicSiteUrl,
 } from "../config/env";
+import { requireSitesBindings } from "../sites/bindings";
 import { createServiceSupabaseClient } from "../supabase/service";
 import { NewsletterDeliveryConfigurationError } from "@atlasnews/core/newsletter/domain/newsletter";
 import { ResendNewsletterProvider } from "./resend-provider";
@@ -10,6 +12,8 @@ import {
   NewsletterCampaignService,
   NewsletterDeliveryService,
 } from "@atlasnews/core/newsletter/application/service";
+import { D1NewsletterDeliveryRepository } from "./d1-newsletter-delivery-repository";
+import type { NewsletterDeliveryRepository } from "@atlasnews/core/newsletter/domain/ports";
 import { SupabaseNewsletterDeliveryRepository } from "./supabase-repository";
 
 function requireDeliveryEnvironment() {
@@ -22,8 +26,16 @@ function requireDeliveryEnvironment() {
   return { environment, baseUrl };
 }
 
+/** The delivery repository on the Site's D1 database, or the service-role Supabase client elsewhere. */
+function serviceRepository() {
+  if (getContentMode() === "sites") return new D1NewsletterDeliveryRepository(requireSitesBindings().database);
+  const client = createServiceSupabaseClient();
+  if (!client) throw new NewsletterDeliveryConfigurationError();
+  return new SupabaseNewsletterDeliveryRepository(client);
+}
+
 function campaignService(
-  repository: SupabaseNewsletterDeliveryRepository,
+  repository: NewsletterDeliveryRepository,
   environment: NonNullable<ReturnType<typeof getNewsletterDeliveryEnvironment>>,
 ) {
   return new NewsletterCampaignService(repository, {
@@ -33,11 +45,15 @@ function campaignService(
   });
 }
 
-/** `createClient` supplies the session-bound Supabase client, which only the delivery app can build. */
+/**
+ * `createClient` supplies the session-bound Supabase client, which only the delivery app can build. On Sites
+ * the D1 binding is the Studio's store, so it is not called.
+ */
 export async function getStudioNewsletterCampaignService(
   createClient: () => Promise<SupabaseClient | null>,
 ) {
   const { environment } = requireDeliveryEnvironment();
+  if (getContentMode() === "sites") return campaignService(serviceRepository(), environment);
   const client = await createClient();
   if (!client) throw new NewsletterDeliveryConfigurationError("Studio persistence is not configured.");
   return campaignService(new SupabaseNewsletterDeliveryRepository(client), environment);
@@ -45,16 +61,12 @@ export async function getStudioNewsletterCampaignService(
 
 export function getAdminNewsletterCampaignService() {
   const { environment } = requireDeliveryEnvironment();
-  const client = createServiceSupabaseClient();
-  if (!client) throw new NewsletterDeliveryConfigurationError();
-  return campaignService(new SupabaseNewsletterDeliveryRepository(client), environment);
+  return campaignService(serviceRepository(), environment);
 }
 
 export function getNewsletterDeliveryService() {
   const { environment, baseUrl } = requireDeliveryEnvironment();
-  const client = createServiceSupabaseClient();
-  if (!client) throw new NewsletterDeliveryConfigurationError();
-  const repository = new SupabaseNewsletterDeliveryRepository(client);
+  const repository = serviceRepository();
   const provider = new ResendNewsletterProvider({ apiKey: environment.apiKey });
   return new NewsletterDeliveryService(repository, provider, {
     baseUrl,

@@ -13,6 +13,15 @@ describe("editorial image source boundary", () => {
     expect(isAllowedEditorialImageSource("/media/../secret.webp")).toBe(false);
   });
 
+  it("allows an upload that the site serves from its own origin, and rejects traversal and other origins", () => {
+    expect(isAllowedEditorialImageSource("/media-store/0b6c1c0e-9f1d-4a43-8d3f-0a1f4f0d2c11.webp")).toBe(true);
+    expect(isAllowedEditorialImageSource("/media-store/../secret.webp")).toBe(false);
+    expect(isAllowedEditorialImageSource("/media-store/nested/cover.webp")).toBe(false);
+    expect(isAllowedEditorialImageSource("https://example.com/media-store/cover.webp")).toBe(false);
+    expect(getEditorialMediaReferenceKey("/media-store/cover.webp")).toBe("cover.webp");
+    expect(getEditorialMediaReferenceKey("/media-store/../cover.webp")).toBeNull();
+  });
+
   it("allows only the configured public editorial bucket", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
     expect(isAllowedEditorialImageSource(

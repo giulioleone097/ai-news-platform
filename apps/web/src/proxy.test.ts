@@ -13,6 +13,7 @@ vi.mock("@supabase/ssr", () => ({
 }));
 
 vi.mock("@atlasnews/adapters/config/env", () => ({
+  getContentMode: () => "supabase",
   getSupabaseEnvironment: mocks.getSupabaseEnvironment,
 }));
 

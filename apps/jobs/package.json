@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./handler": "./src/handler.ts",
+    "./scheduled": "./src/scheduled.ts"
+  },
   "scripts": {
     "start": "tsx src/node.ts",
     "typecheck": "tsc --noEmit"

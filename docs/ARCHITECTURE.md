@@ -9,7 +9,7 @@ flowchart LR
   Web["apps/web: Next.js pages, actions, site tools"] --> Contract["packages/contract: capability catalogue"]
   MCP["apps/mcp: MCP Streamable HTTP"] --> Contract
   Jobs["apps/jobs: background workers"] --> Adapters
-  Web --> Adapters["packages/adapters: Supabase, memory, providers, composition"]
+  Web --> Adapters["packages/adapters: D1/R2, Supabase, memory, providers, composition"]
   MCP --> Adapters
   Contract --> Core["packages/core: domain, use cases, ports"]
   Adapters --> Core
@@ -23,7 +23,7 @@ ESLint enforces this with `no-restricted-imports`, per layer:
 | --- | --- | --- | --- |
 | Core | `@atlasnews/core` | itself, `zod` and the Markdown parsing libraries | `next`, `react`, `server-only`, `@supabase/*`, adapters, contract, any app |
 | Contract | `@atlasnews/contract` | core, `zod` | `next`, `react`, `server-only`, `@supabase/*`, adapters, any app |
-| Adapters | `@atlasnews/adapters` | core, provider and Supabase SDKs | `next`, `react`, `server-only`, any app |
+| Adapters | `@atlasnews/adapters` | core, provider and Supabase SDKs, the D1/R2 subset in `sites/cloudflare.ts` | `next`, `react`, `server-only`, any app |
 | Apps | `@atlasnews/web`, `@atlasnews/mcp`, `@atlasnews/jobs` | core, contract, adapters | another app; `apps/mcp` and `apps/jobs` also not `next`, `react` or `server-only` |
 
 Packages are consumed as TypeScript source through `exports`; there is no build step. `apps/web` lists them in `transpilePackages`, `apps/mcp` and `apps/jobs` run under `tsx`, and Vitest resolves them through the workspace. The `server-only` guard lives in `apps/web` files only, because it throws outside a React server environment. `@atlasnews/contract/page` is the browser-safe view of the catalogue (plain data, no handler or Node API), and a test enforces that.
@@ -36,12 +36,12 @@ Packages are consumed as TypeScript source through `exports`; there is no build 
 | Application | `packages/core/src/<module>/application` | Pure command/query orchestration, story labels and Markdown, delivery-neutral cache invalidation port |
 | Capability catalogue | `packages/contract/src` | Every tool once: name, title, description, zod input and output, annotation hints, required scopes, surfaces (`mcp`, `page`), confirmation question, handler |
 | Inbound adapters | `apps/web/src/app`, `apps/web/src/server`, `apps/mcp/src`, `apps/jobs/src` | HTML, Server Actions, JSON-RPC, OAuth challenges, worker endpoints, localization, HTTP policy. `apps/mcp/src/adapter.ts` is the only generic `registerTool`; `apps/web/src/components/site/site-tools` registers the page capabilities as WebMCP tools |
-| Outbound adapters | `packages/adapters/src` | In-memory demo and Supabase persistence, Resend/LinkedIn/X/WhatsApp providers, environment reading |
-| Composition | `packages/adapters/src/*/container.ts`, `runtime.ts`, `apps/mcp/src/runtime-ports.ts` | Selects demo or Supabase without leaking adapter details and builds the ports a capability handler may use |
+| Outbound adapters | `packages/adapters/src` | In-memory demo, D1/R2 (Sites) and Supabase persistence, Resend/LinkedIn/X/WhatsApp providers, environment reading |
+| Composition | `packages/adapters/src/*/container.ts`, `runtime.ts`, `apps/mcp/src/runtime-ports.ts` | Selects demo, Sites or Supabase without leaking adapter details and builds the ports a capability handler may use |
 | Delivery composition | `apps/web/src/server/composition.ts`, `apps/web/src/lib/editorial-queries.ts`, `apps/web/src/lib/editorial-cache.ts` | Gives web code the composition roots and connects Next.js cache and cookie primitives to application/domain ports |
-| Database | `supabase/migrations` | Constraints, indexes, RLS, grants, triggers, full-text vectors, the `pg_cron` worker schedule |
+| Database | `apps/web/drizzle` (D1), `supabase/migrations` (Postgres) | Constraints, indexes, triggers, full-text search; on Postgres also RLS, grants and the `pg_cron` worker schedule |
 
-Where each part runs: `apps/web` on ChatGPT Sites ([SITES.md](SITES.md)); `apps/mcp` and `apps/jobs` as containers ([HOSTING.md](HOSTING.md)); the schedule that calls `apps/jobs` is `pg_cron` in Supabase ([DEPLOYMENT.md](DEPLOYMENT.md#schedule-the-workers)); Supabase Auth signs editors in to the Studio and, for the MCP server, acts as the OAuth 2.1 authorization server ([MCP.md](MCP.md#sign-in-with-supabase-auth)).
+Where each part runs depends on the deployment. On ChatGPT Sites (the default, [SITES.md](SITES.md)) one Worker, `apps/web/build/sites-worker.ts`, composes all three apps: the Next.js app, `apps/mcp` at `/mcp` and `apps/jobs` at `/internal/*` and in the background of requests; data is D1 and R2, and Sign in with ChatGPT identifies editors for the Studio and the MCP server alike. Self-hosted ([DEPLOYMENT.md](DEPLOYMENT.md), [HOSTING.md](HOSTING.md)), `apps/mcp` and `apps/jobs` run as containers, `pg_cron` in Supabase calls the workers, and Supabase Auth signs editors in to the Studio and acts as the MCP server's OAuth 2.1 authorization server ([MCP.md](MCP.md#sign-in-with-supabase-auth)). `apps/web/build` is the one place an app imports the other apps, and only their request handlers.
 
 ## Main flows
 
@@ -49,7 +49,7 @@ Where each part runs: `apps/web` on ChatGPT Sites ([SITES.md](SITES.md)); `apps/
 
 1. A locale-prefixed Next.js route validates `en` or `it`.
 2. A thin Next.js composition adapter asks the `ArticleRepository` port for published content.
-3. The composition root selects the explicit demo or Supabase adapter.
+3. The composition root selects the demo, D1 or Supabase adapter for the content mode.
 4. Public pages return Server Component HTML; delivery-side cached feed/article queries use explicit revalidation windows.
 5. Archive pages render their first slice in HTML, then the web delivery adapter requests compact list items with the same opaque composite cursor used by MCP.
 
@@ -79,7 +79,7 @@ Where each part runs: `apps/web` on ChatGPT Sites ([SITES.md](SITES.md)); `apps/
 
 Articles, categories, entities and media are written by the same use cases whichever surface asks. Studio screens, WebMCP editor tools and the MCP endpoint all run the catalogue capabilities in `packages/contract`; the web side reaches them through `apps/web/src/server/capabilities.ts`, and the MCP side through `apps/mcp/src/adapter.ts`. Each rule therefore has one owner in `packages/core/src/editorial/application/`: `article-commands.ts`, `category-commands.ts`, `entity-commands.ts` and `media-commands.ts`. Each service depends only on its repository port (`ArticleRepository`, `CategoryAdminRepository`, `EntityAdminRepository`, `MediaRepository`); the article service also reads entities through the `findEntityBySlug` part of `EntityRepository`.
 
-Batch writes follow one rule: validate every item first, then write the batch in one transaction. `validateEach` checks all items and reports every invalid one by index, so a rejected batch writes nothing. The Supabase adapter then applies a valid batch in a single RPC, for example `save_articles_batch`, `create_categories_batch` or `create_entities_batch`, so the batch either lands completely or not at all. Media is the exception: storage is not a database, so a batch upload that fails halfway removes the files it had already stored.
+Batch writes follow one rule: validate every item first, then write the batch in one transaction. `validateEach` checks all items and reports every invalid one by index, so a rejected batch writes nothing. The Supabase adapter then applies a valid batch in a single RPC, for example `save_articles_batch`, `create_categories_batch` or `create_entities_batch`, so the batch either lands completely or not at all; the D1 adapter sends the whole batch as one `database.batch()`, which D1 applies atomically. Media is the exception: storage is not a database, so a batch upload that fails halfway removes the files it had already stored.
 
 ### Site tools
 
@@ -99,7 +99,7 @@ Batch writes follow one rule: validate every item first, then write the batch in
 
 ## Adapter selection
 
-`ATLASNEWS_CONTENT_MODE=demo|supabase` is the explicit composition switch. Supabase mode requires both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`; partial configuration throws instead of falling back. Demo remains deterministic for development and CI. Studio uses demo only outside production or with the emergency `ATLASNEWS_ENABLE_DEMO_STUDIO=true` opt-in; production demo does not acknowledge ephemeral newsletter writes. `/api/health` returns `503` until production uses persistent content and a canonical HTTPS origin.
+`ATLASNEWS_CONTENT_MODE=sites|supabase|demo` is the composition switch (`packages/adapters/src/config/env.ts`). Unset, a D1 binding selects `sites`, Supabase configuration selects `supabase`, and anything else is `demo`. Sites mode requires the `DB` and `BUCKET` bindings; D1 has no row-level security, so the delivery layer is the authorization boundary there (the Studio receives repositories only for a signed-in editor). Supabase mode requires both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`; partial configuration throws instead of falling back. Demo remains deterministic for development and CI. Studio uses demo only outside production or with the emergency `ATLASNEWS_ENABLE_DEMO_STUDIO=true` opt-in; production demo does not acknowledge ephemeral newsletter writes. `/api/health` returns `503` until production uses persistent content and a canonical HTTPS origin.
 
 ## Design principles
 
@@ -115,8 +115,8 @@ When adding a capability:
 
 1. Add a domain rule only if it is transport- and database-independent.
 2. Extend the smallest relevant port.
-3. Implement memory and Supabase adapters together.
+3. Implement the memory, D1 and Supabase adapters together.
 4. Add one application use case, then thin delivery adapters.
 5. Put input and output validation at each external boundary.
 6. Add a migration for persistent invariants and indexes.
-7. Prove the changed path in demo and Supabase modes when persistence behavior changes.
+7. Prove the changed path in demo, D1 (Miniflare) and Supabase modes when persistence behavior changes.

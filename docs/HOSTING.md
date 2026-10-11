@@ -1,6 +1,6 @@
 # Hosting apps/mcp and apps/jobs in containers
 
-`apps/mcp` (MCP server, default port 8787) and `apps/jobs` (background workers, default port 8788) each run from the same [Dockerfile](../Dockerfile), selected by a build argument. Any container host that runs an OCI image works. The reader site (`apps/web`) is not part of this image; it runs on ChatGPT Sites ([SITES.md](SITES.md)).
+`apps/mcp` (MCP server, default port 8787) and `apps/jobs` (background workers, default port 8788) each run from the same [Dockerfile](../Dockerfile), selected by a build argument. Any container host that runs an OCI image works. These containers are for the self-hosted Supabase deployment ([DEPLOYMENT.md](DEPLOYMENT.md)). On ChatGPT Sites the Site's Worker serves the MCP server and runs the workers itself, so neither container is needed ([SITES.md](SITES.md#what-runs-on-the-site)). The reader site (`apps/web`) is not part of this image.
 
 ## Build
 

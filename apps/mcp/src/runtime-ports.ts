@@ -50,17 +50,18 @@ export function createRuntimePorts(principal?: AuthenticatedPrincipal): Capabili
     },
 
     async newsletter() {
-      const [{ getAdminNewsletterCampaignService, getNewsletterDeliveryService }, { getSupabaseAdminEnvironment }] =
+      const [{ getAdminNewsletterCampaignService, getNewsletterDeliveryService }, { getContentMode, getSupabaseAdminEnvironment }] =
         await Promise.all([
           import("@atlasnews/adapters/newsletter/container"),
           import("@atlasnews/adapters/config/env"),
         ]);
-      const admin = getSupabaseAdminEnvironment(actorAuthorId);
-      if (!admin) throw new Error("Newsletter administration is not configured.");
+      // On Sites every newsroom caller is a signed-in editor with an author.
+      const authorId = getContentMode() === "sites" ? actorAuthorId : getSupabaseAdminEnvironment(actorAuthorId)?.authorId;
+      if (!authorId) throw new Error("Newsletter administration is not configured.");
       return {
         campaign: getAdminNewsletterCampaignService(),
         delivery: getNewsletterDeliveryService(),
-        authorId: admin.authorId,
+        authorId,
       };
     },
 

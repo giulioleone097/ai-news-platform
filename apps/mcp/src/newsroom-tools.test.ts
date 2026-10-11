@@ -259,6 +259,6 @@ describe("content management through the catalogue", () => {
       items: [{ name: "a.png", mimeType: "image/png", dataBase64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" }],
     });
     expect(upload.isError).toBe(true);
-    expect(upload.content[0].text).toBe("Media uploads require Supabase Storage.");
+    expect(upload.content[0].text).toBe("Media uploads require media storage.");
   });
 });

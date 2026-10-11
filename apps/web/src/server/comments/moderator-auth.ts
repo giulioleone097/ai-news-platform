@@ -1,32 +1,19 @@
 import "server-only";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { CommentOperationError } from "@atlasnews/core/comments/application/errors";
 import type { ModerationActor } from "@atlasnews/core/comments/domain/comment";
+import { getEditorIdentity, isSignedIn } from "@/lib/editor-auth";
 
 export async function requireCommentModerator(): Promise<ModerationActor> {
-  const client = await createServerSupabaseClient();
-  if (!client) {
-    throw new CommentOperationError(
-      "configuration_unavailable",
-      "Comment moderation is unavailable.",
-      503,
-    );
+  const editor = await getEditorIdentity();
+  // The demo editor has no persistent comments to moderate.
+  if (editor?.isDemo) {
+    throw new CommentOperationError("configuration_unavailable", "Comment moderation is unavailable.", 503);
   }
-
-  const { data: authData, error: authError } = await client.auth.getUser();
-  if (authError || !authData.user) {
-    throw new CommentOperationError("operation_not_allowed", "Moderator authentication required.", 401);
+  if (!editor) {
+    throw await isSignedIn()
+      ? new CommentOperationError("operation_not_allowed", "Moderator permission required.", 403)
+      : new CommentOperationError("operation_not_allowed", "Moderator authentication required.", 401);
   }
-
-  const { data: profile, error: profileError } = await client
-    .from("profiles")
-    .select("role")
-    .eq("id", authData.user.id)
-    .maybeSingle();
-  if (profileError || !profile || !["editor", "admin"].includes(String(profile.role))) {
-    throw new CommentOperationError("operation_not_allowed", "Moderator permission required.", 403);
-  }
-
-  return { kind: "user", userId: authData.user.id, label: null };
+  return { kind: "user", userId: editor.userId, label: null };
 }

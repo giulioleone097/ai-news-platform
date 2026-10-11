@@ -310,9 +310,10 @@ function optionalWebUrl(value: string | undefined) {
   }
 }
 
-/** Origin of the standalone MCP server that the reader site links to. */
+/** Origin of the MCP server that the reader site links to: the site itself on Sites, else the standalone server. */
 export function getPublicMcpUrl() {
-  return parseHttpUrl(process.env.NEXT_PUBLIC_MCP_URL) ?? new URL("http://localhost:8787");
+  return parseHttpUrl(process.env.NEXT_PUBLIC_MCP_URL)
+    ?? (getContentMode() === "sites" ? getPublicSiteUrl() : new URL("http://localhost:8787"));
 }
 
 export function getSocialProfiles() {

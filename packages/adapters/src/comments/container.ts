@@ -1,13 +1,19 @@
 import {
   getCommentEnvironment,
   getCommentNotificationEnvironment,
+  getContentMode,
   getNewsletterDeliveryEnvironment,
   getPublicSiteUrl,
   getSupabaseEnvironment,
 } from "../config/env";
 import { createPublicSupabaseClient } from "../supabase/public";
 import { createServiceSupabaseClient } from "../supabase/service";
+import { requireSitesBindings } from "../sites/bindings";
+import { D1CommentNotificationOutbox } from "./d1-comment-notification-outbox";
+import { D1CommentRepository } from "./d1-comment-repository";
 import { SupabaseCommentNotificationOutbox } from "./supabase-comment-notification-outbox";
+import type { CommentRepository } from "@atlasnews/core/comments/application/comment-repository";
+import { CommentOperationError } from "@atlasnews/core/comments/application/errors";
 import { CommentService } from "@atlasnews/core/comments/application/comment-service";
 import { CommentNotificationDeliveryService } from "@atlasnews/core/comments/application/comment-notification-delivery";
 import {
@@ -18,7 +24,8 @@ import { SupabaseCommentRepository } from "./supabase-comment-repository";
 import { ResendCommentNotificationProvider } from "./resend-comment-notification-provider";
 
 export function getCommentCapability(): CommentCapability {
-  const readable = Boolean(getSupabaseEnvironment());
+  const sites = getContentMode() === "sites";
+  const readable = sites || Boolean(getSupabaseEnvironment());
   const mutationEnvironment = getCommentEnvironment();
   const notificationEnvironment = getCommentNotificationEnvironment();
   const mutations = Boolean(mutationEnvironment);
@@ -37,7 +44,33 @@ export function getCommentCapability(): CommentCapability {
   };
 }
 
+function createSitesCommentRepository() {
+  return new D1CommentRepository(requireSitesBindings().database);
+}
+
+/** Approved comments only, as the Supabase repository without a service client: D1 has no RLS to stop the rest. */
+function publicCommentRepository(repository: CommentRepository): CommentRepository {
+  const refuse = () => Promise.reject(
+    new CommentOperationError("configuration_unavailable", "Comment mutations are unavailable.", 503),
+  );
+  return {
+    listApproved: (query) => repository.listApproved(query),
+    listOwn: refuse,
+    create: refuse,
+    editOwn: refuse,
+    deleteOwn: refuse,
+    report: refuse,
+    listModeration: refuse,
+    listReports: refuse,
+    moderate: refuse,
+    listAudit: refuse,
+    verifyNotificationSubscription: refuse,
+    unsubscribeNotificationSubscription: refuse,
+  };
+}
+
 export function createPublicCommentService() {
+  if (getContentMode() === "sites") return new CommentService(publicCommentRepository(createSitesCommentRepository()));
   const readClient = createPublicSupabaseClient();
   return readClient
     ? new CommentService(new SupabaseCommentRepository(readClient, null))
@@ -46,6 +79,7 @@ export function createPublicCommentService() {
 
 export function createMutationCommentService() {
   if (!getCommentEnvironment()) return null;
+  if (getContentMode() === "sites") return new CommentService(createSitesCommentRepository());
   const readClient = createPublicSupabaseClient();
   const serviceClient = createServiceSupabaseClient();
   return readClient && serviceClient
@@ -55,6 +89,9 @@ export function createMutationCommentService() {
 
 export function createCommentNotificationOutbox() {
   if (!getCommentEnvironment()) return null;
+  if (getContentMode() === "sites") {
+    return new D1CommentNotificationOutbox(requireSitesBindings().database);
+  }
   const serviceClient = createServiceSupabaseClient();
   return serviceClient ? new SupabaseCommentNotificationOutbox(serviceClient) : null;
 }

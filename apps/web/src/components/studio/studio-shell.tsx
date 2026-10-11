@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ExternalLink, LogOut, Plus } from "lucide-react";
 import type { Locale, Messages } from "@/i18n";
-import type { EditorIdentity } from "@/lib/supabase/editor-auth";
+import type { EditorIdentity } from "@/lib/editor-identity";
 import { signOutAction } from "@/app/[locale]/(studio)/login/actions";
 import { StudioNavigation } from "./studio-navigation";
 
@@ -10,11 +10,14 @@ export function StudioShell({
   locale,
   messages,
   editor,
+  signOutPath,
 }: {
   children: React.ReactNode;
   locale: Locale;
   messages: Messages;
   editor: EditorIdentity;
+  /** On Sites the platform signs out: a plain form POST to its path. Otherwise the Supabase action. */
+  signOutPath?: string;
 }) {
   const alternateLocale = locale === "en" ? "it" : "en";
 
@@ -38,13 +41,7 @@ export function StudioShell({
               <small>{editor.role}</small>
             </span>
           </div>
-          <form action={signOutAction}>
-            <input name="locale" type="hidden" value={locale} />
-            <button className="studio-icon-button" title={messages.auth.signOut} type="submit">
-              <LogOut aria-hidden="true" size={17} />
-              <span className="sr-only">{messages.auth.signOut}</span>
-            </button>
-          </form>
+          <SignOutForm label={messages.auth.signOut} locale={locale} signOutPath={signOutPath} size={17} />
         </div>
       </aside>
 
@@ -71,13 +68,13 @@ export function StudioShell({
               <Plus aria-hidden="true" size={17} />
               {messages.studio.newArticle}
             </Link>
-            <form action={signOutAction} className="studio-topbar__logout">
-              <input name="locale" type="hidden" value={locale} />
-              <button className="studio-icon-button" title={messages.auth.signOut} type="submit">
-                <LogOut aria-hidden="true" size={16} />
-                <span className="sr-only">{messages.auth.signOut}</span>
-              </button>
-            </form>
+            <SignOutForm
+              className="studio-topbar__logout"
+              label={messages.auth.signOut}
+              locale={locale}
+              signOutPath={signOutPath}
+              size={16}
+            />
           </div>
         </header>
         <main className="studio-main" id="studio-main">
@@ -85,5 +82,34 @@ export function StudioShell({
         </main>
       </div>
     </div>
+  );
+}
+
+function SignOutForm({
+  className,
+  label,
+  locale,
+  signOutPath,
+  size,
+}: {
+  className?: string;
+  label: string;
+  locale: Locale;
+  signOutPath?: string;
+  size: number;
+}) {
+  return (
+    <form
+      action={signOutPath ?? signOutAction}
+      className={className}
+      method={signOutPath ? "post" : undefined}
+      target={signOutPath ? "_top" : undefined}
+    >
+      <input name="locale" type="hidden" value={locale} />
+      <button className="studio-icon-button" title={label} type="submit">
+        <LogOut aria-hidden="true" size={size} />
+        <span className="sr-only">{label}</span>
+      </button>
+    </form>
   );
 }

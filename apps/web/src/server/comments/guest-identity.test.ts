@@ -12,7 +12,7 @@ import {
 const guestSecret = "test-comment-secret-that-is-longer-than-thirty-two-bytes";
 const guestId = "f0d16765-a03d-4c55-9e1c-fd6c6c87557f";
 const userId = "c1bc5fb2-1e4a-447d-b0a6-5481bacf2d35";
-const mocks = vi.hoisted(() => ({ getUser: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getSignedInUserId: vi.fn() }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@atlasnews/adapters/config/env", () => ({
@@ -20,13 +20,11 @@ vi.mock("@atlasnews/adapters/config/env", () => ({
     guestSecret: "test-comment-secret-that-is-longer-than-thirty-two-bytes",
   }),
 }));
-vi.mock("@/lib/supabase/server", () => ({
-  createServerSupabaseClient: async () => ({ auth: { getUser: mocks.getUser } }),
-}));
+vi.mock("@/lib/editor-auth", () => ({ getSignedInUserId: mocks.getSignedInUserId }));
 
 describe("resolveCommentActor", () => {
   it("keeps the signed guest ownership fallback after authentication", async () => {
-    mocks.getUser.mockResolvedValueOnce({ data: { user: { id: userId } } });
+    mocks.getSignedInUserId.mockResolvedValueOnce(userId);
     const token = createGuestToken(guestSecret, Date.now(), guestId);
     const request = new NextRequest("https://atlasnews.test/api/comments", {
       headers: { cookie: `${commentGuestCookieName}=${token.value}` },

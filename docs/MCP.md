@@ -88,6 +88,10 @@ Supabase Auth cannot grant custom scopes; it rejects an authorization request fo
 
 Responses to a signed-in editor are `Cache-Control: no-store` and carry no CORS headers. Anonymous responses keep today's CORS behaviour: `*` unless `MCP_ALLOWED_ORIGINS` is set. `Authorization` is not in the allowed preflight headers, so browsers cannot call the editor tools cross-origin.
 
+## Sign-in on ChatGPT Sites
+
+On Sites (`ATLASNEWS_CONTENT_MODE=sites`) the MCP server runs inside the Site's Worker at `https://<site>/mcp`, and the platform is the authorization server: `hosting.json` declares the `mcp` capability, Sites runs the OAuth flow for MCP clients and forwards the signed-in account as the `oai-authenticated-user-*` headers, as it does for the site. `resolveSitesPrincipal` (`apps/mcp/src/auth.ts`) maps that account to its editor row (`packages/adapters/src/sites/editors.ts`, [SITES.md](SITES.md#sign-in-and-editors)) and the role to scopes with the same `scopesForRole`; an account without an editor row is a caller with no newsroom scope. The Bearer challenge then carries no `resource_metadata`, none of the Supabase variables below apply, and no revalidation call is needed because the site and the server share one Worker and one D1 database. `ATLASNEWS_MCP_ADMIN_API_KEY` still works for scripts.
+
 ## Sign-in with Supabase Auth
 
 Supabase Auth is the OAuth 2.1 authorization server; `apps/mcp` is only the resource server. Editors are the `auth.users` that have an editor or admin `public.profiles` row ([DEPLOYMENT.md](DEPLOYMENT.md), "Bootstrap the first editor").

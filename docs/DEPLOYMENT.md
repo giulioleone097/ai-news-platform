@@ -1,12 +1,13 @@
 # Deployment
 
-This runbook prepares AtlasNews for its three hosts without creating or mutating a remote project automatically: the reader site on ChatGPT Sites ([SITES.md](SITES.md)), the MCP server and the workers as containers ([HOSTING.md](HOSTING.md)), and Supabase.
+This runbook is the self-hosted deployment on Supabase (`ATLASNEWS_CONTENT_MODE=supabase`), the alternative to the default ChatGPT Sites deployment, which needs none of it ([SITES.md](SITES.md)). It prepares the hosts without creating or mutating a remote project automatically: the reader site (`next start`, or the Sites Worker with the Supabase mode), the MCP server and the workers as containers ([HOSTING.md](HOSTING.md)), and Supabase.
 
 ## Deployment modes
 
 | Mode | Persistence | Intended use |
 | --- | --- | --- |
 | Demo | Process-local memory | Zero-config development; public CI and visual review |
+| Sites | The Site's D1 and R2 | The default production deployment ([SITES.md](SITES.md)) |
 | Local Supabase | Docker-backed Supabase CLI stack | Migration, RLS, Auth, and integration verification |
 | Preview | Dedicated non-production Supabase project | A separate Site and separate containers for staging review |
 | Production | Dedicated production Supabase project | Live editorial platform |

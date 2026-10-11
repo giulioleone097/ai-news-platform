@@ -5,11 +5,13 @@ import {
   getStudioEditorialRepositories as composeStudioEditorialRepositories,
 } from "@atlasnews/adapters/editorial/container";
 import { getStudioNewsletterCampaignService as composeStudioNewsletterCampaignService } from "@atlasnews/adapters/newsletter/container";
+import { getContentMode } from "@atlasnews/adapters/config/env";
+import { getEditorIdentity } from "@/lib/editor-auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 // The only module that lets web code reach the adapters' composition roots; the
 // server-only guard keeps them out of client bundles.
-export { getPublicEditorialRepositories } from "@atlasnews/adapters/editorial/container";
+export { getPublicEditorialRepositories, readUploadedMedia } from "@atlasnews/adapters/editorial/container";
 export * from "@atlasnews/adapters/comments/container";
 export { createCommentNotificationPreference } from "@atlasnews/adapters/comments/notification-preference";
 export { getNewsletterDeliveryService } from "@atlasnews/adapters/newsletter/container";
@@ -18,12 +20,34 @@ export {
   createWhatsAppWebhookRuntime,
 } from "@atlasnews/adapters/social-publishing/runtime";
 
-export const getStudioEditorialRepositories = () =>
-  composeStudioEditorialRepositories(createServerSupabaseClient);
+/** The author that writes of the signed-in editor are attributed to; Supabase reads it from the session itself. */
+const editorAuthorId = async () => (await getEditorIdentity())?.author.id ?? null;
 
-/** The signed-in editor's own repository, including the category, entity and batch writes. RLS applies. */
-export const getStudioAdminEditorialRepository = () =>
-  composeStudioAdminEditorialRepository(createServerSupabaseClient);
+/**
+ * Supabase checks every Studio query again with RLS. The D1 database has no such layer, so on Sites the
+ * Studio repositories are only handed out while an editor is signed in, whatever the caller checked.
+ */
+async function requireSitesEditor() {
+  if (getContentMode() === "sites" && !(await getEditorIdentity())) {
+    throw new Error("The Studio needs a signed-in editor.");
+  }
+}
 
-export const getStudioNewsletterCampaignService = () =>
-  composeStudioNewsletterCampaignService(createServerSupabaseClient);
+export const getStudioEditorialRepositories = async () => {
+  await requireSitesEditor();
+  return composeStudioEditorialRepositories(createServerSupabaseClient, editorAuthorId);
+};
+
+/**
+ * The signed-in editor's own repository, including the category, entity and batch writes. With
+ * Supabase RLS applies; on Sites the callers have already checked that an editor is signed in.
+ */
+export const getStudioAdminEditorialRepository = async () => {
+  await requireSitesEditor();
+  return composeStudioAdminEditorialRepository(createServerSupabaseClient, editorAuthorId);
+};
+
+export const getStudioNewsletterCampaignService = async () => {
+  await requireSitesEditor();
+  return composeStudioNewsletterCampaignService(createServerSupabaseClient);
+};

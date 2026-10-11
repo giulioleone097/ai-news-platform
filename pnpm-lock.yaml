@@ -244,6 +244,12 @@ importers:
       '@atlasnews/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@atlasnews/jobs':
+        specifier: workspace:*
+        version: link:../jobs
+      '@atlasnews/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@fontsource-variable/inter':
         specifier: ^5.3.0
         version: 5.3.0

@@ -3,9 +3,13 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowRight, LockKeyhole, Sparkles } from "lucide-react";
 import { LoginForm } from "@/components/studio/login-form";
-import { isStudioAvailable } from "@atlasnews/adapters/config/env";
+import { getContentMode, isStudioAvailable } from "@atlasnews/adapters/config/env";
 import { getMessages, isLocale } from "@/i18n";
 import { getEditorIdentity } from "@/lib/editor-auth";
+import { chatGPTSignInPath, chatGPTSignOutPath, getSitesUser } from "@/lib/sites/editor-auth";
+
+// Identity comes from per-request headers on Sites.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -31,6 +35,7 @@ export default async function LoginPage({
   const studioAvailable = isStudioAvailable();
   const editor = studioAvailable ? await getEditorIdentity() : null;
   if (editor && !editor.isDemo) redirect(`/${locale}/studio`);
+  const sitesUser = studioAvailable && getContentMode() === "sites" ? await getSitesUser() : null;
 
   const callbackError = query.error
     ? query.error === "forbidden"
@@ -88,6 +93,25 @@ export default async function LoginPage({
               {locale === "it" ? "Entra nello Studio" : "Enter Studio"}
               <ArrowRight aria-hidden="true" size={18} />
             </Link>
+          </div>
+        ) : getContentMode() === "sites" ? (
+          <div className="auth-form">
+            {sitesUser ? (
+              <p className="auth-form__error" role="alert">
+                {messages.auth.notAnEditor.replace("{email}", sitesUser.email)}
+              </p>
+            ) : (
+              <p>{messages.auth.chatgptDescription}</p>
+            )}
+            {/* The platform owns sign-in: a plain top-level link, never a client-side navigation. */}
+            <a
+              className="auth-submit"
+              href={sitesUser ? chatGPTSignOutPath(`/${locale}/login`) : chatGPTSignInPath(`/${locale}/studio`)}
+              target="_top"
+            >
+              {sitesUser ? messages.auth.switchAccount : messages.auth.signInWithChatGPT}
+              <ArrowRight aria-hidden="true" size={18} />
+            </a>
           </div>
         ) : (
           <LoginForm copy={messages.auth} locale={locale} />

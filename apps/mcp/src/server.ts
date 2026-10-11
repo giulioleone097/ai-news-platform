@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 
-import { getPublicSiteUrl, getSupabaseEnvironment } from "@atlasnews/adapters/config/env";
+import { getContentMode, getPublicSiteUrl, getSupabaseEnvironment } from "@atlasnews/adapters/config/env";
 import { createMcpEventsService } from "@atlasnews/adapters/mcp-events/lazy-service";
 import {
   mcpCapabilities,
@@ -16,10 +16,12 @@ import { registerMcpEvents } from "./events/register";
 import { mcpServerName, mcpServerVersion } from "./metadata";
 
 export function defaultMcpAppsOptions(): McpAppsOptions {
-  const supabase = getSupabaseEnvironment();
+  const siteUrl = getPublicSiteUrl();
+  // Uploaded media: the site itself serves them on Sites, Supabase Storage otherwise.
+  const supabase = getContentMode() === "sites" ? null : getSupabaseEnvironment();
   return {
-    siteUrl: getPublicSiteUrl(),
-    assetOrigins: supabase ? [new URL(supabase.url).origin] : [],
+    siteUrl,
+    assetOrigins: supabase ? [new URL(supabase.url).origin] : getContentMode() === "sites" ? [siteUrl.origin] : [],
     version: mcpServerVersion,
   };
 }
