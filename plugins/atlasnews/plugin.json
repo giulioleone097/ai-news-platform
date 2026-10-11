@@ -41,8 +41,8 @@
           "Build my AI news briefing.",
           "Search AtlasNews for new model releases."
         ],
-        "brandColor": "#c64a3b",
-        "brandColorDark": "#f0a497",
+        "brandColor": "#111214",
+        "brandColorDark": "#ffd60a",
         "composerIcon": "./assets/icon.svg",
         "composerIconDark": "./assets/icon-dark.svg",
         "logo": "./assets/logo.svg",

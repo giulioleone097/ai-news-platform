@@ -61,6 +61,7 @@ export async function generateMetadata({
     },
     description: messages.metadata.siteDescription,
     applicationName: messages.common.brandName,
+    icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }] },
     alternates: {
       ...alternates,
       types: { "application/rss+xml": localizedPath("/feed.xml", locale) },

@@ -8,7 +8,7 @@ This maps OpenAI's [plugin extensions](https://developers.openai.com/plugins/bui
 | --- | --- | --- |
 | Sidebar app (global entrypoint) | Done: `open_newsroom`, titled "AtlasNews", accepts `{}` | `apps/mcp/src/apps/entrypoints.ts` |
 | Conversation panel (thread entrypoint) | Done: `open_news_panel`, "AI news beside chat" | same |
-| Entrypoint icon | Done: 20×20 stroke SVG on the tools and in `serverInfo.icons` | `public/mcp/atlasnews-icon.svg` |
+| Entrypoint icon | Done: 20×20 SVG on the tools and in `serverInfo.icons` | `public/mcp/atlasnews-icon.svg` |
 | Display modes | Done: `inline` and `fullscreen`, inline preferred for model calls; opening a story from an inline card requests fullscreen | `apps/ui-resource.ts`, `apps/newsroom-client.ts` |
 | Deep links | Done: `/articles/{locale}/{slug}`, `/categories/{locale}/{slug}`, `/search?q=…&locale=…` | `apps/widget-helpers.ts` |
 | Extended model context | Done: "Add to chat" attaches a titled article with its cover as thumbnail; the current view goes as hidden `audience: ["assistant"]` context; host removals clear the state | `apps/newsroom-client.ts` |
