@@ -224,7 +224,7 @@
 .key-points {
   margin-bottom: 2.5rem;
   padding: 1.25rem 1.5rem 1.5rem;
-  border-left: 4px solid var(--accent);
+  border-left: 0.25rem solid var(--accent);
   border-radius: 0 var(--radius) var(--radius) 0;
   background: var(--bg-sunken);
 }
@@ -311,7 +311,7 @@
 
   .article-toc h2 {
     padding-bottom: 0.625rem;
-    border-bottom: 2px solid var(--fg);
+    border-bottom: 0.125rem solid var(--fg);
   }
 
   .article-toc a {

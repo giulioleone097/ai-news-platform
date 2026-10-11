@@ -73,30 +73,30 @@ typography:
     fontWeight: 500
     lineHeight: 1.3
 rounded:
-  none: 0px
-  sm: 4px
-  md: 8px
-  lg: 12px
-  full: 999px
+  none: 0rem
+  sm: 0.25rem
+  md: 0.5rem
+  lg: 0.75rem
+  full: 999rem
 spacing:
-  xxs: 4px
-  xs: 8px
-  sm: 12px
-  md: 16px
-  lg: 24px
-  xl: 32px
-  2xl: 48px
-  3xl: 72px
-  gutter-mobile: 20px
-  gutter-desktop: 40px
+  xxs: 0.25rem
+  xs: 0.5rem
+  sm: 0.75rem
+  md: 1rem
+  lg: 1.5rem
+  xl: 2rem
+  2xl: 3rem
+  3xl: 4.5rem
+  gutter-mobile: 1.25rem
+  gutter-desktop: 2.5rem
 components:
   button-primary:
     backgroundColor: "{colors.marker}"
     textColor: "{colors.ink}"
     typography: "{typography.ui}"
     rounded: "{rounded.md}"
-    padding: 10px 16px
-    height: 44px
+    padding: 0.625rem 1rem
+    height: 2.75rem
   button-primary-hover:
     backgroundColor: "{colors.marker-deep}"
     textColor: "{colors.ink}"
@@ -105,7 +105,7 @@ components:
     textColor: "{colors.ink}"
     typography: "{typography.ui}"
     rounded: "{rounded.md}"
-    height: 44px
+    height: 2.75rem
   button-danger:
     backgroundColor: "{colors.danger}"
     textColor: "{colors.white}"
@@ -114,7 +114,7 @@ components:
   header:
     backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
-    height: 64px
+    height: 4rem
   status-chip:
     backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
@@ -124,7 +124,7 @@ components:
     backgroundColor: "{colors.marker}"
     textColor: "{colors.ink}"
     rounded: "{rounded.lg}"
-    padding: 24px 32px
+    padding: 1.5rem 2rem
   surface-sunken:
     backgroundColor: "{colors.paper-sunken}"
     textColor: "{colors.primary}"
@@ -268,6 +268,7 @@ Icons are Lucide at 1.75px stroke. Brand marks such as `in`, `X` and `WA` are se
 - Do show the status chip on every story, everywhere.
 - Do write labels and headings in sentence case.
 - Do let a list be a list: rows and rules, not a grid of boxes.
+- Do size everything in rem or em, so the page follows the reader's text size. Only a 1px hairline is in px.
 - Don't use yellow as text on a light page, or for anything that is not a highlight or a primary action.
 - Don't number sections or steps unless they are a real sequence.
 - Don't show a count that is zero; leave the count out.

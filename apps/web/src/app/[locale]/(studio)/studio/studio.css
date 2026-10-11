@@ -4,7 +4,7 @@
 /* Shell: a narrow navigation column and one working area. */
 .studio-shell {
   --studio-pad: clamp(1rem, 3vw, 2.5rem);
-  --studio-bar: 0px;
+  --studio-bar: 0rem;
   display: grid;
   grid-template-columns: 14rem minmax(0, 1fr);
   min-height: 100vh;
@@ -22,8 +22,10 @@
 
 .studio-sidebar__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 0.25rem 0.5rem;
   padding: 1rem 1rem 0.5rem 1.125rem;
 }
 
@@ -302,7 +304,7 @@
 .studio-note {
   padding: 0.75rem 1rem;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--note, var(--line-strong));
+  border-left: 0.1875rem solid var(--note, var(--line-strong));
   border-radius: var(--radius-sm);
   background: var(--bg);
   font-size: 0.9375rem;
@@ -808,7 +810,7 @@ fieldset.studio-section > legend {
 
 .studio-quote {
   padding-left: 0.75rem;
-  border-left: 2px solid var(--line-strong);
+  border-left: 0.125rem solid var(--line-strong);
   color: var(--fg-muted);
   font-size: 0.875rem;
 }

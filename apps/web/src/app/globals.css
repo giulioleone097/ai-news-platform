@@ -66,7 +66,6 @@
 }
 
 html {
-  min-width: 20rem;
   scroll-behavior: smooth;
   scrollbar-gutter: stable;
   background: var(--bg);

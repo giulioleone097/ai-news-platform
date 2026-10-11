@@ -324,7 +324,7 @@
 
 .feed-day__heading {
   padding-block: 1.5rem 0.625rem;
-  border-bottom: 2px solid var(--fg);
+  border-bottom: 0.125rem solid var(--fg);
   font-size: 0.9375rem;
   font-weight: 700;
   letter-spacing: 0;
@@ -383,7 +383,7 @@
 
 .side-module h2 {
   padding-bottom: 0.625rem;
-  border-bottom: 2px solid var(--fg);
+  border-bottom: 0.125rem solid var(--fg);
   font-size: 0.9375rem;
   letter-spacing: 0;
 }
@@ -578,11 +578,17 @@
   margin-top: 4rem;
 }
 
+/* As many columns as fit a readable tile, so the tiles stack when the reader's text is large. */
 .topic-rail {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
   gap: 0.75rem;
   padding-top: 1.25rem;
+}
+
+.topic-rail span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .topic-rail a {
@@ -614,8 +620,3 @@
   outline-color: var(--focus);
 }
 
-@media (min-width: 48rem) {
-  .topic-rail {
-    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  }
-}

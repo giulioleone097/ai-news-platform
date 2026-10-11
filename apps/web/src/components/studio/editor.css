@@ -27,7 +27,7 @@
 .studio-markdown__toolbar {
   position: sticky;
   z-index: 3;
-  top: var(--studio-bar, 0px);
+  top: var(--studio-bar, 0rem);
   display: flex;
   gap: 0.125rem;
   padding: 0.25rem;
@@ -98,7 +98,7 @@
   gap: 0.5rem 1rem;
   padding: 0.625rem 0.75rem;
   border-top: 1px solid var(--line);
-  border-left: 3px solid var(--danger);
+  border-left: 0.1875rem solid var(--danger);
   font-size: 0.875rem;
 }
 

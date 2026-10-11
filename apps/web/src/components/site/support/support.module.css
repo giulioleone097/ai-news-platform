@@ -133,7 +133,7 @@
 /* The honeypot: off-screen, not display:none, so a bot that fills every visible-looking field takes it. */
 .trap {
   position: absolute;
-  left: -10000px;
+  left: -625rem;
   width: 1px;
   height: 1px;
   overflow: hidden;

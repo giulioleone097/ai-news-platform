@@ -80,7 +80,7 @@
 
 .markdown-content blockquote {
   padding-left: 1.25rem;
-  border-left: 4px solid var(--accent);
+  border-left: 0.25rem solid var(--accent);
   font-size: 1.3125rem;
   line-height: 1.5;
 }
@@ -173,7 +173,7 @@
 }
 
 .markdown-table-scroll th {
-  border-bottom: 2px solid var(--fg);
+  border-bottom: 0.125rem solid var(--fg);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -285,7 +285,7 @@
 .markdown-callout {
   --callout: var(--info);
   padding: 1rem 1.25rem;
-  border-left: 4px solid var(--callout);
+  border-left: 0.25rem solid var(--callout);
   border-radius: 0 var(--radius) var(--radius) 0;
   background: var(--bg-sunken);
 }
