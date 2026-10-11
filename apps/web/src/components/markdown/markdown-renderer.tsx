@@ -81,7 +81,7 @@ export function MarkdownRenderer({
     table({ node, children, ...props }) {
       void node;
       return (
-        <div className="markdown-table-scroll">
+        <div className="markdown-table-scroll" tabIndex={0}>
           <table {...props}>{children}</table>
         </div>
       );
