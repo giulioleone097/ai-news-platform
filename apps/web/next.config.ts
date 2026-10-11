@@ -13,19 +13,23 @@ const siteUrl = parseHttpUrl(configuredSiteUrl);
 const hostedSite = siteUrl !== null && isSecureProductionOrigin(siteUrl);
 const hostedSupabase = parsedSupabaseUrl !== null && isSecureProductionOrigin(parsedSupabaseUrl);
 
-// A production build aimed at a public origin or a hosted Supabase project must be complete: real
-// content, a hosted HTTPS Supabase project and a public HTTPS canonical origin, never demo data or
-// localhost metadata. Demo builds (CI, local review) and local-Supabase builds are unaffected, and
-// /api/health stays the runtime check that the deployed environment is ready.
+// A production build aimed at a public origin or a hosted Supabase project must be complete: persistent
+// content (ChatGPT Sites' D1, or a hosted Supabase project) and a public HTTPS canonical origin, never
+// demo data or localhost metadata. The Sites build defaults the mode to `sites` (vite.config.ts). Demo
+// builds (CI, local review) and local-Supabase builds are unaffected, and /api/health stays the runtime
+// check that the deployed environment is ready.
+const contentMode = process.env.ATLASNEWS_CONTENT_MODE?.trim();
 if (process.env.NODE_ENV === "production" && (hostedSite || hostedSupabase)) {
-  if (process.env.ATLASNEWS_CONTENT_MODE?.trim() !== "supabase") {
-    throw new Error("Public builds require ATLASNEWS_CONTENT_MODE=supabase.");
+  if (contentMode !== "sites" && contentMode !== "supabase") {
+    throw new Error("Public builds require ATLASNEWS_CONTENT_MODE=sites or ATLASNEWS_CONTENT_MODE=supabase.");
   }
-  if (!parsedSupabaseUrl || !configuredSupabaseKey) {
-    throw new Error("Public builds require a valid Supabase URL and public key.");
-  }
-  if (!hostedSupabase) {
-    throw new Error("Public builds require a non-local HTTPS Supabase origin.");
+  if (contentMode === "supabase") {
+    if (!parsedSupabaseUrl || !configuredSupabaseKey) {
+      throw new Error("Public builds require a valid Supabase URL and public key.");
+    }
+    if (!hostedSupabase) {
+      throw new Error("Public builds require a non-local HTTPS Supabase origin.");
+    }
   }
   if (!hostedSite) {
     throw new Error("Public builds require a non-local HTTPS canonical origin.");

@@ -2,10 +2,11 @@ import "server-only";
 
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { getSupabaseEnvironment } from "@atlasnews/adapters/config/env";
+import { getContentMode, getSupabaseEnvironment } from "@atlasnews/adapters/config/env";
 
+/** The session-bound Supabase client; null on Sites, where the platform signs people in, and without Supabase. */
 export async function createServerSupabaseClient() {
-  const environment = getSupabaseEnvironment();
+  const environment = getContentMode() === "sites" ? null : getSupabaseEnvironment();
   if (!environment) return null;
 
   const cookieStore = await cookies();

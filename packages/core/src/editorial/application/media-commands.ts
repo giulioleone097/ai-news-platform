@@ -27,7 +27,7 @@ export class MediaCommandService {
 
   async uploadMany(uploads: MediaUpload[]): Promise<MediaAsset[]> {
     assertBatchSize(uploads.length, mediaBatchLimit, "image");
-    this.assertWritable("Media uploads require Supabase Storage.");
+    this.assertWritable("Media uploads require media storage.");
     await validateEach(
       uploads,
       (upload) => {
@@ -50,7 +50,7 @@ export class MediaCommandService {
   /** Returns the paths deleted. An asset that an article still uses as its cover is refused. */
   async deleteMany(paths: string[]) {
     assertBatchSize(paths.length, mediaBatchLimit, "asset");
-    this.assertWritable("Media deletion requires Supabase Storage.");
+    this.assertWritable("Media deletion requires media storage.");
     rejectRepeats(paths, (path) => path, (path) => `The asset "${path}" appears twice`);
     const assets = await this.repository.listAssets();
     await validateEach(

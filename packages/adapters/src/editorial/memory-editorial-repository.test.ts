@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { MemoryEditorialRepository } from "./memory-editorial-repository";
 import { seedArticles, seedCategories } from "./seed";
+import { createEditorialBackends } from "./testing";
 
-describe("MemoryEditorialRepository", () => {
+// The article and distribution cases run against the in-memory repository and against D1.
+const backends = createEditorialBackends();
+
+describe.each(backends)("$name editorial repository", (backend) => {
+  afterAll(() => backend.dispose());
+
   it("only returns published articles to public queries", async () => {
-    const repository = new MemoryEditorialRepository();
+    const repository = await backend.create();
     const page = await repository.listPublished({ locale: "en", limit: 50 });
 
     expect(page.items.length).toBeGreaterThan(5);
@@ -16,7 +22,7 @@ describe("MemoryEditorialRepository", () => {
   });
 
   it("filters public articles by locale, category, and localized text", async () => {
-    const repository = new MemoryEditorialRepository();
+    const repository = await backend.create();
     const english = await repository.listPublished({
       locale: "en",
       category: "policy",
@@ -38,7 +44,7 @@ describe("MemoryEditorialRepository", () => {
   });
 
   it("does not resolve a localized slug from another locale", async () => {
-    const repository = new MemoryEditorialRepository();
+    const repository = await backend.create();
 
     await expect(
       repository.findBySlug("ai-agents-enter-everyday-work", "it"),
@@ -49,7 +55,7 @@ describe("MemoryEditorialRepository", () => {
   });
 
   it("creates and updates an editorial draft", async () => {
-    const repository = new MemoryEditorialRepository();
+    const repository = await backend.create();
     const created = await repository.save({
       locale: "en",
       title: "An editorial test",
@@ -74,6 +80,26 @@ describe("MemoryEditorialRepository", () => {
     expect(updated.publishedAt).not.toBeNull();
   });
 
+  it("preserves a complete distribution workflow instead of reducing it to channels", async () => {
+    const repository = await backend.create();
+    const [publication] = await repository.listPublications("en");
+    const updated = await repository.updatePublication({
+      id: publication.id,
+      status: "published",
+      message: "Channel-specific copy",
+      externalUrl: "https://example.com/publication",
+    });
+
+    expect(updated).toMatchObject({
+      status: "published",
+      message: "Channel-specific copy",
+      externalUrl: "https://example.com/publication",
+    });
+    expect(updated.publishedAt).not.toBeNull();
+  });
+});
+
+describe("MemoryEditorialRepository", () => {
   it("ships eight complete translation pairs and localized categories", () => {
     const english = seedArticles.filter((article) => article.locale === "en");
     const italian = seedArticles.filter((article) => article.locale === "it");
@@ -123,23 +149,5 @@ describe("MemoryEditorialRepository", () => {
     expect(firstPage.items).toHaveLength(1);
     expect(secondPage.items).toHaveLength(1);
     expect(secondPage.items[0].id).not.toBe(firstPage.items[0].id);
-  });
-
-  it("preserves a complete distribution workflow instead of reducing it to channels", async () => {
-    const repository = new MemoryEditorialRepository();
-    const [publication] = await repository.listPublications("en");
-    const updated = await repository.updatePublication({
-      id: publication.id,
-      status: "published",
-      message: "Channel-specific copy",
-      externalUrl: "https://example.com/publication",
-    });
-
-    expect(updated).toMatchObject({
-      status: "published",
-      message: "Channel-specific copy",
-      externalUrl: "https://example.com/publication",
-    });
-    expect(updated.publishedAt).not.toBeNull();
   });
 });

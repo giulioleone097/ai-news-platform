@@ -1,3 +1,4 @@
+import { getSitesBindings } from "../sites/bindings";
 import {
   isLocalHostname,
   isSecureProductionOrigin,
@@ -30,7 +31,13 @@ function positiveInteger(name: string) {
   return Number.isSafeInteger(value) && value > 0 ? value : undefined;
 }
 
-export type ContentMode = "demo" | "supabase";
+/**
+ * Where content and every other record lives. `sites` is the default deployment: ChatGPT Sites with its
+ * D1 database and R2 bucket, editors signed in with ChatGPT. `supabase` is the self-hosted alternative
+ * (Postgres, Storage and Auth). `demo` is in-memory seed data for development and CI.
+ */
+export type ContentMode = "demo" | "sites" | "supabase";
+const contentModes: readonly ContentMode[] = ["demo", "sites", "supabase"];
 
 export function hasSupabaseEnvironment() {
   return Boolean(parseHttpUrl(process.env.NEXT_PUBLIC_SUPABASE_URL))
@@ -39,8 +46,19 @@ export function hasSupabaseEnvironment() {
 
 export function getContentMode(): ContentMode {
   const configured = process.env.ATLASNEWS_CONTENT_MODE?.trim().toLowerCase();
-  if (configured === "demo" || configured === "supabase") return configured;
+  if (contentModes.includes(configured as ContentMode)) return configured as ContentMode;
+  if (getSitesBindings()) return "sites";
   return hasSupabaseEnvironment() ? "supabase" : "demo";
+}
+
+/**
+ * Whether the server can write records that outlive the process: the Sites D1 binding, or Supabase with
+ * the service-role key. Comments, newsletter delivery, the outboxes and MCP Events need it.
+ */
+export function hasServerStore() {
+  return getContentMode() === "sites"
+    ? Boolean(getSitesBindings())
+    : Boolean(getSupabaseServiceEnvironment());
 }
 
 /**
@@ -55,7 +73,9 @@ export function isDemoStudioEnabled() {
 }
 
 export function isStudioAvailable() {
-  return getContentMode() === "supabase"
+  const mode = getContentMode();
+  if (mode === "sites") return Boolean(getSitesBindings());
+  return mode === "supabase"
     ? hasSupabaseEnvironment()
     : isDemoStudioEnabled();
 }
@@ -201,12 +221,11 @@ export function getCronSecret() {
 
 export function getCommentEnvironment() {
   const guestSecret = serverValue("ATLASNEWS_COMMENT_GUEST_SECRET", 32);
-  const service = getSupabaseServiceEnvironment();
-  return guestSecret && service ? { ...service, guestSecret } : null;
+  return guestSecret && hasServerStore() ? { guestSecret } : null;
 }
 
 export function getNewsletterDeliveryEnvironment() {
-  const service = getSupabaseServiceEnvironment();
+  const store = hasServerStore();
   const apiKey = serverValue("RESEND_API_KEY", 8);
   const webhookSecret = serverValue("RESEND_WEBHOOK_SECRET", 16);
   const unsubscribeSecret = serverValue("NEWSLETTER_UNSUBSCRIBE_SECRET", 32);
@@ -215,11 +234,11 @@ export function getNewsletterDeliveryEnvironment() {
     ? emailValue("NEWSLETTER_REPLY_TO")
     : null;
 
-  if (!service || !apiKey?.startsWith("re_") || !webhookSecret?.startsWith("whsec_")
+  if (!store || !apiKey?.startsWith("re_") || !webhookSecret?.startsWith("whsec_")
     || !unsubscribeSecret || !from || (process.env.NEWSLETTER_REPLY_TO?.trim() && !replyTo)) {
     return null;
   }
-  return { ...service, apiKey, webhookSecret, unsubscribeSecret, from, replyTo };
+  return { apiKey, webhookSecret, unsubscribeSecret, from, replyTo };
 }
 
 export function getCommentNotificationEnvironment() {
@@ -231,7 +250,7 @@ export function getCommentNotificationEnvironment() {
 }
 
 export function getSocialPublishingEnvironment() {
-  const service = getSupabaseServiceEnvironment();
+  const store = hasServerStore();
   const linkedInToken = serverValue("LINKEDIN_ACCESS_TOKEN", 16);
   const linkedInAuthor = serverValue("LINKEDIN_AUTHOR_URN");
   const linkedInVersion = serverValue("LINKEDIN_API_VERSION", 6);
@@ -261,20 +280,23 @@ export function getSocialPublishingEnvironment() {
       }
     : null;
 
-  return { service, linkedin, x, whatsapp };
+  return { store, linkedin, x, whatsapp };
 }
 
 export function getOperationalCapabilities() {
   const social = getSocialPublishingEnvironment();
+  const sites = getContentMode() === "sites" && Boolean(getSitesBindings());
   return {
     comments: Boolean(getCommentEnvironment()),
     commentNotifications: Boolean(getCommentNotificationEnvironment()),
     newsletterDelivery: Boolean(getNewsletterDeliveryEnvironment()),
-    linkedinPublishing: Boolean(social.service && social.linkedin),
-    xPublishing: Boolean(social.service && social.x),
-    whatsappPublishing: Boolean(social.service && social.whatsapp),
-    scheduler: Boolean(getCronSecret()),
-    adminMcp: Boolean(getMcpOAuthEnvironment() || (getMcpAdminApiKey() && getSupabaseAdminEnvironment())),
+    linkedinPublishing: Boolean(social.store && social.linkedin),
+    xPublishing: Boolean(social.store && social.x),
+    whatsappPublishing: Boolean(social.store && social.whatsapp),
+    // On Sites the Worker runs due jobs itself after requests; elsewhere an external schedule calls them.
+    scheduler: sites || Boolean(getCronSecret()),
+    // On Sites the platform signs editors in to the MCP server and forwards their identity.
+    adminMcp: sites || Boolean(getMcpOAuthEnvironment() || (getMcpAdminApiKey() && getSupabaseAdminEnvironment())),
   };
 }
 
@@ -288,9 +310,10 @@ function optionalWebUrl(value: string | undefined) {
   }
 }
 
-/** Origin of the standalone MCP server that the reader site links to. */
+/** Origin of the MCP server that the reader site links to: the site itself on Sites, else the standalone server. */
 export function getPublicMcpUrl() {
-  return parseHttpUrl(process.env.NEXT_PUBLIC_MCP_URL) ?? new URL("http://localhost:8787");
+  return parseHttpUrl(process.env.NEXT_PUBLIC_MCP_URL)
+    ?? (getContentMode() === "sites" ? getPublicSiteUrl() : new URL("http://localhost:8787"));
 }
 
 export function getSocialProfiles() {
@@ -308,8 +331,9 @@ export function getProductionReadiness() {
   const issues: string[] = [];
   const capabilities = getOperationalCapabilities();
   if (mode === "supabase" && !hasSupabaseEnvironment()) issues.push("supabase-environment");
+  if (mode === "sites" && !getSitesBindings()) issues.push("sites-bindings");
   if (process.env.NODE_ENV === "production") {
-    if (mode !== "supabase") issues.push("persistent-content-mode");
+    if (mode === "demo") issues.push("persistent-content-mode");
     if (configuredSiteUrl && !parseHttpUrl(configuredSiteUrl)) issues.push("canonical-valid-origin");
     if (siteUrl.protocol !== "https:") issues.push("canonical-https-origin");
     if (isLocalHostname(siteUrl.hostname)) issues.push("canonical-production-origin");

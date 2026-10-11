@@ -1,4 +1,8 @@
 import type { ExecutionContext } from "@cloudflare/workers-types";
+import { setSitesBindings } from "@atlasnews/adapters/sites/bindings";
+import { handleJobsRequest } from "@atlasnews/jobs/handler";
+import { runDueJobsOnSites } from "@atlasnews/jobs/scheduled";
+import { handleMcpServerRequest } from "@atlasnews/mcp/handler";
 import handler from "vinext/server/fetch-handler";
 
 // Replaced at build time by vite.config.ts: pre-sized widths of each local /media/<name>.webp.
@@ -21,10 +25,28 @@ function presizedMedia(request: Request) {
   });
 }
 
-// The Worker entry of the ChatGPT Sites artifact: vinext serves the Next.js app, and the platform
-// serves dist/client (static assets) before this code runs.
+/**
+ * On Sites one Worker serves all three deployables. The MCP server answers at `/mcp` (Sites declares it
+ * with the `mcp` capability and signs editors in for it), the workers at `/internal/*` (for an external
+ * schedule, with `CRON_SECRET`), and vinext the Next.js app at every other path. Self-hosted, the same
+ * handlers run as the `apps/mcp` and `apps/jobs` containers instead (docs/HOSTING.md).
+ */
+const mcpPaths = new Set(["/mcp", "/info", "/.well-known/openai-apps-challenge"]);
+
+function route(request: Request, env: unknown, ctx: ExecutionContext) {
+  const { pathname } = new URL(request.url);
+  if (mcpPaths.has(pathname)) return handleMcpServerRequest(request);
+  if (pathname.startsWith("/internal/")) return handleJobsRequest(request);
+  return presizedMedia(request) ?? handler.fetch(request, env as never, ctx);
+}
+
+// The Worker entry of the ChatGPT Sites artifact; the platform serves dist/client (static assets) before
+// this code runs.
 export default {
   fetch(request: Request, env: unknown, ctx: ExecutionContext) {
-    return presizedMedia(request) ?? handler.fetch(request, env as never, ctx);
+    setSitesBindings(env);
+    // Sites has no scheduler: due outbox and event jobs run in the background of ordinary requests.
+    ctx.waitUntil(runDueJobsOnSites().catch(() => undefined));
+    return route(request, env, ctx);
   },
 };

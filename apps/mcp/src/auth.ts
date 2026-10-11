@@ -2,10 +2,13 @@ import { createHash, timingSafeEqual } from "node:crypto";
 
 import {
   getConfiguredMcpUrl,
+  getContentMode,
   getMcpAdminApiKey,
   getMcpOAuthEnvironment,
 } from "@atlasnews/adapters/config/env";
-import { anonymous, scopes, type Principal, type Scope } from "@atlasnews/contract";
+import { requireSitesBindings } from "@atlasnews/adapters/sites/bindings";
+import { getEditorAllowList, readSitesIdentity, resolveSitesEditor } from "@atlasnews/adapters/sites/editors";
+import { anonymous, scopes, scopesForRole, type Principal, type Scope } from "@atlasnews/contract";
 
 import { supabaseEditorDirectory } from "./auth/editors";
 import { supabaseOAuthVerifier } from "./auth/supabase-oauth";
@@ -93,11 +96,29 @@ export function defaultAccessTokenVerifier(): AccessTokenVerifier {
   };
 }
 
+/**
+ * On ChatGPT Sites the platform runs OAuth for the Site's MCP server and forwards who signed in as
+ * identity headers; the editors table decides the newsroom scopes. No identity means anonymous.
+ */
+async function resolveSitesPrincipal(request: Request): Promise<AuthenticatedPrincipal> {
+  const identity = readSitesIdentity(request.headers);
+  if (!identity) return anonymous;
+  const editor = await resolveSitesEditor(requireSitesBindings().database, identity, getEditorAllowList());
+  const granted = scopesForRole(editor?.role);
+  return {
+    kind: "editor",
+    subject: identity.userId,
+    scopes: granted,
+    ...(granted.length && editor ? { authorId: editor.author.id } : {}),
+  };
+}
+
 /** No Authorization header means anonymous; a header that does not verify is rejected. */
 export async function resolvePrincipal(
   request: Request,
   verifier: AccessTokenVerifier,
 ): Promise<AuthenticatedPrincipal> {
+  if (getContentMode() === "sites") return resolveSitesPrincipal(request);
   const header = request.headers.get("authorization");
   if (header === null) return anonymous;
   const match = /^Bearer\s+([^\s]+)$/i.exec(header);
@@ -145,7 +166,8 @@ export function bearerChallenge(
   detail: { error: "invalid_token" | "insufficient_scope"; description: string; scope?: readonly Scope[] },
 ) {
   const parameters = [
-    `resource_metadata="${protectedResourceMetadataUrl(request)}"`,
+    // On Sites the platform owns sign-in and this server publishes no resource metadata.
+    ...(getContentMode() === "sites" ? [] : [`resource_metadata="${protectedResourceMetadataUrl(request)}"`]),
     `error="${detail.error}"`,
     `error_description="${detail.description}"`,
     ...(detail.scope?.length ? [`scope="${hostScopes(detail.scope).join(" ")}"`] : []),

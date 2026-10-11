@@ -29,7 +29,7 @@ Copilot CLI reads `.github/plugin/marketplace.json`. The plugin ships with the l
 
 ## Auth
 
-The plugin holds no key and no token. Reading is anonymous. When an editor tool is called the server answers 401 with a Bearer challenge; the host registers itself with Supabase Auth, opens the consent page of the reader site and sends the resulting access token. The scopes `newsroom.*` are decided on the server from the editor's profile, and Supabase can grant only `email`, which is what the declaration lists. `ATLASNEWS_MCP_ADMIN_API_KEY` is a CI and CLI credential for the server and is not part of the plugin.
+The plugin holds no key and no token. Reading is anonymous. On ChatGPT Sites the platform signs the editor in for the Site's `/mcp` ([MCP.md](MCP.md#sign-in-on-chatgpt-sites)). Self-hosted, when an editor tool is called the server answers 401 with a Bearer challenge; the host registers itself with Supabase Auth, opens the consent page of the reader site and sends the resulting access token. The scopes `newsroom.*` are decided on the server from the editor's profile, and Supabase can grant only `email`, which is what the declaration lists. `ATLASNEWS_MCP_ADMIN_API_KEY` is a CI and CLI credential for the server and is not part of the plugin.
 
 ## Validate
 

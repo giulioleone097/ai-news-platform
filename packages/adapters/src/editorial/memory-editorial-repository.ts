@@ -659,7 +659,7 @@ export class MemoryEditorialRepository
 
   async uploadAsset(input: MediaUpload): Promise<never> {
     void input;
-    throw new Error("Media uploads require Supabase Storage");
+    throw new Error("Media uploads require media storage");
   }
 
   async deleteAsset(path: string): Promise<never> {

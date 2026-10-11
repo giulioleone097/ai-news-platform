@@ -1,23 +1,16 @@
 import "server-only";
 
 import { isDemoStudioEnabled } from "@atlasnews/adapters/config/env";
-import type { Author } from "@atlasnews/core/editorial/domain/article";
 import { seedAuthor } from "@atlasnews/adapters/editorial/seed";
+import type { EditorIdentity } from "@/lib/editor-identity";
 import { createServerSupabaseClient } from "./server";
 
-export interface EditorIdentity {
-  userId: string;
-  role: "editor" | "admin";
-  author: Author;
-  isDemo: boolean;
-}
-
-/** Whether anybody is signed in, editor or not: tells "sign in" (401) from "not an editor" (403). */
-export async function hasSignedInUser(): Promise<boolean> {
+/** The Supabase Auth user signed in, editor or not. */
+export async function getSignedInUserId(): Promise<string | null> {
   const client = await createServerSupabaseClient();
-  if (!client) return false;
+  if (!client) return null;
   const { data, error } = await client.auth.getUser();
-  return !error && Boolean(data.user);
+  return !error && data.user ? data.user.id : null;
 }
 
 export async function getCurrentEditor(): Promise<EditorIdentity | null> {

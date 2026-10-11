@@ -1,4 +1,4 @@
-import { getSupabaseServiceEnvironment } from "../config/env";
+import { hasServerStore } from "../config/env";
 
 import {
   type McpEventsService,
@@ -6,12 +6,12 @@ import {
 import { listMcpEventDefinitions } from "@atlasnews/core/mcp-events/domain/events";
 
 /**
- * Service for the public MCP route, or null when service-role persistence is not configured.
- * The Supabase-backed runtime is imported on first subscribe/unsubscribe, so catalog and
- * discovery requests never load persistence code.
+ * Service for the public MCP route, or null when no server-side store (the Sites D1 database or the
+ * Supabase service role) is configured. The persistence-backed runtime is imported on first
+ * subscribe/unsubscribe, so catalog and discovery requests never load persistence code.
  */
 export function createMcpEventsService(): McpEventsService | null {
-  if (!getSupabaseServiceEnvironment()) return null;
+  if (!hasServerStore()) return null;
 
   let loaded: Promise<McpEventsService> | undefined;
   const load = () => {

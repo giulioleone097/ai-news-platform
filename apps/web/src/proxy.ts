@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getSupabaseEnvironment } from "@atlasnews/adapters/config/env";
+import { getContentMode, getSupabaseEnvironment } from "@atlasnews/adapters/config/env";
 import { defaultLocale, isLocale, locales } from "@/i18n";
 
 const PUBLIC_FILE = /\.[a-z0-9]+$/i;
@@ -93,7 +93,8 @@ async function route(request: NextRequest) {
   });
   if (!isAuthSensitivePath(pathname)) return nextResponse();
 
-  const environment = getSupabaseEnvironment();
+  // Only Supabase Auth keeps a session in cookies; on Sites the platform signs people in.
+  const environment = getContentMode() === "supabase" ? getSupabaseEnvironment() : null;
   if (!environment) return nextResponse();
 
   let response = nextResponse();

@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import type { NextRequest, NextResponse } from "next/server";
 import { getCommentEnvironment } from "@atlasnews/adapters/config/env";
 import { getRequestNetworkAddress } from "@/lib/request-network";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSignedInUserId } from "@/lib/editor-auth";
 import type { CommentActor } from "@atlasnews/core/comments/domain/comment";
 import {
   createGuestToken,
@@ -23,9 +23,7 @@ export async function resolveCommentActor(request: NextRequest): Promise<Resolve
   const environment = getCommentEnvironment();
   if (!environment) return null;
 
-  const client = await createServerSupabaseClient();
-  if (!client) return null;
-  const { data } = await client.auth.getUser();
+  const userId = await getSignedInUserId();
   const networkRateHash = deriveCommentIdentityHash(
     environment.guestSecret,
     "network",
@@ -39,17 +37,17 @@ export async function resolveCommentActor(request: NextRequest): Promise<Resolve
     ? deriveCommentIdentityHash(environment.guestSecret, "guest-owner", existingGuest.id)
     : null;
 
-  if (data.user?.id) {
+  if (userId) {
     return {
       actor: {
         kind: "authenticated",
-        userId: data.user.id,
+        userId,
         guestHash: null,
         guestOwnerHash: existingGuestOwnerHash,
         actorRateHash: deriveCommentIdentityHash(
           environment.guestSecret,
           "authenticated",
-          data.user.id,
+          userId,
         ),
         networkRateHash,
       },

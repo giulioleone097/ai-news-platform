@@ -1,7 +1,10 @@
+import { getContentMode } from "../config/env";
+import { getSitesBindings } from "../sites/bindings";
 import { createServiceSupabaseClient } from "../supabase/service";
 import { SocialOutboxProcessor } from "@atlasnews/core/social-publishing/application/outbox-processor";
 import { SocialPublishingService } from "@atlasnews/core/social-publishing/application/social-publishing-service";
 import { SocialPublishingConfigurationError } from "@atlasnews/core/social-publishing/domain/errors";
+import { D1SocialOutboxRepository } from "./d1-social-outbox-repository";
 import { readSocialProviderConfig, readWhatsAppWebhookConfig } from "./environment";
 import { SupabaseSocialOutboxRepository } from "./supabase-social-outbox-repository";
 import { ConfiguredSocialProviderRegistry } from "./providers/registry";
@@ -9,6 +12,11 @@ import { ConfiguredSocialProviderRegistry } from "./providers/registry";
 type Environment = Record<string, string | undefined>;
 
 function createRepository() {
+  if (getContentMode() === "sites") {
+    const bindings = getSitesBindings();
+    if (!bindings) throw new SocialPublishingConfigurationError("Social outbox persistence is not configured.");
+    return new D1SocialOutboxRepository(bindings.database);
+  }
   const client = createServiceSupabaseClient();
   if (!client) throw new SocialPublishingConfigurationError("Social outbox persistence is not configured.");
   return new SupabaseSocialOutboxRepository(client);
