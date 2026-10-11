@@ -1,6 +1,6 @@
 import * as z from "zod/v4";
 
-import { commentAdminToolDefinitions } from "@atlasnews/core/comments/application/admin-tools";
+import { commentAdminToolDefinitions } from "@atlasnews/core/comments/domain/admin-tool-definitions";
 
 import { enqueue, externalWrite, readOnly } from "../annotations";
 import { defineSpec } from "../capability";
@@ -41,7 +41,10 @@ const newsletterCampaignFields = {
   audienceStatus: z.literal("active").default("active"),
 } as const;
 
-const base = { surfaces: ["mcp"], unavailableMessage: operationalUnavailable } as const;
+// What an editor does in the Studio is offered on the page too; the workers that send mail and post to
+// providers (outbox processing, notification delivery, erasure) stay MCP-only.
+const base = { surfaces: ["mcp", "page"], unavailableMessage: operationalUnavailable } as const;
+const workerBase = { ...base, surfaces: ["mcp"] } as const;
 
 // Comment moderation: the titles, schemas and hints are owned by the comments context.
 const comments = commentAdminToolDefinitions;
@@ -92,7 +95,7 @@ export const adminListCommentAudit = defineSpec({
 });
 
 export const adminCommentProcessNotifications = defineSpec({
-  ...base,
+  ...workerBase,
   name: "admin_comment_process_notifications",
   title: "Process comment notification outbox",
   description: "Process one leased notification batch through the configured real email provider. This sends email.",
@@ -204,7 +207,7 @@ export const adminNewsletterRequestSubscription = defineSpec({
 });
 
 export const adminNewsletterEraseSubscription = defineSpec({
-  ...base,
+  ...workerBase,
   name: "admin_newsletter_erase_subscription",
   title: "Erase newsletter subscriber data",
   description:
@@ -217,7 +220,7 @@ export const adminNewsletterEraseSubscription = defineSpec({
 });
 
 export const adminNewsletterProcessOutbox = defineSpec({
-  ...base,
+  ...workerBase,
   name: "admin_newsletter_process_outbox",
   title: "Process newsletter outbox",
   description: "Process one leased batch through the configured real email provider. This sends email.",
@@ -330,7 +333,7 @@ export const adminSocialRetry = defineSpec({
 });
 
 export const adminSocialProcessOutbox = defineSpec({
-  ...base,
+  ...workerBase,
   name: "admin_social_process_outbox",
   title: "Process social outbox",
   description: "Process one leased batch through configured real providers. This can publish externally.",
@@ -340,3 +343,12 @@ export const adminSocialProcessOutbox = defineSpec({
   scopes: ["newsroom.publish"],
   confirmation: { question: () => "Publish the queued social posts through the live providers now?" },
 });
+
+export const operationsSpecs = [
+  adminListComments, adminListCommentReports, adminModerateComment, adminListCommentAudit, adminCommentProcessNotifications,
+  adminNewsletterListCampaigns, adminNewsletterGetCampaign, adminNewsletterListRecipients, adminNewsletterSaveCampaignDraft,
+  adminNewsletterSendCampaign, adminNewsletterScheduleCampaign, adminNewsletterCancelCampaign, adminNewsletterRequestSubscription,
+  adminNewsletterEraseSubscription, adminNewsletterProcessOutbox,
+  adminSocialPreview, adminSocialEnqueue, adminSocialRequeue, adminSocialList, adminSocialGet, adminSocialCancel, adminSocialRetry,
+  adminSocialProcessOutbox,
+] as const;

@@ -53,7 +53,8 @@ describe("runEditorCapability statuses", () => {
 
   it("answers 404 for an unknown capability and for one that is not offered to the page", async () => {
     expect(await runEditorCapability("no_such_capability", {})).toMatchObject({ ok: false, status: 404 });
-    expect(await runEditorCapability("admin_list_comments", {})).toMatchObject({ ok: false, status: 404 });
+    expect(await runEditorCapability("admin_comment_process_notifications", {})).toMatchObject({ ok: false, status: 404 });
+    expect(await runEditorCapability("admin_social_process_outbox", {}, { confirmed: true })).toMatchObject({ ok: false, status: 404 });
     expect(await runEditorCapability("__proto__", {})).toMatchObject({ ok: false, status: 404 });
   });
 
@@ -92,6 +93,51 @@ describe("runEditorCapability statuses", () => {
     const result = await runEditorCapability("admin_get_entity", { slug: "claude" });
     expect(result).toMatchObject({ ok: false, status: 503 });
     expect(JSON.stringify(result)).not.toContain("postgres");
+  });
+});
+
+describe("operations capabilities", () => {
+  it("run for an editor, over the same stores and rules as the Studio screens", async () => {
+    const listed = await runEditorCapability("admin_list_distribution", { locale: "en" });
+    expect(listed).toMatchObject({ ok: true });
+    expect(listed.ok && Array.isArray(listed.result.items)).toBe(true);
+    expect(await runEditorCapability("admin_list_contact_messages", {})).toMatchObject({ ok: true, result: { items: [] } });
+    expect(await runEditorCapability("admin_list_newsletter_subscriptions", { locale: "en" })).toMatchObject({
+      ok: true,
+      result: { contentTrust: { source: "anonymous-visitors" } },
+    });
+  });
+
+  it("are refused to an account without the scope, before any handler or store is reached", async () => {
+    mocks.editor.mockResolvedValue(identity("reader"));
+    for (const [name, input] of [
+      ["admin_list_distribution", { locale: "en" }],
+      ["admin_list_comments", {}],
+      ["admin_list_contact_messages", {}],
+      ["admin_newsletter_list_campaigns", { locale: "en" }],
+      ["admin_social_list", {}],
+    ] as const) {
+      expect(await runEditorCapability(name, input), name).toMatchObject({ ok: false, status: 403 });
+    }
+    expect(mocks.repository).not.toHaveBeenCalled();
+  });
+
+  it("ask first before they moderate, delete, send or post", async () => {
+    const comment = "6f1c2c1e-6a2b-4f7e-9d3e-1a2b3c4d5e6f";
+    expect(await runEditorCapability("admin_moderate_comment", { id: comment, status: "spam", reason: "Advertising." }))
+      .toEqual({ ok: false, status: 409, error: `Mark comment ${comment} as spam?` });
+    expect(await runEditorCapability("admin_delete_contact_message", { id: comment })).toMatchObject({ status: 409 });
+    expect(await runEditorCapability("admin_newsletter_send_campaign", { id: comment })).toMatchObject({ status: 409 });
+  });
+
+  it("answer 503 with the capability's own message, not a crash, when the backend is not configured", async () => {
+    for (const [name, input, message] of [
+      ["admin_list_comments", {}, "The operational service is not configured or the request could not be completed."],
+      ["admin_newsletter_list_campaigns", { locale: "en" }, "The operational service is not configured or the request could not be completed."],
+      ["admin_social_list", {}, "The operational service is not configured or the request could not be completed."],
+    ] as const) {
+      expect(await runEditorCapability(name, input), name).toEqual({ ok: false, status: 503, error: message });
+    }
   });
 });
 

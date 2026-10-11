@@ -15,7 +15,16 @@ import {
 import { locales, type Locale } from "@atlasnews/core/locale";
 import { getEditorIdentity, isSignedIn } from "@/lib/editor-auth";
 import { invalidatePublicEditorialCache } from "@/lib/editorial-cache";
-import { getPublicEditorialRepositories, getStudioAdminEditorialRepository, getStudioEditorDirectory } from "@/server/composition";
+import {
+  createMutationCommentService,
+  createSocialPublishingRuntime,
+  getNewsletterDeliveryService,
+  getPublicEditorialRepositories,
+  getStudioAdminEditorialRepository,
+  getStudioContactMessageService,
+  getStudioEditorDirectory,
+  getStudioNewsletterCampaignService,
+} from "@/server/composition";
 
 /**
  * Runs one catalogue capability (`@atlasnews/contract`) for the editor who is signed in to the
@@ -41,7 +50,7 @@ export interface CapabilityRunOptions {
   confirmed?: boolean;
 }
 
-/** Only capabilities offered to the page run here; the rest of the catalogue is MCP-only. */
+/** Only capabilities offered to the page run here; the rest of the catalogue (public reads, workers) is MCP-only. */
 const pageCapabilities = new Map(
   capabilities.filter((capability) => capability.surfaces.includes("page")).map((capability) => [capability.name, capability]),
 );
@@ -55,15 +64,17 @@ const fail = (status: 400 | 401 | 403 | 404 | 409 | 503, error: string): Capabil
   error,
 });
 
-/** Stands in for the ports that only MCP capabilities use; no page capability reaches them. */
+/** Stands in for the ports that only MCP capabilities use (public comments, the notification worker); no page capability reaches them. */
 const notOnThePage = () => Promise.reject(new CapabilityFailure("This capability is not available here."));
 
 /**
  * The ports of a page capability. Writes go through the editor's own session (RLS applies; in
  * demo mode the in-memory repository), reads of published content through the public repositories.
+ * Comments, the newsletter and the social outbox are built as the Studio's own actions build them,
+ * and fail like any unconfigured backend (a rejected port, so the caller gets the 503 message).
  * Cache invalidations are collected, so a run refreshes each locale once however often a handler asks.
  */
-function createPorts(invalidations: Map<Locale, Set<string>>): CapabilityPorts {
+function createPorts(invalidations: Map<Locale, Set<string>>, editorUserId: string): CapabilityPorts {
   const publicRepositories = getPublicEditorialRepositories();
   return {
     site: siteLinks(getPublicSiteUrl()),
@@ -76,11 +87,26 @@ function createPorts(invalidations: Map<Locale, Set<string>>): CapabilityPorts {
     },
     editorial: getStudioAdminEditorialRepository,
     publicComments: notOnThePage,
-    moderation: notOnThePage,
+    async moderation() {
+      const service = createMutationCommentService();
+      if (!service) throw new Error("Comment moderation is not configured.");
+      return service;
+    },
     commentNotifications: notOnThePage,
-    newsletter: notOnThePage,
-    contact: notOnThePage,
-    social: notOnThePage,
+    async newsletter() {
+      // The campaign is created by the signed-in editor, as in the Studio's campaign form.
+      return {
+        campaign: await getStudioNewsletterCampaignService(),
+        delivery: getNewsletterDeliveryService(),
+        authorId: editorUserId,
+      };
+    },
+    async contact() {
+      const service = await getStudioContactMessageService();
+      if (!service) throw new Error("The contact inbox is not configured.");
+      return service;
+    },
+    social: async () => createSocialPublishingRuntime(),
     team: getStudioEditorDirectory,
   };
 }
@@ -133,7 +159,7 @@ export async function runEditorCapability(
 
   const invalidations = new Map<Locale, Set<string>>();
   try {
-    const ports = createPorts(invalidations);
+    const ports = createPorts(invalidations, editor.userId);
     // `confirmed` asserts that a person approved this action; like `confirm: true` on the MCP
     // endpoint it replaces the confirmation form. Without it the question is returned, nothing runs.
     if (capability.confirmation && options.confirmed !== true) {
