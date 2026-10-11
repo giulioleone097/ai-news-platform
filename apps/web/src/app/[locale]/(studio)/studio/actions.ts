@@ -20,14 +20,12 @@ import {
   socialChannels,
   StoryFieldError,
 } from "@atlasnews/core/editorial/domain/article";
-import {
-  distributionStatuses,
-} from "@atlasnews/core/editorial/domain/editorial-operations";
 import { getStudioEditorialRepositories } from "@/server/composition";
 import { invalidatePublicEditorialCache } from "@/lib/editorial-cache";
 import { runEditorCapability } from "@/server/capabilities";
 import { ArticleCommandService } from "@atlasnews/core/editorial/application/article-commands";
 import { MediaCommandService } from "@atlasnews/core/editorial/application/media-commands";
+import { EditorialRuleError } from "@atlasnews/core/editorial/domain/errors";
 
 const imageSourceSchema = z
   .string()
@@ -78,31 +76,6 @@ const articleDraftSchema = z
 const deleteSchema = z.object({
   id: z.string().trim().min(1).max(128),
   locale: z.enum(locales),
-});
-
-const distributionUpdateSchema = z.object({
-  id: z.string().trim().min(1).max(160),
-  locale: z.enum(locales),
-  status: z.enum(distributionStatuses),
-  message: z.string().trim().max(1_000),
-  externalUrl: z
-    .string()
-    .trim()
-    .max(2_048)
-    .refine((value) => {
-      if (!value) return true;
-      try {
-        const url = new URL(value);
-        return url.protocol === "https:" || url.protocol === "http:";
-      } catch {
-        return false;
-      }
-    }),
-  scheduledFor: z
-    .string()
-    .trim()
-    .max(40)
-    .refine((value) => !value || Boolean(parseUtcDateTimeInput(value))),
 });
 
 const newsletterUpdateSchema = z.object({
@@ -257,38 +230,6 @@ export async function deleteArticleAction(formData: FormData) {
   redirect(`/${input.locale}/studio/articles?deleted=1`);
 }
 
-export async function updateDistributionAction(formData: FormData) {
-  const parsed = distributionUpdateSchema.safeParse({
-    id: formData.get("id"),
-    locale: formData.get("locale"),
-    status: formData.get("status"),
-    message: formData.get("message") || "",
-    externalUrl: formData.get("externalUrl") || "",
-    scheduledFor: formData.get("scheduledFor") || "",
-  });
-  const fallbackLocale = z.enum(locales).catch("en").parse(formData.get("locale"));
-  if (!parsed.success) redirect(`/${fallbackLocale}/studio/distribution?error=validation`);
-
-  const input = parsed.data;
-  await requireEditor(input.locale);
-  const repositories = await getStudioEditorialRepositories();
-  try {
-    await repositories.distribution.updatePublication({
-      id: input.id,
-      status: input.status,
-      message: input.message,
-      externalUrl: input.externalUrl || null,
-      scheduledFor: input.scheduledFor
-        ? parseUtcDateTimeInput(input.scheduledFor)
-        : null,
-    });
-  } catch {
-    redirect(`/${input.locale}/studio/distribution?error=save`);
-  }
-  revalidatePath(`/${input.locale}/studio/distribution`);
-  redirect(`/${input.locale}/studio/distribution?updated=1`);
-}
-
 export async function updateNewsletterSubscriptionAction(formData: FormData) {
   const input = newsletterUpdateSchema.parse({
     id: formData.get("id"),
@@ -296,8 +237,8 @@ export async function updateNewsletterSubscriptionAction(formData: FormData) {
     status: formData.get("status"),
   });
   await requireEditor(input.locale);
-  const repositories = await getStudioEditorialRepositories();
-  await repositories.newsletter.updateSubscriptionStatus(input.id, input.status);
+  const outcome = await runEditorCapability("admin_update_newsletter_subscription", { id: input.id, status: input.status });
+  if (!outcome.ok) throw new Error(outcome.error);
   revalidatePath(`/${input.locale}/studio/newsletter`);
   redirect(`/${input.locale}/studio/newsletter?updated=1`);
 }
@@ -336,16 +277,13 @@ export async function deleteMediaAction(formData: FormData) {
   });
   await requireEditor(input.locale);
   const repositories = await getStudioEditorialRepositories();
-  if (!repositories.media.writable) redirect(`/${input.locale}/studio/media?error=configuration`);
-
-  const assets = await repositories.media.listAssets();
-  const asset = assets.find((item) => item.path === input.path);
-  if (!asset) redirect(`/${input.locale}/studio/media?error=missing`);
-  if (await repositories.media.isAssetReferenced(asset.path)) {
-    redirect(`/${input.locale}/studio/media?error=in-use`);
+  try {
+    await new MediaCommandService(repositories.media).deleteOne(input.path);
+  } catch (error) {
+    if (!(error instanceof EditorialRuleError)) throw error;
+    // The media page only tells "in use" apart; any other refusal reads as a plain error.
+    redirect(`/${input.locale}/studio/media?error=${error.message.includes("referenced") ? "in-use" : "delete"}`);
   }
-
-  await repositories.media.deleteAsset(input.path);
   revalidatePath(`/${input.locale}/studio/media`);
   redirect(`/${input.locale}/studio/media?deleted=1`);
 }
