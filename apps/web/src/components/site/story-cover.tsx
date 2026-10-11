@@ -1,4 +1,6 @@
 import Image from "next/image";
+import type { ClaimStatus } from "@atlasnews/core/editorial/domain/article";
+import { StatusGlyph } from "./claim-chip";
 
 const tones = ["sky", "leaf", "peach", "lilac", "marker"] as const;
 export type PlateTone = (typeof tones)[number];
@@ -20,21 +22,24 @@ export function plateTone(sectionKey: string): PlateTone {
   return tones[hash % tones.length];
 }
 
-/** A story's picture, or a plate (the section tint with a name set large) when it has none to show. */
+/** A story's picture, or a plate when it has none to show: the section tint, the status glyph and a name set large. */
 export function StoryCover({
   image,
   label,
+  status,
   tone,
   sizes,
 }: {
   image: { src: string; alt: string } | null;
   label: string;
+  status: ClaimStatus;
   tone: PlateTone;
   sizes: string;
 }) {
   if (!image) {
     return (
       <span className={`story-cover plate plate--${tone}`} aria-hidden="true">
+        <StatusGlyph status={status} />
         <span>{label}</span>
       </span>
     );

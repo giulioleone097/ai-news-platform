@@ -92,6 +92,7 @@ export default async function Home({
               ))}
             </div>
           ) : null}
+          <StatusLegend band locale={locale} />
           <div className="feed-layout">
             <section className="feed" aria-label={messages.latest.title}>
               <InfiniteArticleList
@@ -104,7 +105,6 @@ export default async function Home({
               />
             </section>
             <aside className="feed-aside">
-              <StatusLegend locale={locale} />
               <EntityLeaderboard entities={entities.slice(0, 6)} locale={locale} />
             </aside>
           </div>

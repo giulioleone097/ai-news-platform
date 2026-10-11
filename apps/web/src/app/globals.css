@@ -283,7 +283,8 @@ h4 {
   border-color: var(--danger);
 }
 
-/* The status chip: four bars that fill as a claim firms up, then the word. Analysis has no bars. */
+/* The status chip: a glyph, then the word. The glyph is four bars that fill as a claim firms up, or
+   three lines of text for an analysis; it is sized in em, so a cover plate can draw it large. */
 .status {
   display: inline-flex;
   align-items: center;
@@ -295,17 +296,23 @@ h4 {
   white-space: nowrap;
 }
 
-.status__meter {
+.status__meter,
+.status__lines {
   display: inline-flex;
-  height: 0.75rem;
+  width: 1.1em;
+  height: 0.92em;
+  flex: none;
+}
+
+.status__meter {
   align-items: flex-end;
-  gap: 0.125rem;
+  justify-content: space-between;
 }
 
 .status__meter i {
-  width: 0.1875rem;
-  border-radius: 1px;
-  background: var(--line-strong);
+  width: 0.2em;
+  border-radius: 0.06em;
+  background: color-mix(in srgb, currentColor 28%, transparent);
 }
 
 .status__meter i:nth-child(1) { height: 40%; }
@@ -313,15 +320,27 @@ h4 {
 .status__meter i:nth-child(3) { height: 80%; }
 .status__meter i:nth-child(4) { height: 100%; }
 
-.status[data-level="1"] i:nth-child(-n + 1),
-.status[data-level="2"] i:nth-child(-n + 2),
-.status[data-level="3"] i:nth-child(-n + 3),
-.status[data-level="4"] i {
-  background: var(--fg);
+.status__meter[data-level="1"] i:nth-child(-n + 1),
+.status__meter[data-level="2"] i:nth-child(-n + 2),
+.status__meter[data-level="3"] i:nth-child(-n + 3),
+.status__meter[data-level="4"] i {
+  background: currentColor;
 }
 
-.status[data-level="0"] {
-  color: var(--fg-muted);
+.status__lines {
+  flex-direction: column;
+  justify-content: space-between;
+  padding-block: 0.08em;
+}
+
+.status__lines i {
+  height: 0.16em;
+  border-radius: 0.06em;
+  background: currentColor;
+}
+
+.status__lines i:last-child {
+  width: 60%;
 }
 
 /* Feedback under a form. Empty until there is something to say. */

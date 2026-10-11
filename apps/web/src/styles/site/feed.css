@@ -72,20 +72,9 @@
   background: var(--accent);
 }
 
-/* On the marker the chip and its bars are ink in both themes. */
+/* On the marker the chip is ink in both themes; the glyph follows its color. */
 .status-filter a[aria-current="page"] .status {
   color: var(--on-accent);
-}
-
-.status-filter a[aria-current="page"] .status__meter i {
-  background: color-mix(in srgb, var(--on-accent) 28%, transparent);
-}
-
-.status-filter a[aria-current="page"] .status[data-level="1"] i:nth-child(-n + 1),
-.status-filter a[aria-current="page"] .status[data-level="2"] i:nth-child(-n + 2),
-.status-filter a[aria-current="page"] .status[data-level="3"] i:nth-child(-n + 3),
-.status-filter a[aria-current="page"] .status[data-level="4"] i {
-  background: var(--on-accent);
 }
 
 @media (min-width: 60rem) {
@@ -124,13 +113,19 @@
 }
 
 .plate {
-  display: flex;
-  align-items: flex-end;
+  display: grid;
+  align-content: space-between;
   padding: 1rem;
   color: var(--on-accent);
 }
 
-.plate span {
+/* The status glyph, drawn large in the corner: a plate shows how firm its story is before a word is read. */
+.plate :is(.status__meter, .status__lines) {
+  justify-self: end;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+}
+
+.plate > span:last-child {
   font-size: clamp(1.5rem, 2.6vw, 2.125rem);
   font-weight: 800;
   letter-spacing: -0.035em;
@@ -252,9 +247,13 @@
   padding: 0.5rem;
 }
 
-.story-card .plate span {
+.story-card .plate > span:last-child {
   font-size: 0.9375rem;
   letter-spacing: -0.02em;
+}
+
+.story-card .plate :is(.status__meter, .status__lines) {
+  font-size: 1.375rem;
 }
 
 .story-card__title {
@@ -293,7 +292,11 @@
     padding: 1rem;
   }
 
-  .story-card .plate span {
+  .story-card .plate :is(.status__meter, .status__lines) {
+    font-size: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  .story-card .plate > span:last-child {
     font-size: clamp(1.5rem, 2.6vw, 2.125rem);
     letter-spacing: -0.035em;
   }
@@ -418,14 +421,46 @@
   text-underline-offset: 0.14em;
 }
 
-.status-legend .status[data-level="0"] {
-  color: var(--fg);
-}
-
 .status-legend p {
   color: var(--fg-muted);
   font-size: 0.8125rem;
   line-height: 1.4;
+}
+
+/* The legend as a band across the page: the steps side by side, read left to right as a claim firms up. */
+.legend-band {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-sunken);
+}
+
+.legend-band h2 {
+  padding-bottom: 0.875rem;
+  border-bottom: 0;
+}
+
+.legend-band .status-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.legend-band .status-legend li {
+  align-content: start;
+  padding-block: 0;
+  border-bottom: 0;
+}
+
+@media (min-width: 60rem) {
+  .legend-band {
+    padding: 1.5rem 2rem;
+  }
+
+  .legend-band .status-legend {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2rem;
+  }
 }
 
 .leaderboard a {

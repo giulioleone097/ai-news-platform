@@ -23,6 +23,7 @@ export function StoryCard({
       <StoryCover
         image={showImage && article.coverImage ? { src: article.coverImage, alt: "" } : null}
         label={item.entity?.name ?? item.category.name}
+        status={article.claimStatus}
         tone={plateTone(article.category.translationKey)}
         sizes="(max-width: 47.99rem) 100vw, 26rem"
       />

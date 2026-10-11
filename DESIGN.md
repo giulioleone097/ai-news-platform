@@ -235,7 +235,7 @@ Reading measure for article body is 60 to 72 characters. Card and row titles wra
 
 The public shell is 1280px wide with 20px gutters on phones and 40px on desktop. The header is one row: wordmark, the products readers follow, then search, language and Subscribe. On a phone the products scroll sideways on a second row.
 
-The home page reads in three steps of decreasing size. First the lead story with its picture. Then three stories as cards with a picture or a cover plate. Then every other story as a dated stream of compact rows, with a side column that explains the status meter and lists the most covered products. The newsletter band and the topics close the page.
+The home page reads in three steps of decreasing size. First the lead story with its picture. Then three stories as cards with a picture or a cover plate. Then a band that explains the status meter, and every other story as a dated stream of compact rows beside the most covered products. The newsletter band and the topics close the page.
 
 An article is one column: status, title, deck, byline row, picture, then the body beside a sticky table of contents on wide screens. Lists (products, search, a topic, a status) reuse the stream rows so every list on the site scans the same way.
 
@@ -251,9 +251,9 @@ Corners are small: 4px on chips and inputs, 8px on buttons, pictures and panels,
 
 ## Components
 
-Status chip: the four-bar meter followed by the status word. Rumour fills one bar, in test two, rolling out three, confirmed four. Analysis is not a claim, so it shows the word alone. The word is always present.
+Status chip: a glyph followed by the status word. The glyph is the four-bar meter: rumour fills one bar, in test two, rolling out three, confirmed four. Analysis is not a claim, so its glyph is three lines of text instead of bars. The word is always present.
 
-Cover: the story's picture at 16:10. When a story has no picture of its own, or its picture already appears higher on the page, the cover is a plate: the section tint with the product or section name set large.
+Cover: the story's picture at 16:10. When a story has no picture of its own, or its picture already appears higher on the page, the cover is a plate: the section tint, the story's status glyph drawn large in the corner, and the product or section name set large.
 
 Story row: status chip, product or section, time, headline. The whole row is one link. Story card: cover, the same meta line, headline, deck.
 
