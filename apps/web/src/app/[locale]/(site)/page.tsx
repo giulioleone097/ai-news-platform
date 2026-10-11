@@ -5,6 +5,7 @@ import { FeedLead } from "@/components/site/feed-lead";
 import { toFeedItem } from "@/components/site/feed-item";
 import { formatTime } from "@/components/site/feed-format";
 import { InfiniteArticleList } from "@/components/site/infinite-article-list";
+import { JsonLd } from "@/components/site/json-ld";
 import { NewsletterForm } from "@/components/site/newsletter-form";
 import { StatusFilter } from "@/components/site/status-filter";
 import { StatusLegend } from "@/components/site/status-legend";
@@ -12,6 +13,7 @@ import { StoryCard } from "@/components/site/story-card";
 import { TopicRail } from "@/components/site/topic-rail";
 import { getMessages, isLocale, localizedPath } from "@/i18n";
 import { getCachedEntities, getCachedHomeFeed } from "@/lib/editorial-queries";
+import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
 import { encodeArticleCursor } from "@atlasnews/core/editorial/application/public-feed";
 
 export const revalidate = 60;
@@ -40,8 +42,27 @@ export default async function Home({
     return show;
   });
 
+  const siteUrl = getPublicSiteUrl();
+  const home = new URL(localizedPath("/", locale), siteUrl).toString();
+  const publisher = { "@type": "Organization", name: messages.common.brandName, url: siteUrl.toString() };
+  const siteLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: messages.common.brandName,
+    description: messages.metadata.siteDescription,
+    url: home,
+    inLanguage: locale,
+    publisher,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${new URL(localizedPath("/search", locale), siteUrl)}?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  };
+
   return (
     <main id="main-content" className="site-shell home-main">
+      <JsonLd data={siteLd} />
       <header className="home-head">
         <div>
           <h1>{messages.feed.title}</h1>

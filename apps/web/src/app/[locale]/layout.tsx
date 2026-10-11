@@ -9,8 +9,8 @@ import {
   getMessages,
   isLocale,
   locales,
-  localizedPath,
 } from "@/i18n";
+import { agentAlternateTypes } from "@/lib/alternates";
 
 const grotesk = localFont({
   src: "../../../node_modules/@fontsource-variable/schibsted-grotesk/files/schibsted-grotesk-latin-wght-normal.woff2",
@@ -62,10 +62,7 @@ export async function generateMetadata({
     description: messages.metadata.siteDescription,
     applicationName: messages.common.brandName,
     icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }] },
-    alternates: {
-      ...alternates,
-      types: { "application/rss+xml": localizedPath("/feed.xml", locale) },
-    },
+    alternates: { ...alternates, types: agentAlternateTypes(locale) },
     openGraph: {
       type: "website",
       locale: messages.metadata.openGraphLocale,

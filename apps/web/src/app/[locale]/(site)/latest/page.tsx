@@ -8,6 +8,7 @@ import {
   searchPublishedArticles,
 } from "@/lib/editorial-queries";
 import { feedPageSize } from "@atlasnews/core/editorial/domain/editorial-service";
+import { agentAlternateTypes } from "@/lib/alternates";
 
 export const revalidate = 60;
 
@@ -22,7 +23,7 @@ export async function generateMetadata({
   return {
     title: messages.metadata.latestTitle,
     description: messages.metadata.latestDescription,
-    alternates: getAlternates("/latest", locale),
+    alternates: { ...getAlternates("/latest", locale), types: agentAlternateTypes(locale) },
   };
 }
 

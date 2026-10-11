@@ -31,6 +31,8 @@ import {
   searchPublishedArticles,
 } from "@/lib/editorial-queries";
 import type { Article } from "@atlasnews/core/editorial/domain/article";
+import { agentAlternateTypes } from "@/lib/alternates";
+import { JsonLd } from "@/components/site/json-ld";
 
 export const revalidate = 300;
 
@@ -111,7 +113,7 @@ export async function generateMetadata({
   return {
     title: article.title,
     description: article.excerpt,
-    alternates,
+    alternates: { ...alternates, types: agentAlternateTypes(locale, `/articles/${article.slug}`) },
     openGraph: {
       type: "article",
       url: alternates.canonical,
@@ -194,12 +196,25 @@ export default async function ArticlePage({
       name: messages.common.brandName,
       url: siteUrl.toString(),
     },
+    url,
     mainEntityOfPage: url,
+    articleSection: article.category.name,
+    isAccessibleForFree: true,
     ...(primaryEntity ? { about: entityLd(primaryEntity) } : {}),
     ...(article.entities.length > 1 ? { mentions: article.entities.slice(1).map(entityLd) } : {}),
     ...(article.sources.length
       ? { citation: article.sources.map((source) => ({ "@type": "CreativeWork", name: source.title, url: source.url })) }
       : {}),
+  };
+  const absolute = (path: string) => new URL(localizedPath(path, locale), siteUrl).toString();
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { name: messages.common.brandName, item: absolute("/") },
+      { name: article.category.name, item: absolute(`/categories/${article.category.slug}`) },
+      { name: article.title, item: url },
+    ].map((entry, index) => ({ "@type": "ListItem", position: index + 1, ...entry })),
   };
 
   return (
@@ -316,7 +331,7 @@ export default async function ArticlePage({
             ) : null}
 
             {article.entities.length ? (
-              <section aria-labelledby="entities-title">
+              <nav aria-labelledby="entities-title">
                 <SectionHeader id="entities-title" title={messages.article.entitiesLabel} />
                 <ul className="entity-links">
                   {article.entities.map((entity) => (
@@ -327,7 +342,7 @@ export default async function ArticlePage({
                     </li>
                   ))}
                 </ul>
-              </section>
+              </nav>
             ) : null}
 
             {primaryEntity && storySoFar.length ? (
@@ -384,10 +399,8 @@ export default async function ArticlePage({
           source={`article-${article.translationKey}-${locale}`}
         />
       </div>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
-      />
+      <JsonLd data={jsonLd} />
+      <JsonLd data={breadcrumbLd} />
     </main>
   );
 }

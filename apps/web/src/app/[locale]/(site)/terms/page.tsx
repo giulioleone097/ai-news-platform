@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { LegalPage } from "@/components/site/support/legal-page";
 import { termsCopy } from "@/components/site/support/support-copy";
 import { getAlternates, isLocale } from "@/i18n";
+import { agentAlternateTypes } from "@/lib/alternates";
 
 export async function generateMetadata({
   params,
@@ -15,7 +16,7 @@ export async function generateMetadata({
   return {
     title: copy.title,
     description: copy.description,
-    alternates: getAlternates("/terms", locale),
+    alternates: { ...getAlternates("/terms", locale), types: agentAlternateTypes(locale) },
   };
 }
 

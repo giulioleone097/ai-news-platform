@@ -15,6 +15,7 @@ import {
 } from "@/lib/editorial-queries";
 import { encodeArticleCursor } from "@atlasnews/core/editorial/application/public-feed";
 import { feedPageSize } from "@atlasnews/core/editorial/domain/editorial-service";
+import { agentAlternateTypes } from "@/lib/alternates";
 
 export const revalidate = 60;
 
@@ -39,7 +40,7 @@ export async function generateMetadata({
   return {
     title: data.entity.name,
     description: data.entity.description || getMessages(locale).entities.metadataFallback,
-    alternates: getAlternates(`/entities/${slug}`, locale),
+    alternates: { ...getAlternates(`/entities/${slug}`, locale), types: agentAlternateTypes(locale, `/entities/${slug}`) },
   };
 }
 

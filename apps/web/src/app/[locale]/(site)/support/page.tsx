@@ -6,6 +6,7 @@ import { PageSections } from "@/components/site/support/page-sections";
 import { supportCopy } from "@/components/site/support/support-copy";
 import styles from "@/components/site/support/support.module.css";
 import { getAlternates, isLocale, localizedPath } from "@/i18n";
+import { agentAlternateTypes } from "@/lib/alternates";
 
 export async function generateMetadata({
   params,
@@ -18,7 +19,7 @@ export async function generateMetadata({
   return {
     title: copy.title,
     description: copy.description,
-    alternates: getAlternates("/support", locale),
+    alternates: { ...getAlternates("/support", locale), types: agentAlternateTypes(locale) },
   };
 }
 

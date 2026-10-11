@@ -15,6 +15,7 @@ import {
 } from "@/lib/editorial-queries";
 import { feedPageSize } from "@atlasnews/core/editorial/domain/editorial-service";
 import type { Category } from "@atlasnews/core/editorial/domain/article";
+import { agentAlternateTypes } from "@/lib/alternates";
 
 export const revalidate = 60;
 
@@ -62,7 +63,7 @@ export async function generateMetadata({
     ? {
         title: category.name,
         description: category.description,
-        alternates: await getCategoryAlternates(category, locale),
+        alternates: { ...(await getCategoryAlternates(category, locale)), types: agentAlternateTypes(locale) },
       }
     : { title: messages.metadata.categoryFallbackTitle };
 }

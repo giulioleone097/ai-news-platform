@@ -1,4 +1,4 @@
-import { getPublicMcpUrl } from "@atlasnews/adapters/config/env";
+import { getContentMode, getPublicMcpUrl } from "@atlasnews/adapters/config/env";
 import { localeLabels, locales } from "@/i18n";
 import { getCoveredEntities } from "@/lib/feeds/data";
 import { buildLlmsTxt, type LlmsSection } from "@/lib/feeds/llms-txt";
@@ -37,7 +37,8 @@ export async function GET() {
     title: "Markdown and feeds",
     text: "Appending .md to any article or entity URL returns that page as Markdown. Each entity also has an RSS feed at /{locale}/entities/{slug}/feed.xml.",
   });
-  if (process.env.NEXT_PUBLIC_MCP_URL?.trim()) {
+  // On Sites the MCP server is the site's own /mcp; elsewhere it exists only where it is configured.
+  if (process.env.NEXT_PUBLIC_MCP_URL?.trim() || getContentMode() === "sites") {
     const mcp = getPublicMcpUrl();
     sections.push({
       title: "MCP server",

@@ -6,6 +6,7 @@ import "@/styles/site/lists.css";
 import { getAlternates, getMessages, isLocale, localizedPath } from "@/i18n";
 import { getCachedEntities } from "@/lib/editorial-queries";
 import { entityKinds } from "@atlasnews/core/editorial/domain/entity";
+import { agentAlternateTypes } from "@/lib/alternates";
 
 export const revalidate = 60;
 
@@ -23,7 +24,7 @@ export async function generateMetadata({
   return {
     title: messages.metadata.entitiesTitle,
     description: messages.metadata.entitiesDescription,
-    alternates: getAlternates("/entities", locale),
+    alternates: { ...getAlternates("/entities", locale), types: agentAlternateTypes(locale) },
   };
 }
 
