@@ -1,7 +1,6 @@
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NewsletterCampaignForm } from "@/components/studio/newsletter-campaigns/campaign-form";
+import { PageHead } from "@/components/studio/page-head";
 import { isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { getStudioNewsletterCampaignService } from "@/server/composition";
@@ -22,15 +21,10 @@ export default async function NewNewsletterCampaignPage({
 
   return (
     <>
-      <header className="studio-page-header">
-        <div>
-          <Link className="studio-back-link" href={`/${locale}/studio/newsletter/campaigns`}>
-            <ChevronLeft aria-hidden="true" size={16} />
-            {locale === "it" ? "Campagne" : "Campaigns"}
-          </Link>
-          <h1>{title}</h1>
-        </div>
-      </header>
+      <PageHead
+        back={{ href: `/${locale}/studio/newsletter/campaigns`, label: locale === "it" ? "Campagne" : "Campaigns" }}
+        title={title}
+      />
       <NewsletterCampaignForm defaults={service.defaults()} locale={locale} />
     </>
   );

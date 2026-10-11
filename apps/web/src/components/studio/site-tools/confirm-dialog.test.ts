@@ -34,8 +34,8 @@ describe("the confirmation dialog", () => {
     expect(dialog.text()).toContain("An AI agent asked to run: Delete newsroom entity");
     expect(dialog.text()).toContain("slug: openai");
     expect(doc.activeElement).toBe(button(dialog, "Decline"));
-    expect(button(dialog, "Approve").className).toContain("studio-button--danger");
-    expect(button(dialog, "Decline").className).toContain("studio-button");
+    expect(button(dialog, "Approve").className).toContain("button--danger");
+    expect(button(dialog, "Decline").className).toContain("button--quiet");
 
     button(dialog, "Approve").click();
     await expect(answer).resolves.toBe(true);
@@ -63,7 +63,7 @@ describe("the confirmation dialog", () => {
     const [dialog] = doc.modals;
     expect(dialog.text()).toContain("Approvare questa azione?");
     expect(dialog.text()).toContain("Un agente AI ha chiesto di eseguire: Delete newsroom entity");
-    expect(button(dialog, "Approva").className).toContain("studio-button--primary");
+    expect(button(dialog, "Approva").className).toContain("button--primary");
     button(dialog, "Rifiuta").click();
     await expect(answer).resolves.toBe(false);
   });

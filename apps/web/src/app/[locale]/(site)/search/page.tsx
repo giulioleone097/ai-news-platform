@@ -7,6 +7,7 @@ import {
   searchPublishedArticles,
 } from "@/lib/editorial-queries";
 import { feedPageSize } from "@atlasnews/core/editorial/domain/editorial-service";
+import { agentAlternateTypes } from "@/lib/alternates";
 
 export async function generateMetadata({
   params,
@@ -19,7 +20,7 @@ export async function generateMetadata({
   return {
     title: messages.metadata.searchTitle,
     description: messages.metadata.searchDescription,
-    alternates: getAlternates("/search", locale),
+    alternates: { ...getAlternates("/search", locale), types: agentAlternateTypes(locale) },
     robots: { index: false, follow: true },
   };
 }
@@ -60,6 +61,7 @@ export default async function SearchPage({
         locale={locale}
         query={normalizedQuery}
         nextCursor={page.nextCursor}
+        searchPage
       />
     </main>
   );

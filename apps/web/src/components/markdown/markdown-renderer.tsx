@@ -10,6 +10,7 @@ import { markdownCalloutsPlugin } from "./callouts";
 import { EmbedFrame } from "./embed-frame";
 import { markdownEmbedsPlugin } from "./embeds";
 import { rehypeHighlightFences } from "./highlight";
+import "./markdown.css";
 import { defaultMarkdownLabels, type MarkdownLabels } from "./labels";
 
 type MarkdownRendererProps = {
@@ -80,7 +81,7 @@ export function MarkdownRenderer({
     table({ node, children, ...props }) {
       void node;
       return (
-        <div className="markdown-table-scroll">
+        <div className="markdown-table-scroll" tabIndex={0}>
           <table {...props}>{children}</table>
         </div>
       );

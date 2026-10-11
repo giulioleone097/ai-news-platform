@@ -8,18 +8,28 @@ import { formatArticleDate } from "@/lib/format";
 import {
   formatArticleStatus,
   type Article,
+  type ArticleStatus,
 } from "@atlasnews/core/editorial/domain/article";
 import {
   deleteArticlesAction,
   publishArticlesAction,
   unpublishArticlesAction,
 } from "@/app/[locale]/(studio)/studio/articles/bulk/actions";
+import { Badge, type BadgeTone } from "./badge";
 import { BulkActionBar } from "./article-bulk/bulk-action-bar";
 import { bulkCopy } from "./article-bulk/copy";
+import { Note } from "./note";
 import styles from "./article-bulk/bulk.module.css";
 import { pageSelectionState, selectedOnPage, setPageSelection, toggleArticle } from "./article-bulk/selection";
 import type { BulkAction, BulkActionResult } from "./article-bulk/types";
 import { studioSupplementalCopy } from "./studio-copy";
+
+const statusTone: Record<ArticleStatus, BadgeTone> = {
+  draft: "neutral",
+  review: "warning",
+  scheduled: "info",
+  published: "success",
+};
 
 const bulkActions = {
   publish: publishArticlesAction,
@@ -50,11 +60,10 @@ export function ArticleList({
 
   if (!visibleArticles.length) {
     return (
-      <div className="studio-empty-state">
-        <span>00</span>
+      <div className="empty-state">
         <h2>{messages.studio.emptyTitle}</h2>
         <p>{messages.studio.emptyDescription}</p>
-        <Link className="studio-button studio-button--primary" href={`/${locale}/studio/articles/new`}>
+        <Link className="button button--primary" href={`/${locale}/studio/articles/new`}>
           {messages.studio.createArticle}
         </Link>
       </div>
@@ -105,11 +114,7 @@ export function ArticleList({
             />
           ) : null}
           <div aria-live="polite">
-            {feedback ? (
-              <p className={`studio-alert studio-alert--${feedback.status === "success" ? "success" : "error"}`}>
-                {feedback.message}
-              </p>
-            ) : null}
+            {feedback ? <Note tone={feedback.status === "success" ? "success" : "error"}>{feedback.message}</Note> : null}
           </div>
         </>
       ) : null}
@@ -129,7 +134,7 @@ export function ArticleList({
           <tbody>
             {visibleArticles.map((article) => (
               <tr key={article.id}>
-                <td>
+                <td className="studio-table__main">
                   <div className={styles.titleCell}>
                     {bulk ? (
                       <label className={styles.checkCell}>
@@ -143,38 +148,38 @@ export function ArticleList({
                         />
                       </label>
                     ) : null}
-                    <Link
-                      className={`studio-table__title ${styles.titleLink}`}
-                      href={`/${locale}/studio/articles/${article.id}`}
-                    >
+                    <Link className="studio-cell" href={`/${locale}/studio/articles/${article.id}`}>
                       <strong>{article.title}</strong>
-                      <span>/{article.slug}</span>
+                      <small>/{article.slug}</small>
                     </Link>
                   </div>
                 </td>
                 <td data-label={messages.studio.statusLabel}>
-                  <span className={`studio-status studio-status--${article.status}`}>
-                    {formatArticleStatus(article.status, locale)}
-                  </span>
+                  <Badge tone={statusTone[article.status]}>{formatArticleStatus(article.status, locale)}</Badge>
                 </td>
                 <td data-label={messages.studio.categoryLabel}>{article.category.name}</td>
                 <td data-label={messages.studio.lastUpdatedLabel}>
                   {formatArticleDate(article.updatedAt, locale)}
                 </td>
-                <td>
-                  <span className="studio-row-actions">
-                    <Link aria-label={`${copy.editStory}: ${article.title}`} href={`/${locale}/studio/articles/${article.id}`}>
-                      <Pencil aria-hidden="true" size={16} />
-                    </Link>
+                <td className="studio-table__actions">
+                  <span className="studio-actions">
                     {article.status === "published" ? (
                       <Link
                         aria-label={`${copy.viewStory}: ${article.title}`}
+                        className="studio-icon-button"
                         href={`/${locale}/articles/${article.slug}`}
                         target="_blank"
                       >
-                        <ArrowUpRight aria-hidden="true" size={17} />
+                        <ArrowUpRight aria-hidden="true" />
                       </Link>
                     ) : null}
+                    <Link
+                      aria-label={`${copy.editStory}: ${article.title}`}
+                      className="studio-icon-button"
+                      href={`/${locale}/studio/articles/${article.id}`}
+                    >
+                      <Pencil aria-hidden="true" />
+                    </Link>
                   </span>
                 </td>
               </tr>

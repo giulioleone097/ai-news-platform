@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ChevronLeft, ExternalLink } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
+import "@/styles/site/article.css";
 import { MarkdownRenderer } from "@/components/markdown/markdown-renderer";
 import { LazyCommentsWidget } from "@/components/site/comments/lazy-comments-widget";
 import { BookmarkButton } from "@/components/site/bookmark-button";
@@ -30,6 +31,8 @@ import {
   searchPublishedArticles,
 } from "@/lib/editorial-queries";
 import type { Article } from "@atlasnews/core/editorial/domain/article";
+import { agentAlternateTypes } from "@/lib/alternates";
+import { JsonLd } from "@/components/site/json-ld";
 
 export const revalidate = 300;
 
@@ -110,7 +113,7 @@ export async function generateMetadata({
   return {
     title: article.title,
     description: article.excerpt,
-    alternates,
+    alternates: { ...alternates, types: agentAlternateTypes(locale, `/articles/${article.slug}`) },
     openGraph: {
       type: "article",
       url: alternates.canonical,
@@ -193,189 +196,211 @@ export default async function ArticlePage({
       name: messages.common.brandName,
       url: siteUrl.toString(),
     },
+    url,
     mainEntityOfPage: url,
+    articleSection: article.category.name,
+    isAccessibleForFree: true,
     ...(primaryEntity ? { about: entityLd(primaryEntity) } : {}),
     ...(article.entities.length > 1 ? { mentions: article.entities.slice(1).map(entityLd) } : {}),
     ...(article.sources.length
       ? { citation: article.sources.map((source) => ({ "@type": "CreativeWork", name: source.title, url: source.url })) }
       : {}),
   };
+  const absolute = (path: string) => new URL(localizedPath(path, locale), siteUrl).toString();
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { name: messages.common.brandName, item: absolute("/") },
+      { name: article.category.name, item: absolute(`/categories/${article.category.slug}`) },
+      { name: article.title, item: url },
+    ].map((entry, index) => ({ "@type": "ListItem", position: index + 1, ...entry })),
+  };
 
   return (
     <main id="main-content" className="site-shell article-page">
-      <article
-        data-article-id={article.id}
-        data-article-slug={article.slug}
-        data-claim-status={article.claimStatus}
-      >
-        <Link
-          className="article-back"
-          href={localizedPath(`/categories/${article.category.slug}`, locale)}
-          prefetch={false}
+      <div className={headings.length ? "article-frame" : "article-frame article-frame--single"}>
+        <article
+          className="article"
+          data-article-id={article.id}
+          data-article-slug={article.slug}
+          data-claim-status={article.claimStatus}
         >
-          <ArrowLeft aria-hidden="true" /> {article.category.name}
-        </Link>
-
-        <header className="article-hero">
-          <div className="article-hero__copy">
-            <div className="article-tags">
+          <header className="article-head">
+            <Link
+              className="article-back"
+              href={localizedPath(`/categories/${article.category.slug}`, locale)}
+              prefetch={false}
+            >
+              <ChevronLeft aria-hidden="true" />
+              {article.category.name}
+            </Link>
+            <p className="story-meta">
               <ClaimChip status={article.claimStatus} label={messages.story.claimStatus[article.claimStatus]} />
-              {article.entities.length ? (
-                <nav className="chip-row" aria-label={messages.article.entitiesLabel}>
-                  {article.entities.map((entity) => (
-                    <Link
-                      className="chip chip--entity"
-                      href={localizedPath(`/entities/${entity.slug}`, locale)}
-                      key={entity.slug}
-                      prefetch={false}
-                    >
-                      {entity.name}
-                    </Link>
-                  ))}
-                </nav>
-              ) : null}
-            </div>
+              {primaryEntity ? (
+                <Link href={localizedPath(`/entities/${primaryEntity.slug}`, locale)} prefetch={false}>
+                  {primaryEntity.name}
+                </Link>
+              ) : (
+                <span>{article.category.name}</span>
+              )}
+            </p>
             <h1>{article.title}</h1>
             <p className="article-deck">{article.excerpt}</p>
-            <div className="article-meta">
-              <time dateTime={article.publishedAt ?? undefined}>
-                {formatArticleDate(article.publishedAt, locale)}
-              </time>
-              <span aria-hidden="true">·</span>
-              <span>{article.readingMinutes} {messages.article.minuteRead}</span>
-              {otherLocale && translationSlug ? (
-                <a
-                  className="article-language"
-                  href={localizedPath(`/articles/${translationSlug}`, otherLocale)}
-                  hrefLang={otherLocale}
-                  lang={otherLocale}
-                >
-                  {messages.article.languageLink[otherLocale]}
-                </a>
-              ) : null}
-            </div>
             <div className="article-byline">
-              <span className="avatar" aria-hidden="true">{article.author.initials}</span>
-              <span>{article.author.name}</span>
-              <div className="article-byline__actions">
+              <p className="article-byline__text">
+                <span className="article-byline__author">{article.author.name}</span>
+                <time dateTime={article.publishedAt ?? undefined}>
+                  {formatArticleDate(article.publishedAt, locale)}
+                </time>
+                <span>{article.readingMinutes} {messages.article.minuteRead}</span>
+                {otherLocale && translationSlug ? (
+                  <a
+                    className="article-language"
+                    href={localizedPath(`/articles/${translationSlug}`, otherLocale)}
+                    hrefLang={otherLocale}
+                    lang={otherLocale}
+                  >
+                    {messages.article.languageLink[otherLocale]}
+                  </a>
+                ) : null}
+              </p>
+              <div className="article-actions">
                 <BookmarkButton articleId={article.id} copy={messages.bookmark} />
                 <ShareActions url={url} title={article.title} labels={messages.share} />
               </div>
             </div>
-            {article.keyPoints.length ? (
-              <section className="key-points" aria-labelledby="key-points-title">
-                <h2 id="key-points-title">{messages.story.keyPoints}</h2>
-                <ul>
-                  {article.keyPoints.map((point) => (
-                    <li key={point}>{point}</li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-          </div>
+          </header>
 
-          <div className="article-hero__image">
+          <figure className="article-cover">
             <EditorialCover
               src={article.coverImage}
               alt={article.coverAlt}
-              sizes="(max-width: 900px) 100vw, 58vw"
+              sizes="(max-width: 68rem) 100vw, 60rem"
               quality={88}
             />
-          </div>
+          </figure>
+
+          {article.keyPoints.length ? (
+            <section className="key-points" aria-labelledby="key-points-title">
+              <h2 id="key-points-title">{messages.story.keyPoints}</h2>
+              <ul>
+                {article.keyPoints.map((point) => (
+                  <li key={point}>{point}</li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           {headings.length ? (
             <aside className="article-toc" aria-labelledby="toc-title">
               <h2 id="toc-title">{messages.article.tableOfContents}</h2>
-              <ol>
+              <ul>
                 {headings.map((heading) => (
-                  <li className={heading.depth === 3 ? "article-toc__subheading" : undefined} key={heading.id}>
+                  <li className={heading.depth === 3 ? "article-toc__sub" : undefined} key={heading.id}>
                     <a href={`#${heading.id}`}>{heading.text}</a>
                   </li>
                 ))}
-              </ol>
+              </ul>
             </aside>
           ) : null}
-        </header>
 
-        <div className="article-reading-layout">
-          <aside className="article-share-rail">
-            <span>{messages.share.action}</span>
-            <ShareActions url={url} title={article.title} labels={messages.share} />
-          </aside>
-          <MarkdownRenderer
-            className="article-body markdown-content"
-            content={article.content}
-            imageUnavailableLabel={messages.errors.imageUnavailable}
-            labels={messages.markdown}
-          />
+          <div className="article-main">
+            <MarkdownRenderer
+              className="article-body"
+              content={article.content}
+              imageUnavailableLabel={messages.errors.imageUnavailable}
+              labels={messages.markdown}
+            />
+
+            {article.sources.length ? (
+              <section aria-labelledby="sources-title">
+                <SectionHeader id="sources-title" title={messages.article.sourcesTitle} />
+                <ul className="source-list">
+                  {article.sources.map((source) => (
+                    <li key={source.url}>
+                      <a href={source.url} rel="noopener noreferrer" target="_blank">
+                        {source.title}
+                        <ExternalLink aria-hidden="true" />
+                      </a>
+                      <span>{messages.article.sourceBacks} {source.supports}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {article.entities.length ? (
+              <nav aria-labelledby="entities-title">
+                <SectionHeader id="entities-title" title={messages.article.entitiesLabel} />
+                <ul className="entity-links">
+                  {article.entities.map((entity) => (
+                    <li key={entity.slug}>
+                      <Link href={localizedPath(`/entities/${entity.slug}`, locale)} prefetch={false}>
+                        {entity.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            ) : null}
+
+            {primaryEntity && storySoFar.length ? (
+              <section aria-labelledby="story-so-far-title">
+                <SectionHeader id="story-so-far-title" title={messages.article.storySoFarTitle} />
+                <Timeline
+                  items={storySoFar}
+                  locale={locale}
+                  statusLabels={messages.story.claimStatus}
+                  currentSlug={article.slug}
+                  currentLabel={messages.article.thisStory}
+                />
+                <Link
+                  className="article-more"
+                  href={localizedPath(`/entities/${primaryEntity.slug}`, locale)}
+                  prefetch={false}
+                >
+                  {messages.article.fullTimeline} {primaryEntity.name}
+                </Link>
+              </section>
+            ) : null}
+          </div>
+        </article>
+
+        <div className="article-tail">
+          <LazyCommentsWidget articleId={article.id} locale={locale} />
+
+          {related.length ? (
+            <section className="article-related" aria-labelledby="related-title">
+              <SectionHeader
+                id="related-title"
+                title={messages.article.continueReading}
+                href={localizedPath("/latest", locale)}
+                linkLabel={messages.article.allArticles}
+              />
+              <ul className="feed-list">
+                {related.map((item) => (
+                  <FeedRow
+                    item={toFeedItem(item)}
+                    locale={locale}
+                    statusLabels={messages.story.claimStatus}
+                    stamp="date"
+                    key={item.id}
+                  />
+                ))}
+              </ul>
+            </section>
+          ) : null}
         </div>
 
-        {article.sources.length ? (
-          <section className="article-extra" aria-labelledby="sources-title">
-            <h2 id="sources-title">{messages.article.sourcesTitle}</h2>
-            <ol className="source-list">
-              {article.sources.map((source) => (
-                <li key={source.url}>
-                  <a href={source.url} rel="noopener noreferrer" target="_blank">
-                    {source.title}
-                    <ExternalLink aria-hidden="true" />
-                  </a>
-                  <span>{messages.article.sourceBacks} {source.supports}</span>
-                </li>
-              ))}
-            </ol>
-          </section>
-        ) : null}
-
-        {primaryEntity && storySoFar.length ? (
-          <section className="article-extra" aria-labelledby="story-so-far-title">
-            <h2 id="story-so-far-title">{messages.article.storySoFarTitle}</h2>
-            <Timeline
-              items={storySoFar}
-              locale={locale}
-              statusLabels={messages.story.claimStatus}
-              currentSlug={article.slug}
-              currentLabel={messages.article.thisStory}
-            />
-            <Link className="article-extra__link" href={localizedPath(`/entities/${primaryEntity.slug}`, locale)} prefetch={false}>
-              {messages.article.fullTimeline} {primaryEntity.name}
-            </Link>
-          </section>
-        ) : null}
-      </article>
-
-      <LazyCommentsWidget articleId={article.id} locale={locale} />
-
-      {related.length ? (
-        <section className="related" aria-labelledby="related-title">
-          <SectionHeader
-            id="related-title"
-            title={messages.article.continueReading}
-            href={localizedPath("/latest", locale)}
-            linkLabel={messages.article.allArticles}
-          />
-          <ul className="feed-list">
-            {related.map((item) => (
-              <FeedRow
-                item={toFeedItem(item)}
-                locale={locale}
-                statusLabels={messages.story.claimStatus}
-                stamp="date"
-                key={item.id}
-              />
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      <NewsletterForm
-        locale={locale}
-        copy={messages.newsletter}
-        source={`article-${article.translationKey}-${locale}`}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
-      />
+        <NewsletterForm
+          locale={locale}
+          copy={messages.newsletter}
+          source={`article-${article.translationKey}-${locale}`}
+        />
+      </div>
+      <JsonLd data={jsonLd} />
+      <JsonLd data={breadcrumbLd} />
     </main>
   );
 }

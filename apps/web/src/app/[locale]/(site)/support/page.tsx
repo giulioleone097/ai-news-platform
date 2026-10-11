@@ -6,6 +6,7 @@ import { PageSections } from "@/components/site/support/page-sections";
 import { supportCopy } from "@/components/site/support/support-copy";
 import styles from "@/components/site/support/support.module.css";
 import { getAlternates, isLocale, localizedPath } from "@/i18n";
+import { agentAlternateTypes } from "@/lib/alternates";
 
 export async function generateMetadata({
   params,
@@ -18,7 +19,7 @@ export async function generateMetadata({
   return {
     title: copy.title,
     description: copy.description,
-    alternates: getAlternates("/support", locale),
+    alternates: { ...getAlternates("/support", locale), types: agentAlternateTypes(locale) },
   };
 }
 
@@ -35,7 +36,6 @@ export default async function SupportPage({
     <main id="main-content" className={`site-shell ${styles.page}`}>
       <div className={styles.column}>
         <header className="page-head">
-          <p className="page-head__kicker">{copy.kicker}</p>
           <h1>{copy.title}</h1>
           <p>{copy.description}</p>
         </header>

@@ -5,11 +5,8 @@ import * as z from "zod/v4";
 import type { StudioActionState } from "@/components/studio/action-state";
 import { defaultLocale, isLocale, type Locale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
-import { getStudioContactMessageService } from "@/server/composition";
-import { contactIdSchema, contactStatusSchema } from "@atlasnews/core/support/domain/contact-message";
+import { runEditorCapability } from "@/server/capabilities";
 import { inboxCopy } from "./copy";
-
-const statusFormSchema = z.object({ id: contactIdSchema, status: contactStatusSchema });
 
 function readLocale(formData: FormData): Locale {
   const value = formData.get("locale");
@@ -24,16 +21,19 @@ function inboxPath(locale: Locale, formData: FormData, flag: string) {
   return `/${locale}/studio/inbox?${params}`;
 }
 
+/** The inbox capabilities check the editor's scope and the input; a refusal is reported like a failure. */
+async function runInbox(name: string, input: Record<string, unknown>) {
+  const outcome = await runEditorCapability(name, input, { confirmed: true });
+  if (!outcome.ok) throw new Error(outcome.error);
+}
+
 export async function setContactStatusAction(formData: FormData) {
   const locale = readLocale(formData);
   await requireEditor(locale);
-  const input = statusFormSchema.safeParse({ id: formData.get("id"), status: formData.get("status") });
 
   let flag = "updated";
   try {
-    const service = await getStudioContactMessageService();
-    if (!input.success || !service) throw new Error("The message could not be changed.");
-    await service.setStatus(input.data.id, input.data.status);
+    await runInbox("admin_update_contact_message", { id: formData.get("id"), status: formData.get("status") });
   } catch (error) {
     console.error("studio inbox: status change failed", error);
     flag = "error";
@@ -47,13 +47,10 @@ export async function deleteContactMessageAction(
 ): Promise<StudioActionState> {
   const locale = readLocale(formData);
   await requireEditor(locale);
-  const id = contactIdSchema.safeParse(formData.get("id"));
 
   // The person confirmed this deletion in the page (window.confirm) before the form was sent.
   try {
-    const service = await getStudioContactMessageService();
-    if (!id.success || !service) throw new Error("The message could not be deleted.");
-    await service.delete(id.data);
+    await runInbox("admin_delete_contact_message", { id: formData.get("id") });
   } catch (error) {
     console.error("studio inbox: delete failed", error);
     return { status: "error", message: inboxCopy[locale].failed };

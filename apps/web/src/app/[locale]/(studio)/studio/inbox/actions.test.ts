@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireEditor: vi.fn(),
-  service: vi.fn(),
+  run: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`);
   }),
@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/lib/editor-auth", () => ({ requireEditor: mocks.requireEditor }));
-vi.mock("@/server/composition", () => ({ getStudioContactMessageService: mocks.service }));
+vi.mock("@/server/capabilities", () => ({ runEditorCapability: mocks.run }));
 
 import { idleStudioActionState } from "@/components/studio/action-state";
 import { deleteContactMessageAction, setContactStatusAction } from "./actions";
@@ -23,12 +23,8 @@ function form(fields: Record<string, string>) {
   return data;
 }
 
-const service = { setStatus: vi.fn(), delete: vi.fn() };
-
 beforeEach(() => {
-  service.setStatus.mockReset().mockResolvedValue(undefined);
-  service.delete.mockReset().mockResolvedValue(undefined);
-  mocks.service.mockReset().mockResolvedValue(service);
+  mocks.run.mockReset().mockResolvedValue({ ok: true, result: {} });
   mocks.requireEditor.mockReset().mockResolvedValue({ userId: "u1" });
   mocks.redirect.mockClear();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -40,34 +36,34 @@ describe("Studio inbox actions", () => {
       "REDIRECT:/en/studio/inbox?status=new&updated=1",
     );
     expect(mocks.requireEditor).toHaveBeenCalledWith("en");
-    expect(service.setStatus).toHaveBeenCalledWith(id, "handled");
+    expect(mocks.run).toHaveBeenCalledWith("admin_update_contact_message", { id, status: "handled" }, { confirmed: true });
   });
 
-  it("changes nothing and says so when the status or the id is not valid, or the service fails", async () => {
+  it("says so when the capability refuses (invalid input, missing scope) or fails", async () => {
+    mocks.run.mockResolvedValue({ ok: false, status: 400, error: "Invalid arguments for admin_update_contact_message." });
     await expect(setContactStatusAction(form({ status: "deleted" }))).rejects.toThrow("REDIRECT:/en/studio/inbox?error=1");
-    await expect(setContactStatusAction(form({ status: "handled", id: "nope" }))).rejects.toThrow("error=1");
-    service.setStatus.mockRejectedValue(new Error("unknown id"));
+    mocks.run.mockResolvedValue({ ok: false, status: 403, error: "This account lacks the newsroom.write permission." });
+    await expect(setContactStatusAction(form({ status: "handled" }))).rejects.toThrow("error=1");
+    mocks.run.mockRejectedValue(new Error("unknown id"));
     await expect(setContactStatusAction(form({ status: "archived", locale: "it" }))).rejects.toThrow(
       "REDIRECT:/it/studio/inbox?error=1",
     );
-    expect(service.setStatus).toHaveBeenCalledTimes(1);
   });
 
   it("does not touch the inbox when nobody is signed in", async () => {
     mocks.requireEditor.mockRejectedValue(new Error("REDIRECT:/en/login"));
     await expect(setContactStatusAction(form({ status: "handled" }))).rejects.toThrow("/en/login");
     await expect(deleteContactMessageAction(idleStudioActionState, form({}))).rejects.toThrow("/en/login");
-    expect(service.setStatus).not.toHaveBeenCalled();
-    expect(service.delete).not.toHaveBeenCalled();
+    expect(mocks.run).not.toHaveBeenCalled();
   });
 
   it("deletes and returns to the list, or reports the failure in the editor's language", async () => {
     await expect(deleteContactMessageAction(idleStudioActionState, form({ filter: "archived" }))).rejects.toThrow(
       "REDIRECT:/en/studio/inbox?status=archived&deleted=1",
     );
-    expect(service.delete).toHaveBeenCalledWith(id);
+    expect(mocks.run).toHaveBeenCalledWith("admin_delete_contact_message", { id }, { confirmed: true });
 
-    service.delete.mockRejectedValue(new Error("down"));
+    mocks.run.mockResolvedValue({ ok: false, status: 503, error: "The contact inbox is not configured." });
     expect(await deleteContactMessageAction(idleStudioActionState, form({ locale: "it" }))).toEqual({
       status: "error",
       message: "Non è stato possibile modificare il messaggio. Riprova.",

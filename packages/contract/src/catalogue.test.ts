@@ -201,8 +201,21 @@ describe("@atlasnews/contract/page", () => {
       "admin_create_article", "admin_update_articles", "admin_publish_articles", "admin_create_category", "admin_delete_entities",
       "admin_get_entity", "admin_upload_media_assets", "list_entities",
     ]));
-    // Operational workflow (comments, newsletter, social) stays off the page.
-    expect(names.some((name) => /comment|newsletter|social|distribution/.test(name))).toBe(false);
+    // What an editor does in the Studio is on the page; the workers (outbox processing, delivery, erasure) are MCP-only.
+    expect(names).toEqual(expect.arrayContaining([
+      "admin_list_comments", "admin_moderate_comment", "admin_list_comment_audit", "admin_list_contact_messages",
+      "admin_delete_contact_message", "admin_list_distribution", "admin_update_distribution",
+      "admin_list_newsletter_subscriptions", "admin_update_newsletter_subscription", "admin_newsletter_request_subscription",
+      "admin_newsletter_save_campaign_draft", "admin_newsletter_send_campaign", "admin_social_preview", "admin_social_enqueue",
+      "admin_social_list", "admin_social_cancel", "admin_social_retry",
+    ]));
+    for (const worker of [
+      "admin_comment_process_notifications", "admin_newsletter_process_outbox", "admin_newsletter_erase_subscription",
+      "admin_social_process_outbox", "list_comments",
+    ]) {
+      expect(names, worker).not.toContain(worker);
+      expect(capabilities.find((capability) => capability.name === worker)?.surfaces, worker).toEqual(["mcp"]);
+    }
     for (const capability of editorPageCapabilities) {
       const source = mcpCapabilities.find((item) => item.name === capability.name)!;
       expect(capability.description).toBe(source.description);
@@ -256,8 +269,11 @@ describe("@atlasnews/contract/page", () => {
         "@atlasnews/core/editorial/domain/article",
         "@atlasnews/core/editorial/domain/category",
         "@atlasnews/core/editorial/domain/editorial-image",
+        "@atlasnews/core/editorial/domain/editorial-operations",
         "@atlasnews/core/editorial/domain/entity",
         "@atlasnews/core/editorial/domain/errors",
+        "@atlasnews/core/comments/domain/admin-tool-definitions",
+        "@atlasnews/core/support/domain/contact-message",
         "@atlasnews/core/team/domain/team",
       ]).toContain(target);
     }

@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { MessageSquareText, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
+import { Badge, sentenceCase, type BadgeTone } from "@/components/studio/badge";
+import { Note } from "@/components/studio/note";
+import { PageHead } from "@/components/studio/page-head";
 import { isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import {
@@ -11,13 +13,11 @@ import {
 import { createMutationCommentService } from "@/server/composition";
 import { decodeCommentCursor } from "@atlasnews/core/comments/domain/cursor";
 import { moderateCommentAction } from "./actions";
-import styles from "./comments.module.css";
 
 export const dynamic = "force-dynamic";
 
 const copy = {
   en: {
-    kicker: "Community",
     title: "Comment moderation",
     description: "Review conversations, reports and the append-only moderation trail.",
     status: "Status",
@@ -29,12 +29,15 @@ const copy = {
     noDetails: "No additional details",
     next: "Next page",
     audit: "Recent moderation audit",
+    action: "Action",
+    actor: "By",
+    change: "Change",
+    date: "Date",
     system: "System",
     unavailable: "Comment moderation is not configured.",
     actions: { approved: "Approve", rejected: "Reject", spam: "Mark spam", deleted: "Delete" },
   },
   it: {
-    kicker: "Community",
     title: "Moderazione commenti",
     description: "Revisiona conversazioni, segnalazioni e registro immutabile di moderazione.",
     status: "Stato",
@@ -46,11 +49,23 @@ const copy = {
     noDetails: "Nessun dettaglio aggiuntivo",
     next: "Pagina successiva",
     audit: "Audit moderazione recente",
+    action: "Azione",
+    actor: "Da",
+    change: "Modifica",
+    date: "Data",
     system: "Sistema",
     unavailable: "La moderazione commenti non è configurata.",
     actions: { approved: "Approva", rejected: "Rifiuta", spam: "Segna spam", deleted: "Elimina" },
   },
 } as const;
+
+const statusTone: Record<string, BadgeTone> = {
+  approved: "success",
+  pending: "warning",
+  rejected: "danger",
+  spam: "danger",
+  deleted: "neutral",
+};
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -73,14 +88,8 @@ export default async function StudioCommentsPage({
   if (!service) {
     return (
       <>
-        <header className="studio-page-header">
-          <div>
-            <p className="studio-kicker">{labels.kicker}</p>
-            <h1>{labels.title}</h1>
-            <p>{labels.description}</p>
-          </div>
-        </header>
-        <p className="studio-alert studio-alert--error" role="status">{labels.unavailable}</p>
+        <PageHead description={labels.description} title={labels.title} />
+        <Note tone="warning">{labels.unavailable}</Note>
       </>
     );
   }
@@ -99,84 +108,105 @@ export default async function StudioCommentsPage({
     comment.id,
     comment.reportCount ? await service.listReports(comment.id) : [],
   ] as const)));
+  const when = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
 
   return (
     <>
-      <header className="studio-page-header">
-        <div>
-          <p className="studio-kicker">{labels.kicker}</p>
-          <h1>{labels.title}</h1>
-          <p>{labels.description}</p>
-        </div>
-      </header>
+      <PageHead description={labels.description} title={labels.title} />
 
-      <form className={styles.filters} method="get">
-        <select aria-label={labels.status} defaultValue={status ?? ""} name="status">
+      <form className="studio-toolbar" method="get">
+        <select aria-label={labels.status} className="studio-control" defaultValue={status ?? ""} name="status">
           <option value="">{labels.allStatuses}</option>
-          {moderationQueueStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
+          {moderationQueueStatuses.map((item) => <option key={item} value={item}>{sentenceCase(item)}</option>)}
         </select>
         <input name="locale" type="hidden" value={locale} />
-        <button className="studio-button studio-button--secondary" type="submit">{labels.filter}</button>
+        <button className="button button--quiet" type="submit">{labels.filter}</button>
       </form>
 
       {page.items.length ? (
-        <section className={styles.queue} aria-label={labels.title}>
+        <section className="studio-feed" aria-label={labels.title}>
           {page.items.map((comment) => (
-            <article className={styles.card} key={comment.id}>
-              <div className={styles.meta}>
+            <article key={comment.id}>
+              <div className="studio-feed__head">
                 <strong>{comment.displayName}</strong>
-                <span className={`studio-status studio-status--${comment.status}`}>{comment.status}</span>
-                <span>{comment.authorKind}</span>
-                <time dateTime={comment.createdAt}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(comment.createdAt))} UTC</time>
-                <span>{comment.reportCount} {labels.reports.toLowerCase()}</span>
+                <Badge tone={statusTone[comment.status] ?? "neutral"}>{sentenceCase(comment.status)}</Badge>
+                <span className="studio-meta">
+                  <span>{sentenceCase(comment.authorKind)}</span>
+                  <time dateTime={comment.createdAt}>{when.format(new Date(comment.createdAt))} UTC</time>
+                  {comment.reportCount ? <span>{comment.reportCount} {labels.reports.toLowerCase()}</span> : null}
+                </span>
               </div>
-              <p className={styles.body}>{comment.body}</p>
+              <p className="studio-text">{comment.body}</p>
               {reports.get(comment.id)?.length ? (
-                <div className={styles.reports}>
+                <div className="studio-quote">
                   {reports.get(comment.id)?.map((report) => (
                     <p key={report.id}><strong>{report.reason}</strong> · {report.details || labels.noDetails}</p>
                   ))}
                 </div>
               ) : null}
-              <form action={moderateCommentAction} className={styles.moderation}>
+              <form action={moderateCommentAction} className="studio-inline">
                 <input name="id" type="hidden" value={comment.id} />
                 <input name="locale" type="hidden" value={locale} />
-                <label>
+                <label className="studio-inline__reason">
                   <span className="sr-only">{labels.reason}</span>
-                  <input maxLength={500} minLength={2} name="reason" placeholder={labels.reason} required />
+                  <input className="studio-control" maxLength={500} minLength={2} name="reason" placeholder={labels.reason} required />
                 </label>
-                <div className={styles.actions}>
-                  {moderationTargetStatuses.map((target) => (
-                    <button className={target === "deleted" ? "studio-button studio-button--danger" : "studio-button studio-button--secondary"} name="status" type="submit" value={target} key={target}>
-                      {labels.actions[target]}
-                    </button>
-                  ))}
-                </div>
+                {moderationTargetStatuses.map((target) => (
+                  <button
+                    className={target === "deleted" ? "button button--small button--danger" : "button button--small button--quiet"}
+                    key={target}
+                    name="status"
+                    type="submit"
+                    value={target}
+                  >
+                    {labels.actions[target]}
+                  </button>
+                ))}
               </form>
             </article>
           ))}
         </section>
       ) : (
-        <div className="studio-empty-state"><MessageSquareText aria-hidden="true" size={28} /><h2>{labels.empty}</h2></div>
+        <div className="empty-state"><h2>{labels.empty}</h2></div>
       )}
 
       {page.nextCursor ? (
-        <Link className="studio-button studio-button--secondary" href={`/${locale}/studio/comments?status=${status ?? ""}&cursor=${encodeURIComponent(page.nextCursor)}`}>{labels.next}</Link>
+        <div>
+          <Link className="button button--quiet" href={`/${locale}/studio/comments?status=${status ?? ""}&cursor=${encodeURIComponent(page.nextCursor)}`}>{labels.next}</Link>
+        </div>
       ) : null}
 
-      <section className={styles.audit} aria-labelledby="comment-audit-title">
-        <header className="studio-section__header"><div><ShieldCheck aria-hidden="true" size={20} /><h2 id="comment-audit-title">{labels.audit}</h2></div></header>
-        {audit.items.map((event) => (
-          <article key={event.id}>
-            <strong>{event.action}</strong>
-            <div className={styles.auditMeta}>
-              <span>{event.actorLabel || labels.system}</span>
-              <span>{event.previousStatus || "—"} → {event.nextStatus || "—"}</span>
-              <time dateTime={event.createdAt}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(event.createdAt))} UTC</time>
-            </div>
-            {event.reason ? <p>{event.reason}</p> : null}
-          </article>
-        ))}
+      <section className="studio-stack" aria-labelledby="comment-audit-title">
+        <h2 className="studio-section__title" id="comment-audit-title">{labels.audit}</h2>
+        <div className="studio-table-wrap">
+          <table className="studio-table">
+            <thead>
+              <tr>
+                <th>{labels.action}</th>
+                <th>{labels.actor}</th>
+                <th>{labels.change}</th>
+                <th>{labels.date}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {audit.items.map((event) => (
+                <tr key={event.id}>
+                  <td className="studio-table__main">
+                    <div className="studio-cell">
+                      <strong>{event.action}</strong>
+                      {event.reason ? <small>{event.reason}</small> : null}
+                    </div>
+                  </td>
+                  <td data-label={labels.actor}>{event.actorLabel || labels.system}</td>
+                  <td data-label={labels.change}>{event.previousStatus || "—"} → {event.nextStatus || "—"}</td>
+                  <td data-label={labels.date}>
+                    <time dateTime={event.createdAt}>{when.format(new Date(event.createdAt))} UTC</time>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     </>
   );

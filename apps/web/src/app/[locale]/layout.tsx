@@ -9,25 +9,33 @@ import {
   getMessages,
   isLocale,
   locales,
-  localizedPath,
 } from "@/i18n";
+import { agentAlternateTypes } from "@/lib/alternates";
 
-const inter = localFont({
-  src: "../../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+const grotesk = localFont({
+  src: "../../../node_modules/@fontsource-variable/schibsted-grotesk/files/schibsted-grotesk-latin-wght-normal.woff2",
   display: "swap",
-  fallback: ["Inter", "sans-serif"],
+  fallback: ["Helvetica Neue", "Arial", "sans-serif"],
   preload: false,
   style: "normal",
-  weight: "100 900",
+  weight: "400 900",
 });
 
-const sourceSerif = localFont({
-  src: "../../../node_modules/@fontsource-variable/source-serif-4/files/source-serif-4-latin-wght-normal.woff2",
+const newsreader = localFont({
+  src: [
+    {
+      path: "../../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2",
+      style: "normal",
+    },
+    {
+      path: "../../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-italic.woff2",
+      style: "italic",
+    },
+  ],
   display: "swap",
   fallback: ["Georgia", "serif"],
   preload: false,
-  style: "normal",
-  weight: "200 900",
+  weight: "200 800",
 });
 
 export function generateStaticParams() {
@@ -53,10 +61,8 @@ export async function generateMetadata({
     },
     description: messages.metadata.siteDescription,
     applicationName: messages.common.brandName,
-    alternates: {
-      ...alternates,
-      types: { "application/rss+xml": localizedPath("/feed.xml", locale) },
-    },
+    icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }] },
+    alternates: { ...alternates, types: agentAlternateTypes(locale) },
     openGraph: {
       type: "website",
       locale: messages.metadata.openGraphLocale,
@@ -83,8 +89,8 @@ export default async function LocaleLayout({
       lang={locale}
       data-scroll-behavior="smooth"
       style={{
-        "--font-reading": sourceSerif.style.fontFamily,
-        "--font-ui": inter.style.fontFamily,
+        "--font-reading": newsreader.style.fontFamily,
+        "--font-ui": grotesk.style.fontFamily,
       } as React.CSSProperties}
     >
       <body>{children}</body>

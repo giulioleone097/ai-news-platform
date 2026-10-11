@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Download, Mail, Search, Send, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Download, Search, Send } from "lucide-react";
+import { Badge } from "@/components/studio/badge";
+import { Note } from "@/components/studio/note";
+import { PageHead } from "@/components/studio/page-head";
 import { studioSupplementalCopy } from "@/components/studio/studio-copy";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
@@ -67,133 +70,142 @@ export default async function StudioNewsletterPage({
   const firstResult = subscriptions.total ? subscriptions.offset + 1 : 0;
   const lastResult = subscriptions.offset + subscriptions.items.length;
 
+  const when = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+  const stats = [
+    { label: copy.totalSubscribers, value: allSubscriptions.total },
+    { label: copy.activeSubscribers, value: activeSubscriptions.total },
+  ];
+
   return (
     <>
-      <header className="studio-page-header">
-        <div>
-          <p className="studio-kicker">{messages.studio.newsletter}</p>
-          <h1>{copy.newsletterTitle}</h1>
-          <p>{copy.newsletterDescription}</p>
-        </div>
-        <div className="studio-editor__actions">
-          <Link className="studio-button studio-button--primary" href={`/${locale}/studio/newsletter/campaigns`}>
-            <Send aria-hidden="true" size={16} />
-            {copy.campaigns}
-          </Link>
-          <Link className="studio-button studio-button--secondary" href={`/${locale}/studio/newsletter/export`}>
-            <Download aria-hidden="true" size={16} />
-            {copy.exportAudience}
-          </Link>
-        </div>
-      </header>
+      <PageHead description={copy.newsletterDescription} title={messages.studio.newsletter}>
+        <Link className="button button--quiet" href={`/${locale}/studio/newsletter/export`}>
+          <Download aria-hidden="true" />
+          {copy.exportAudience}
+        </Link>
+        <Link className="button button--primary" href={`/${locale}/studio/newsletter/campaigns`}>
+          <Send aria-hidden="true" />
+          {copy.campaigns}
+        </Link>
+      </PageHead>
 
-      {search.updated ? (
-        <p className="studio-alert studio-alert--success" role="status">{copy.subscriberUpdated}</p>
-      ) : null}
-      {search.confirmation ? (
-        <p className="studio-alert studio-alert--success" role="status">{copy.confirmationRequested}</p>
-      ) : null}
-      {search.error === "confirmation" ? (
-        <p className="studio-alert studio-alert--error" role="alert">{copy.confirmationFailed}</p>
-      ) : null}
+      {search.updated ? <Note tone="success">{copy.subscriberUpdated}</Note> : null}
+      {search.confirmation ? <Note tone="success">{copy.confirmationRequested}</Note> : null}
+      {search.error === "confirmation" ? <Note tone="error">{copy.confirmationFailed}</Note> : null}
 
-      <section className="studio-newsletter-metrics" aria-label={copy.newsletterTitle}>
-        <article>
-          <span className="studio-capability-card__icon" aria-hidden="true"><Users size={24} /></span>
-          <strong>{allSubscriptions.total}</strong>
-          <p>{copy.allSubscribers}</p>
-        </article>
-        <article>
-          <span className="studio-capability-card__icon" aria-hidden="true"><Mail size={24} /></span>
-          <strong>{activeSubscriptions.total}</strong>
-          <p>{copy.activeSubscribers}</p>
-        </article>
+      <dl aria-label={copy.newsletterTitle} className="studio-stats">
+        {stats.map((stat) => (
+          <div data-zero={stat.value === 0} key={stat.label}>
+            <dt>{stat.label}</dt>
+            <dd>{stat.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <section className="studio-stack" aria-label={copy.newsletterTitle}>
+        <form className="studio-toolbar" method="get">
+          <label className="studio-search">
+            <span className="sr-only">{copy.subscriberSearch}</span>
+            <Search aria-hidden="true" size={16} />
+            <input className="studio-control" defaultValue={query} name="q" placeholder={copy.subscriberSearch} type="search" />
+          </label>
+          <select aria-label={copy.distributionStatus} className="studio-control" defaultValue={status ?? ""} name="status">
+            <option value="">{copy.allSubscribers}</option>
+            {newsletterStatuses.map((value) => (
+              <option key={value} value={value}>{statusLabels[value]}</option>
+            ))}
+          </select>
+          <button className="button button--quiet" type="submit">{messages.search.submit}</button>
+        </form>
+
+        {subscriptions.items.length ? (
+          <div className="studio-table-wrap">
+            <table className="studio-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>{messages.studio.statusLabel}</th>
+                  <th>{copy.sourceLabel}</th>
+                  <th>{copy.consentedLabel}</th>
+                  <th>
+                    <span className="sr-only">{messages.studio.actionsLabel}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {subscriptions.items.map((subscription) => {
+                  const actions = newsletterEditorActions(subscription.status);
+                  return (
+                    <tr key={subscription.id}>
+                      <td className="studio-table__main">
+                        <div className="studio-cell">
+                          <strong>{subscription.email}</strong>
+                          {subscription.status === "suppressed" ? <small>{suppressedHint[locale]}</small> : null}
+                        </div>
+                      </td>
+                      <td data-label={messages.studio.statusLabel}>
+                        <Badge tone={subscriberStatusTone[subscription.status]}>{statusLabels[subscription.status]}</Badge>
+                      </td>
+                      <td data-label={copy.sourceLabel}>{subscription.source}</td>
+                      <td data-label={copy.consentedLabel}>
+                        <time dateTime={subscription.consentedAt}>{when.format(new Date(subscription.consentedAt))}</time>
+                      </td>
+                      <td className="studio-table__actions">
+                        <span className="studio-actions">
+                          {actions.includes("unsubscribe") ? (
+                            <form action={updateNewsletterSubscriptionAction}>
+                              <input name="id" type="hidden" value={subscription.id} />
+                              <input name="locale" type="hidden" value={locale} />
+                              <input name="status" type="hidden" value="unsubscribed" />
+                              <button className="button button--small button--quiet" type="submit">{copy.unsubscribe}</button>
+                            </form>
+                          ) : null}
+                          {actions.includes("reconfirm") ? (
+                            <form action={requestNewsletterReconfirmationAction}>
+                              <input name="email" type="hidden" value={subscription.email} />
+                              <input name="locale" type="hidden" value={locale} />
+                              <button className="button button--small button--quiet" type="submit">{copy.reactivate}</button>
+                            </form>
+                          ) : null}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="empty-state">
+            <h2>{copy.noSubscribers}</h2>
+          </div>
+        )}
+
+        {subscriptions.total ? (
+          <nav aria-label={copy.audiencePagination} className="studio-pagination">
+            <p>{copy.showingSubscribers} {firstResult}–{lastResult} / {subscriptions.total}</p>
+            <div>
+              {currentPage > 1 ? (
+                <Link className="button button--small button--quiet" href={pageHref(locale, query, status, currentPage - 1)}>
+                  <ArrowLeft aria-hidden="true" /> {copy.previousPage}
+                </Link>
+              ) : null}
+              {subscriptions.hasMore ? (
+                <Link className="button button--small button--quiet" href={pageHref(locale, query, status, currentPage + 1)}>
+                  {copy.nextPage} <ArrowRight aria-hidden="true" />
+                </Link>
+              ) : null}
+            </div>
+          </nav>
+        ) : null}
       </section>
 
-      <form className="studio-audience-filter" method="get">
-        <label>
-          <span className="sr-only">{copy.subscriberSearch}</span>
-          <Search aria-hidden="true" size={18} />
-          <input defaultValue={query} name="q" placeholder={copy.subscriberSearch} type="search" />
-        </label>
-        <select aria-label={copy.distributionStatus} defaultValue={status ?? ""} name="status">
-          <option value="">{copy.allSubscribers}</option>
-          {newsletterStatuses.map((value) => (
-            <option key={value} value={value}>{statusLabels[value]}</option>
-          ))}
-        </select>
-        <button className="studio-button studio-button--secondary" type="submit">{messages.search.submit}</button>
-      </form>
-
-      {subscriptions.items.length ? (
-        <section className="studio-audience-list" aria-label={copy.newsletterTitle}>
-          {subscriptions.items.map((subscription) => {
-            const actions = newsletterEditorActions(subscription.status);
-            return (
-              <article key={subscription.id}>
-                <div className="studio-audience-list__identity">
-                  <strong>{subscription.email}</strong>
-                  <span className={`studio-status studio-status--${subscriberStatusTone[subscription.status]}`}>
-                    {statusLabels[subscription.status]}
-                  </span>
-                </div>
-                <dl>
-                  <div><dt>{copy.sourceLabel}</dt><dd>{subscription.source}</dd></div>
-                  <div>
-                    <dt>{copy.consentedLabel}</dt>
-                    <dd><time dateTime={subscription.consentedAt}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(subscription.consentedAt))}</time></dd>
-                  </div>
-                </dl>
-                {actions.includes("unsubscribe") ? (
-                  <form action={updateNewsletterSubscriptionAction}>
-                    <input name="id" type="hidden" value={subscription.id} />
-                    <input name="locale" type="hidden" value={locale} />
-                    <input name="status" type="hidden" value="unsubscribed" />
-                    <button className="studio-button studio-button--secondary" type="submit">{copy.unsubscribe}</button>
-                  </form>
-                ) : null}
-                {actions.includes("reconfirm") ? (
-                  <form action={requestNewsletterReconfirmationAction}>
-                    <input name="email" type="hidden" value={subscription.email} />
-                    <input name="locale" type="hidden" value={locale} />
-                    <button className="studio-button studio-button--secondary" type="submit">{copy.reactivate}</button>
-                  </form>
-                ) : null}
-                {subscription.status === "suppressed" ? <p>{suppressedHint[locale]}</p> : null}
-              </article>
-            );
-          })}
-        </section>
-      ) : (
-        <div className="studio-empty-state"><Mail aria-hidden="true" size={28} /><h2>{copy.noSubscribers}</h2></div>
-      )}
-
-      {subscriptions.total ? (
-        <nav aria-label={copy.audiencePagination} className="studio-audience-pagination">
-          <p>{copy.showingSubscribers} {firstResult}–{lastResult} / {subscriptions.total}</p>
-          <div>
-            {currentPage > 1 ? (
-              <Link className="studio-button studio-button--secondary" href={pageHref(locale, query, status, currentPage - 1)}>
-                <ArrowLeft aria-hidden="true" size={15} /> {copy.previousPage}
-              </Link>
-            ) : null}
-            {subscriptions.hasMore ? (
-              <Link className="studio-button studio-button--secondary" href={pageHref(locale, query, status, currentPage + 1)}>
-                {copy.nextPage} <ArrowRight aria-hidden="true" size={15} />
-              </Link>
-            ) : null}
-          </div>
-        </nav>
-      ) : null}
-
-      <aside className="studio-boundary-note">
-        <span>CONSENT / EXPORT</span>
-        <p>{copy.newsletterBoundary}</p>
+      <Note>
+        {copy.newsletterBoundary}{" "}
         <Link href={`/${locale}`} target="_blank">
           {copy.openBriefing}
-          <ArrowUpRight aria-hidden="true" size={14} />
         </Link>
-      </aside>
+      </Note>
     </>
   );
 }

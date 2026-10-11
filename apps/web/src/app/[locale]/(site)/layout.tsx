@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import "@/styles/site/shell.css";
+import "@/styles/site/feed.css";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteTools } from "@/components/site/site-tools/site-tools";

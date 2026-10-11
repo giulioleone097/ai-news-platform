@@ -27,7 +27,6 @@ type CommentPageResponse<Item> = {
 
 export const commentCopy = {
   en: {
-    eyebrow: "Community",
     title: "Join the conversation",
     intro: "Thoughtful comments are reviewed before publication.",
     loading: "Loading comments…",
@@ -81,7 +80,6 @@ export const commentCopy = {
     other: "Other",
   },
   it: {
-    eyebrow: "Community",
     title: "Partecipa alla conversazione",
     intro: "I commenti vengono revisionati prima della pubblicazione.",
     loading: "Caricamento commenti…",
@@ -274,7 +272,7 @@ function AutoLoad({
   return (
     <div className={styles.autoLoad} ref={sentinelRef}>
       <button
-        className={styles.secondaryButton}
+        className="button button--quiet"
         disabled={status === "loading"}
         onClick={() => void loadMore()}
         type="button"
@@ -350,7 +348,7 @@ function ReaderAccount({ session, text }: { session: ReaderSession; text: Copy }
         <p>{text.signedInAs} <strong>{session.user.displayName}</strong></p>
         {/* ChatGPT sign-out belongs to the platform and must leave the page; ours is a POST to /api/auth/signout. */}
         <form action={signOutPath(provider, returnTo)} method="post" target={provider === "chatgpt" ? "_top" : undefined}>
-          <button className={styles.textButton} type="submit">{text.signOut}</button>
+          <button className="button button--ghost button--small" type="submit">{text.signOut}</button>
         </form>
       </div>
     );
@@ -362,7 +360,7 @@ function ReaderAccount({ session, text }: { session: ReaderSession; text: Copy }
       <div className={styles.accountLinks}>
         {session.providers.map((provider) => (
           <a
-            className={styles.providerLink}
+            className="button button--quiet button--small"
             href={signInPath(provider, returnTo)}
             key={provider}
             target={provider === "chatgpt" ? "_top" : undefined}
@@ -438,6 +436,7 @@ export function CommentForm({
       <div className={styles.field}>
         <label htmlFor={nameId}>{text.name}</label>
         <input
+          className="input"
           autoComplete="name"
           defaultValue={defaultName}
           disabled={status === "loading"}
@@ -452,6 +451,7 @@ export function CommentForm({
       <div className={styles.field}>
         <label htmlFor={bodyId}>{text.comment}</label>
         <textarea
+          className="input"
           disabled={status === "loading"}
           id={bodyId}
           maxLength={4000}
@@ -483,6 +483,7 @@ export function CommentForm({
             <div className={styles.field}>
               <label htmlFor={emailId}>{text.email}</label>
               <input
+                className="input"
                 autoComplete="email"
                 disabled={status === "loading"}
                 id={emailId}
@@ -498,12 +499,12 @@ export function CommentForm({
       ) : null}
       <div className={styles.formFooter}>
         <p>{text.guidelines}</p>
-        <button className={styles.primaryButton} disabled={status === "loading"} type="submit">
+        <button className="button button--primary" disabled={status === "loading"} type="submit">
           {status === "loading" ? text.submitting : text.submit}
         </button>
       </div>
       <p
-        className={status === "error" ? styles.error : styles.message}
+        className={`form-message form-message--${status === "error" ? "error" : "success"}`}
         role={status === "error" ? "alert" : "status"}
       >
         {message}
@@ -583,21 +584,21 @@ function OwnerManagement({
       {showStatus ? <span className={styles.pending}>{text[comment.status]}</span> : null}
       {editing ? (
         <form className={styles.inlineEdit} onSubmit={(event) => void save(event)}>
-          <input defaultValue={comment.displayName} maxLength={60} minLength={2} name="displayName" required />
-          <textarea defaultValue={comment.body} maxLength={4000} minLength={2} name="body" required rows={3} />
+          <input className="input" defaultValue={comment.displayName} maxLength={60} minLength={2} name="displayName" required />
+          <textarea className="input" defaultValue={comment.body} maxLength={4000} minLength={2} name="body" required rows={3} />
           <div className={styles.actions}>
-            <button className={styles.primaryButton} disabled={busy} type="submit">{text.save}</button>
-            <button className={styles.textButton} disabled={busy} onClick={() => setEditing(false)} type="button">{text.cancel}</button>
+            <button className="button button--primary" disabled={busy} type="submit">{text.save}</button>
+            <button className="button button--ghost button--small" disabled={busy} onClick={() => setEditing(false)} type="button">{text.cancel}</button>
           </div>
         </form>
       ) : null}
       {!editing ? (
         <div className={styles.actions}>
-          {canEdit && comment.canEdit ? <button className={styles.textButton} disabled={busy} onClick={() => setEditing(true)} type="button">{text.edit}</button> : null}
-          {canDelete && comment.canDelete ? <button className={styles.dangerButton} disabled={busy} onClick={() => void remove()} type="button">{busy ? text.deleting : text.remove}</button> : null}
+          {canEdit && comment.canEdit ? <button className="button button--ghost button--small" disabled={busy} onClick={() => setEditing(true)} type="button">{text.edit}</button> : null}
+          {canDelete && comment.canDelete ? <button className="button button--small button--danger" disabled={busy} onClick={() => void remove()} type="button">{busy ? text.deleting : text.remove}</button> : null}
         </div>
       ) : null}
-      {error ? <p className={styles.error} role="alert">{error}</p> : null}
+      {error ? <p className="form-message form-message--error" role="alert">{error}</p> : null}
     </div>
   );
 }
@@ -654,14 +655,14 @@ function ReportControl({ commentId, text }: { commentId: string; text: Copy }) {
     }
   }
 
-  if (state === "success") return <span className={styles.message} role="status">{message}</span>;
+  if (state === "success") return <span className="form-message form-message--success" role="status">{message}</span>;
   return (
     <details className={styles.report}>
       <summary>{text.report}</summary>
       <form onSubmit={(event) => void report(event)}>
         <label>
           {text.reportReason}
-          <select defaultValue="spam" name="reason">
+          <select className="input" defaultValue="spam" name="reason">
             <option value="spam">{text.spam}</option>
             <option value="harassment">{text.harassment}</option>
             <option value="hate">{text.hate}</option>
@@ -672,11 +673,11 @@ function ReportControl({ commentId, text }: { commentId: string; text: Copy }) {
         </label>
         <label>
           {text.reportDetails}
-          <textarea maxLength={500} name="details" rows={2} />
+          <textarea className="input" maxLength={500} name="details" rows={2} />
         </label>
         <input className={styles.trap} aria-hidden="true" autoComplete="off" name="website" tabIndex={-1} />
-        <button className={styles.secondaryButton} disabled={state === "loading"} type="submit">{text.reportSubmit}</button>
-        {state === "error" ? <p className={styles.error} role="alert">{message}</p> : null}
+        <button className="button button--quiet" disabled={state === "loading"} type="submit">{text.reportSubmit}</button>
+        {state === "error" ? <p className="form-message form-message--error" role="alert">{message}</p> : null}
       </form>
     </details>
   );
@@ -781,12 +782,12 @@ function CommentCard({
       </div>
       <p className={styles.body}>{comment.body}</p>
       <div className={styles.actions}>
-        {!isReply && mutationsEnabled ? <button className={styles.textButton} onClick={() => {
+        {!isReply && mutationsEnabled ? <button className="button button--ghost button--small" onClick={() => {
           setReplying((value) => !value);
           setShowReplies(true);
         }} type="button">{text.reply}</button> : null}
         {!isReply && comment.replyCount > 0 ? (
-          <button className={styles.textButton} onClick={() => setShowReplies((value) => !value)} type="button" aria-expanded={showReplies}>
+          <button className="button button--ghost button--small" onClick={() => setShowReplies((value) => !value)} type="button" aria-expanded={showReplies}>
             {replyLabel}
           </button>
         ) : null}
@@ -835,7 +836,7 @@ function CommentCard({
               text={text}
             />
           ))}
-          {replies.status === "error" || ownReplies.status === "error" ? <p className={styles.error} role="alert">{text.loadError}</p> : null}
+          {replies.status === "error" || ownReplies.status === "error" ? <p className="form-message form-message--error" role="alert">{text.loadError}</p> : null}
           <AutoLoad cursor={replies.cursor} label={replies.status === "error" ? text.retry : text.loadMoreReplies} loadMore={replies.loadMore} loadingLabel={text.loading} status={replies.status} />
           <AutoLoad cursor={ownReplies.cursor} label={ownReplies.status === "error" ? text.retry : text.loadMoreReplies} loadMore={ownReplies.loadMore} loadingLabel={text.loading} status={ownReplies.status} />
         </div>
@@ -901,10 +902,10 @@ function LoadedComments({ articleId, locale }: { articleId: string; locale: Comm
           />
         ))}
         {loaded && feed.items.length === 0 && ownComments.length === 0 && feed.status !== "error" ? <p className={styles.empty}>{text.empty}</p> : null}
-        {feed.status === "error" ? <p className={styles.error} role="alert">{text.loadError}</p> : null}
+        {feed.status === "error" ? <p className="form-message form-message--error" role="alert">{text.loadError}</p> : null}
         {feed.status === "error" && feed.cursor === undefined ? (
           <div className={styles.autoLoad}>
-            <button className={styles.secondaryButton} onClick={() => void feed.loadMore()} type="button">{text.retry}</button>
+            <button className="button button--quiet" onClick={() => void feed.loadMore()} type="button">{text.retry}</button>
           </div>
         ) : null}
         <AutoLoad cursor={feed.cursor} label={feed.status === "error" ? text.retry : text.loadMore} loadMore={feed.loadMore} loadingLabel={text.loading} status={feed.status} />
@@ -932,9 +933,10 @@ export function CommentsWidget({
   return (
     <section className={styles.shell} ref={sectionRef} aria-labelledby={titleId}>
       <header className={styles.header}>
-        <p>{text.eyebrow}</p>
-        <h2 id={titleId}>{text.title}</h2>
-        <span>{text.intro}</span>
+        <div className="section-header">
+          <h2 id={titleId}>{text.title}</h2>
+        </div>
+        <p>{text.intro}</p>
       </header>
       {activated ? <LoadedComments articleId={articleId} locale={locale} /> : (
         <div className={styles.skeleton} aria-label={text.loading} aria-busy="true">

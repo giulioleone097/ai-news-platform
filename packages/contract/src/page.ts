@@ -5,8 +5,11 @@ import { articleSpecs } from "./specs/articles";
 import { categorySpecs } from "./specs/categories";
 import { entitySpecs } from "./specs/entities";
 import { mediaSpecs } from "./specs/media";
+import { newsroomSpecs } from "./specs/newsroom";
+import { operationsSpecs } from "./specs/operations";
 import { filterFeed, openArticle, pageSpecs, readOpenArticle, saveArticle } from "./specs/page";
 import { searchArticles } from "./specs/search-articles";
+import { supportSpecs } from "./specs/support";
 import { teamSpecs } from "./specs/team";
 
 /** A capability of the open page as plain data: safe to serialise and to import in a client bundle. */
@@ -50,12 +53,14 @@ export { pageSpecs };
 export const pageCapabilities: readonly PageCapability[] = pageSpecs.map(describe);
 
 /**
- * The content tools for a signed-in editor's page (articles, categories, entities, media): the
- * same specs as the MCP endpoint, so name, text, schema, hints, scopes and confirmation are
+ * The tools for a signed-in editor's page: what the Studio lets an editor do (articles, categories,
+ * entities, media, comment moderation, inbox, distribution, newsletter, social) and the admin-only team.
+ * They are the same specs as the MCP endpoint, so name, text, schema, hints, scopes and confirmation are
  * defined once. The page runs them against the server, which checks the editor's scopes.
  */
-export const editorPageSpecs = [...articleSpecs, ...categorySpecs, ...entitySpecs, ...mediaSpecs, ...teamSpecs]
-  .filter((spec) => (spec.surfaces as readonly string[]).includes("page"));
+export const editorPageSpecs = [
+  ...articleSpecs, ...categorySpecs, ...entitySpecs, ...mediaSpecs, ...newsroomSpecs, ...operationsSpecs, ...supportSpecs, ...teamSpecs,
+].filter((spec) => (spec.surfaces as readonly string[]).includes("page"));
 export const editorPageCapabilities: readonly PageCapability[] = editorPageSpecs.map(describe);
 
 const inputs = {

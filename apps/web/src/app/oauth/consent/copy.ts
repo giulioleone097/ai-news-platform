@@ -4,7 +4,6 @@ import type { Locale } from "@/i18n";
 export const consentCopy = {
   en: {
     title: "Authorize access",
-    eyebrow: "Connect to AtlasNews",
     backToSite: "Back to the site",
     requestTitle: (client: string) => `Allow ${client} to use AtlasNews?`,
     signedInAs: (name: string) => `Signed in as ${name}`,
@@ -44,7 +43,6 @@ export const consentCopy = {
   },
   it: {
     title: "Autorizza l'accesso",
-    eyebrow: "Collegati ad AtlasNews",
     backToSite: "Torna al sito",
     requestTitle: (client: string) => `Consentire a ${client} di usare AtlasNews?`,
     signedInAs: (name: string) => `Accesso eseguito come ${name}`,

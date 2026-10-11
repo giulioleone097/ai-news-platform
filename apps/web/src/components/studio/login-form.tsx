@@ -16,10 +16,10 @@ export function LoginForm({
   const [state, formAction] = useActionState(signInAction, idleStudioActionState);
 
   return (
-    <form className="auth-form" action={formAction} noValidate>
+    <form className="auth-stack" action={formAction} noValidate>
       <input name="locale" type="hidden" value={locale} />
       {state.status === "error" && state.message ? (
-        <p className="auth-form__error" role="alert">
+        <p className="auth-note auth-note--error" role="alert">
           {state.message}
         </p>
       ) : null}
@@ -27,6 +27,7 @@ export function LoginForm({
       <label className="auth-field">
         <span>{copy.emailLabel}</span>
         <input
+          className="input"
           autoComplete="email"
           inputMode="email"
           name="email"
@@ -39,6 +40,7 @@ export function LoginForm({
       <label className="auth-field">
         <span>{copy.passwordLabel}</span>
         <input
+          className="input"
           autoComplete="current-password"
           name="password"
           placeholder={copy.passwordPlaceholder}
@@ -48,7 +50,7 @@ export function LoginForm({
       </label>
 
       <StudioSubmitButton
-        className="auth-submit"
+        className="button button--primary"
         idleLabel={copy.signIn}
         pendingLabel={copy.signingIn}
       />

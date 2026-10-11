@@ -1,3 +1,4 @@
+import type { ModerationActor } from "@atlasnews/core/comments/domain/comment";
 import { createCommentAdminToolHandlers } from "@atlasnews/core/comments/application/admin-tools";
 
 import { implement, type Principal } from "../capability";
@@ -30,12 +31,18 @@ import {
 } from "../specs/operations";
 import { createSocialPublishingMcpHandlers } from "./social-outbox";
 
+/**
+ * A signed-in editor (profile found, so `authorId` is set) leaves the same trail on the Studio, MCP and
+ * the page: a user actor. The shared API key names no person, so it stays a system actor with its label.
+ */
+function moderationActor(principal: Principal): ModerationActor {
+  return principal.kind === "editor" && principal.authorId
+    ? { kind: "user", userId: principal.subject, label: null }
+    : { kind: "system", userId: null, label: principal.kind === "editor" ? principal.subject : "anonymous" };
+}
+
 async function commentHandlers(ports: CapabilityPorts, principal: Principal) {
-  return createCommentAdminToolHandlers(await ports.moderation(), {
-    kind: "system",
-    userId: null,
-    label: principal.kind === "editor" ? principal.subject : "anonymous",
-  });
+  return createCommentAdminToolHandlers(await ports.moderation(), moderationActor(principal));
 }
 
 async function socialHandlers(ports: CapabilityPorts) {

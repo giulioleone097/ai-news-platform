@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Inbox, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { loadInbox, parseInboxStatus } from "@/components/studio/inbox/inbox-data";
 import { MessageDeleteButton } from "@/components/studio/inbox/message-delete-button";
-import styles from "@/components/studio/inbox/inbox.module.css";
+import { Badge, type BadgeTone } from "@/components/studio/badge";
+import { Note } from "@/components/studio/note";
+import { PageHead } from "@/components/studio/page-head";
 import { StudioSubmitButton } from "@/components/studio/studio-submit-button";
 import { isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
@@ -15,7 +17,7 @@ import { inboxCopy } from "./copy";
 export const metadata: Metadata = { robots: { index: false } };
 export const dynamic = "force-dynamic";
 
-const statusTone = { new: "review", handled: "published", archived: "unsubscribed" } as const;
+const statusTone: Record<string, BadgeTone> = { new: "warning", handled: "success", archived: "neutral" };
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -47,45 +49,35 @@ export default async function StudioInboxPage({
 
   return (
     <>
-      <header className="studio-page-header">
-        <div>
-          <p className="studio-kicker">{copy.kicker}</p>
-          <h1>{copy.title}</h1>
-          <p>{copy.description}</p>
-        </div>
-      </header>
+      <PageHead description={copy.description} title={copy.title} />
 
-      {search.updated ? <p className="studio-alert studio-alert--success" role="status">{copy.updated}</p> : null}
-      {search.deleted ? <p className="studio-alert studio-alert--success" role="status">{copy.deleted}</p> : null}
-      {search.error ? <p className="studio-alert studio-alert--error" role="alert">{copy.failed}</p> : null}
+      {search.updated ? <Note tone="success">{copy.updated}</Note> : null}
+      {search.deleted ? <Note tone="success">{copy.deleted}</Note> : null}
+      {search.error ? <Note tone="error">{copy.failed}</Note> : null}
 
-      <nav aria-label={copy.filterLabel} className={styles.filters}>
+      <nav aria-label={copy.filterLabel} className="studio-segmented">
         <Link aria-current={status ? undefined : "page"} href={href()}>{copy.all}</Link>
         {contactMessageStatuses.map((value) => (
           <Link aria-current={status === value ? "page" : undefined} href={href({ status: value })} key={value}>
             {copy.statuses[value]}
-            {value === "new" && inbox.ok ? <span className={styles.count}>{inbox.newCount}</span> : null}
+            {value === "new" && inbox.ok && inbox.newCount ? <span>({inbox.newCount})</span> : null}
           </Link>
         ))}
       </nav>
 
       {!inbox.ok ? (
-        <p className="studio-alert studio-alert--error" role="alert">
-          {inbox.reason === "unavailable" ? copy.unavailable : copy.loadError}
-        </p>
+        <Note tone="error">{inbox.reason === "unavailable" ? copy.unavailable : copy.loadError}</Note>
       ) : inbox.page.items.length ? (
         <>
           <p className="sr-only">{copy.untrusted}</p>
-          <section aria-label={copy.title} className={styles.list}>
+          <section aria-label={copy.title} className="studio-feed">
             {inbox.page.items.map((message) => (
-              <article aria-labelledby={`message-${message.id}`} className={styles.message} key={message.id}>
-                <div className={styles.head}>
+              <article aria-labelledby={`message-${message.id}`} key={message.id}>
+                <div className="studio-feed__head">
                   <h2 id={`message-${message.id}`}>{message.subject}</h2>
-                  <span className={`studio-status studio-status--${statusTone[message.status]}`}>
-                    {copy.statuses[message.status]}
-                  </span>
+                  <Badge tone={statusTone[message.status] ?? "neutral"}>{copy.statuses[message.status]}</Badge>
                 </div>
-                <dl className={styles.meta}>
+                <dl className="studio-meta">
                   <div>
                     <dt className="sr-only">{copy.from}</dt>
                     <dd>{message.name} · <a href={`mailto:${message.email}`}>{message.email}</a></dd>
@@ -99,13 +91,13 @@ export default async function StudioInboxPage({
                     <dd><time dateTime={message.createdAt}>{when.format(new Date(message.createdAt))} UTC</time></dd>
                   </div>
                 </dl>
-                <p className={styles.body}>{message.body}</p>
-                <div className={styles.actions}>
+                <p className="studio-text">{message.body}</p>
+                <div className="studio-inline">
                   <a
-                    className="studio-button studio-button--primary"
+                    className="button button--small button--quiet"
                     href={`mailto:${message.email}?subject=${encodeURIComponent(`Re: ${message.subject}`)}`}
                   >
-                    <Mail aria-hidden="true" size={16} />
+                    <Mail aria-hidden="true" />
                     {copy.reply}
                   </a>
                   {contactMessageStatuses.filter((next) => next !== message.status).map((next) => (
@@ -116,7 +108,7 @@ export default async function StudioInboxPage({
                       {status ? <input name="filter" type="hidden" value={status} /> : null}
                       <StudioSubmitButton
                         ariaLabel={`${copy.actions[next]}: ${message.subject}`}
-                        className="studio-button studio-button--secondary"
+                        className="button button--small button--quiet"
                         idleLabel={copy.actions[next]}
                         pendingLabel={copy.actions[next]}
                       />
@@ -128,16 +120,15 @@ export default async function StudioInboxPage({
             ))}
           </section>
           {inbox.page.nextCursor ? (
-            <div className={styles.more}>
-              <Link className="studio-button studio-button--secondary" href={href({ status, cursor: inbox.page.nextCursor })}>
+            <div>
+              <Link className="button button--quiet" href={href({ status, cursor: inbox.page.nextCursor })}>
                 {copy.older}
               </Link>
             </div>
           ) : null}
         </>
       ) : (
-        <div className="studio-empty-state">
-          <Inbox aria-hidden="true" size={28} />
+        <div className="empty-state">
           <h2>{copy.empty}</h2>
           <p>{copy.emptyDescription}</p>
         </div>

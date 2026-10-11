@@ -2,6 +2,7 @@ import Link from "next/link";
 import { localizedPath, type Locale } from "@atlasnews/core/locale";
 import type { EntityTimelineItem } from "@atlasnews/core/editorial/domain/entity";
 import { ClaimChip } from "./claim-chip";
+import "./timeline.css";
 import { formatDate } from "./feed-format";
 import type { StatusLabels } from "./feed-row";
 

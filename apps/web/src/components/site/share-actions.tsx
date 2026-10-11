@@ -5,16 +5,15 @@ import { Check, Copy, Share2 } from "lucide-react";
 import type { Messages } from "@/i18n";
 import { buildSocialLinks } from "@/lib/social-links";
 
+/** Share and copy-link controls: quiet icon buttons that sit on the article byline row. */
 export function ShareActions({
   url,
   title,
   labels,
-  compact = false,
 }: {
   url: string;
   title: string;
   labels: Messages["share"];
-  compact?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const links = buildSocialLinks({ url, title });
@@ -33,36 +32,27 @@ export function ShareActions({
     window.setTimeout(() => setCopied(false), 1800);
   }
 
-  if (compact) {
-    return (
-      <button className="icon-action" type="button" onClick={share} aria-label={labels.groupLabel}>
-        <Share2 aria-hidden="true" />
-      </button>
-    );
-  }
-
   return (
-    <div className="share-actions" aria-label={labels.groupLabel}>
-      <button className="text-action" type="button" onClick={share}>
+    <div className="article-actions__group" role="group" aria-label={labels.groupLabel}>
+      <button className="article-action" type="button" onClick={share} aria-label={labels.action} title={labels.action}>
         <Share2 aria-hidden="true" />
-        <span>{labels.action}</span>
       </button>
-      <a href={links.linkedin} target="_blank" rel="noreferrer" aria-label={labels.linkedInLabel}>
-        <span className="share-actions__brand" aria-hidden="true">in</span>
+      <a className="article-action" href={links.linkedin} target="_blank" rel="noreferrer" aria-label={labels.linkedInLabel} title={labels.linkedInLabel}>
+        <span className="article-action__brand" aria-hidden="true">in</span>
       </a>
-      <a className="share-actions__x" href={links.x} target="_blank" rel="noreferrer" aria-label={labels.xLabel}>
-        X
+      <a className="article-action" href={links.x} target="_blank" rel="noreferrer" aria-label={labels.xLabel} title={labels.xLabel}>
+        <span className="article-action__brand" aria-hidden="true">X</span>
       </a>
-      <a
-        className="share-actions__wa"
-        href={links.whatsapp}
-        target="_blank"
-        rel="noreferrer"
-        aria-label={`WA · ${labels.whatsappLabel}`}
+      <a className="article-action" href={links.whatsapp} target="_blank" rel="noreferrer" aria-label={labels.whatsappLabel} title={labels.whatsappLabel}>
+        <span className="article-action__brand" aria-hidden="true">WA</span>
+      </a>
+      <button
+        className="article-action"
+        type="button"
+        onClick={copy}
+        aria-label={copied ? labels.copiedLabel : labels.copyLinkLabel}
+        title={labels.copyLinkLabel}
       >
-        WA
-      </a>
-      <button type="button" onClick={copy} aria-label={copied ? labels.copiedLabel : labels.copyLinkLabel}>
         {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
       </button>
     </div>

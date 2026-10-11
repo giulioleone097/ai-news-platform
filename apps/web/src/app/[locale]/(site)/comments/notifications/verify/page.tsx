@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n";
 import { verifyCommentNotificationsAction } from "../actions";
-import styles from "../notification.module.css";
+import "@/styles/site/notice.css";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -45,24 +44,21 @@ export default async function VerifyCommentNotificationsPage({
   const labels = copy[locale];
 
   return (
-    <main className={`site-shell ${styles.shell}`} id="main-content">
-      <section className={styles.card}>
-        <span className={styles.icon} aria-hidden="true"><ShieldCheck size={22} /></span>
-        <h1>{labels.title}</h1>
-        <p role={status === "invalid" ? "alert" : undefined}>
-          {status === "success" ? labels.success : status === "invalid" ? labels.invalid : labels.body}
-        </p>
-        <div className={styles.actions}>
-          {!status && token ? (
-            <form action={verifyCommentNotificationsAction}>
-              <input name="locale" type="hidden" value={locale} />
-              <input name="token" type="hidden" value={token} />
-              <button className={styles.primary} type="submit">{labels.confirm}</button>
-            </form>
-          ) : null}
-          <Link className={styles.secondary} href={`/${locale}`}>{labels.home}</Link>
-        </div>
-      </section>
+    <main className="notice" id="main-content">
+      <h1>{labels.title}</h1>
+      <p role={status === "invalid" ? "alert" : undefined}>
+        {status === "success" ? labels.success : status === "invalid" ? labels.invalid : labels.body}
+      </p>
+      <div className="notice__actions">
+        {!status && token ? (
+          <form action={verifyCommentNotificationsAction}>
+            <input name="locale" type="hidden" value={locale} />
+            <input name="token" type="hidden" value={token} />
+            <button className="button button--primary" type="submit">{labels.confirm}</button>
+          </form>
+        ) : null}
+        <Link className={!status && token ? "button" : "button button--primary"} href={`/${locale}`}>{labels.home}</Link>
+      </div>
     </main>
   );
 }

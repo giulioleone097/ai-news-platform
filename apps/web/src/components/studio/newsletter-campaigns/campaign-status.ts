@@ -2,19 +2,18 @@ import type {
   NewsletterCampaignStatus,
   NewsletterDeliveryStatus,
 } from "@atlasnews/core/newsletter/domain/newsletter";
+import type { BadgeTone } from "../badge";
 
-export function campaignStatusClass(status: NewsletterCampaignStatus) {
-  if (status === "sent") return "studio-status studio-status--published";
-  if (status === "sending") return "studio-status studio-status--ready";
-  if (status === "cancelled") return "studio-status studio-status--failed";
-  return `studio-status studio-status--${status}`;
+export function campaignStatusTone(status: NewsletterCampaignStatus): BadgeTone {
+  if (status === "sent") return "success";
+  if (status === "sending" || status === "scheduled") return "info";
+  if (status === "cancelled") return "danger";
+  return "neutral";
 }
 
-export function deliveryStatusClass(status: NewsletterDeliveryStatus) {
-  if (status === "delivered") return "studio-status studio-status--published";
-  if (status === "sent" || status === "sending") return "studio-status studio-status--ready";
-  if (status === "bounced" || status === "complained" || status === "failed" || status === "cancelled") {
-    return "studio-status studio-status--failed";
-  }
-  return "studio-status studio-status--draft";
+export function deliveryStatusTone(status: NewsletterDeliveryStatus): BadgeTone {
+  if (status === "delivered") return "success";
+  if (status === "sent" || status === "sending") return "info";
+  if (status === "bounced" || status === "complained" || status === "failed" || status === "cancelled") return "danger";
+  return "neutral";
 }

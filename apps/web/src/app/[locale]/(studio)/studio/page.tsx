@@ -4,8 +4,9 @@ import { notFound } from "next/navigation";
 import { ArrowRight, Plus } from "lucide-react";
 import { ArticleList } from "@/components/studio/article-list";
 import { countActiveSubscribers, countPendingComments } from "@/components/studio/dashboard-counts";
-import { DashboardSignals, SignalCard } from "@/components/studio/dashboard-signals";
 import { countNewContactMessages } from "@/components/studio/inbox/inbox-data";
+import { Note } from "@/components/studio/note";
+import { PageHead } from "@/components/studio/page-head";
 import { studioSupplementalCopy } from "@/components/studio/studio-copy";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
@@ -31,98 +32,68 @@ export default async function StudioDashboardPage({
   ]);
   const messages = getMessages(locale);
   const copy = studioSupplementalCopy[locale];
-  const counts = {
-    total: articles.length,
-    published: articles.filter((article) => article.status === "published").length,
-    scheduled: articles.filter((article) => article.status === "scheduled").length,
-    inProgress: articles.filter((article) => ["draft", "review"].includes(article.status)).length,
-  };
+  // A figure that is unavailable (its feature is not configured) is left out, not shown as a dash.
+  const stats = [
+    { label: copy.totalStories, value: articles.length },
+    { label: copy.publishedStories, value: articles.filter((article) => article.status === "published").length },
+    { label: copy.scheduledStories, value: articles.filter((article) => article.status === "scheduled").length },
+    {
+      label: copy.draftStories,
+      value: articles.filter((article) => ["draft", "review"].includes(article.status)).length,
+    },
+    ...(subscribers === null ? [] : [{ label: messages.studio.activeSubscribers, value: subscribers }]),
+  ];
+  const attention = [
+    { href: `/${locale}/studio/comments?status=pending`, label: messages.studio.pendingComments, value: pendingComments },
+    { href: `/${locale}/studio/inbox?status=new`, label: messages.studio.newContactMessages, value: newMessages },
+  ].filter((item) => item.value);
 
   return (
     <>
-      <header className="studio-page-header">
-        <div>
-          <p className="studio-kicker">{copy.dashboardKicker}</p>
-          <h1>{messages.studio.overviewTitle}</h1>
-          <p>{messages.studio.overviewDescription}</p>
-        </div>
-        <Link className="studio-button studio-button--primary" href={`/${locale}/studio/articles/new`}>
-          <Plus aria-hidden="true" size={17} />
-          {messages.studio.createArticle}
+      <PageHead title={messages.studio.dashboard}>
+        <Link className="button button--primary" href={`/${locale}/studio/articles/new`}>
+          <Plus aria-hidden="true" />
+          {messages.studio.newArticle}
         </Link>
-      </header>
+      </PageHead>
 
-      <section className="studio-metrics" aria-label={messages.studio.overviewTitle}>
-        <article>
-          <span>01</span>
-          <strong>{counts.total}</strong>
-          <p>{copy.totalStories}</p>
-        </article>
-        <article>
-          <span>02</span>
-          <strong>{counts.published}</strong>
-          <p>{copy.publishedStories}</p>
-        </article>
-        <article>
-          <span>03</span>
-          <strong>{counts.scheduled}</strong>
-          <p>{copy.scheduledStories}</p>
-        </article>
-        <article>
-          <span>04</span>
-          <strong>{counts.inProgress}</strong>
-          <p>{copy.draftStories}</p>
-        </article>
-      </section>
+      {repositories.mode === "demo" ? <Note tone="warning">{messages.studio.demoDescription}</Note> : null}
 
-      <DashboardSignals>
-        <SignalCard
-          href={`/${locale}/studio/comments?status=pending`}
-          index="05"
-          label={messages.studio.pendingComments}
-          value={pendingComments}
-        />
-        <SignalCard
-          href={`/${locale}/studio/newsletter`}
-          index="06"
-          label={messages.studio.activeSubscribers}
-          value={subscribers}
-        />
-        <SignalCard
-          href={`/${locale}/studio/inbox?status=new`}
-          index="07"
-          label={messages.studio.newContactMessages}
-          value={newMessages}
-        />
-      </DashboardSignals>
+      <dl className="studio-stats">
+        {stats.map((stat) => (
+          <div data-zero={stat.value === 0} key={stat.label}>
+            <dt>{stat.label}</dt>
+            <dd>{stat.value}</dd>
+          </div>
+        ))}
+      </dl>
 
       <section className="studio-section" aria-labelledby="recent-stories-title">
-        <div className="studio-section__header">
-          <div>
-            <p className="studio-kicker">{messages.common.now}</p>
-            <h2 id="recent-stories-title">{copy.recentStories}</h2>
-          </div>
-          <Link className="studio-text-link" href={`/${locale}/studio/articles`}>
+        <div className="studio-section__head">
+          <h2 className="studio-section__title" id="recent-stories-title">{copy.recentStories}</h2>
+          <Link className="studio-link" href={`/${locale}/studio/articles`}>
             {messages.common.viewAll}
-            <ArrowRight aria-hidden="true" size={15} />
+            <ArrowRight aria-hidden="true" size={14} />
           </Link>
         </div>
         <ArticleList articles={articles} limit={6} locale={locale} messages={messages} />
       </section>
 
-      <aside className={`studio-mode-banner studio-mode-banner--${repositories.mode}`}>
-        <span className="studio-dot" />
-        <div>
-          <strong>
-            {repositories.mode === "demo" ? messages.studio.demoMode : messages.studio.authenticatedMode}
-          </strong>
-          <p>
-            {repositories.mode === "demo"
-              ? messages.studio.demoDescription
-              : messages.studio.authenticatedDescription}
-          </p>
-        </div>
-      </aside>
+      {attention.length ? (
+        <section className="studio-section" aria-labelledby="attention-title">
+          <h2 className="studio-section__title" id="attention-title">{copy.needsAttention}</h2>
+          <div className="studio-links">
+            {attention.map((item) => (
+              <Link href={item.href} key={item.href}>
+                <span>
+                  <strong>{item.value}</strong> {item.label.toLowerCase()}
+                </span>
+                <ArrowRight aria-hidden="true" size={16} />
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </>
   );
 }

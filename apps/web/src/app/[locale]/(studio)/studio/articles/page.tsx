@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Plus } from "lucide-react";
 import { ArticleList } from "@/components/studio/article-list";
+import { Note } from "@/components/studio/note";
+import { PageHead } from "@/components/studio/page-head";
 import { studioSupplementalCopy } from "@/components/studio/studio-copy";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
@@ -28,25 +30,16 @@ export default async function StudioArticlesPage({
 
   return (
     <>
-      <header className="studio-page-header">
-        <div>
-          <p className="studio-kicker">{messages.studio.articleList}</p>
-          <h1>{messages.studio.articles}</h1>
-          <p>{copy.articlesDescription}</p>
-        </div>
-        <Link className="studio-button studio-button--primary" href={`/${locale}/studio/articles/new`}>
-          <Plus aria-hidden="true" size={17} />
+      <PageHead description={copy.articlesDescription} title={messages.studio.articles}>
+        <Link className="button button--primary" href={`/${locale}/studio/articles/new`}>
+          <Plus aria-hidden="true" />
           {messages.studio.newArticle}
         </Link>
-      </header>
+      </PageHead>
 
-      {query.deleted ? (
-        <p className="studio-alert studio-alert--success" role="status">
-          {locale === "it" ? "Articolo eliminato." : "Article deleted."}
-        </p>
-      ) : null}
+      {query.deleted ? <Note tone="success">{locale === "it" ? "Articolo eliminato." : "Article deleted."}</Note> : null}
 
-      <section className="studio-section" aria-label={messages.studio.articleList}>
+      <section aria-label={messages.studio.articleList} className="studio-stack">
         <ArticleList articles={articles} bulk locale={locale} messages={messages} />
       </section>
     </>

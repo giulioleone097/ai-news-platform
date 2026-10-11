@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./design.tokens.css";
 import "./globals.css";
+import "@/styles/site/shell.css";
+import "@/styles/site/notice.css";
+import { BrandMark } from "@/components/site/brand-mark";
 import { getMessages, localizedPath } from "@/i18n";
 
 const en = getMessages("en");
@@ -16,17 +19,23 @@ export const metadata: Metadata = {
 // Neither has a locale, so this page shows both languages and relies on its caller for the document.
 export default function NotFound() {
   return (
-    <main id="main-content" lang="en" className="site-shell not-found">
-      <p>404</p>
-      <h1>{en.errors.notFoundTitle}</h1>
-      <span>{en.errors.notFoundDescription}</span>
-      <Link className="button button--primary" href={localizedPath("/", "en")}>
-        {en.errors.backHome}
+    <main id="main-content" lang="en" className="notice notice--standalone">
+      <Link className="brand" href={localizedPath("/", "en")} aria-label={en.navigation.homeLabel}>
+        <BrandMark name={en.common.brandName} />
       </Link>
-      <span lang="it">
-        {it.errors.notFoundTitle} {it.errors.notFoundDescription}{" "}
-        <Link href={localizedPath("/", "it")}>{it.errors.backHome}</Link>
-      </span>
+      <h1>{en.errors.notFoundTitle}</h1>
+      <p>{en.errors.notFoundDescription}</p>
+      <div className="notice__actions">
+        <Link className="button button--primary" href={localizedPath("/", "en")}>
+          {en.errors.backHome}
+        </Link>
+      </div>
+      <div className="notice__other" lang="it">
+        <h2>{it.errors.notFoundTitle}</h2>
+        <p>
+          {it.errors.notFoundDescription} <Link href={localizedPath("/", "it")}>{it.errors.backHome}</Link>
+        </p>
+      </div>
     </main>
   );
 }

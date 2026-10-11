@@ -21,7 +21,7 @@ const messageSchema = z.object({
   createdAt: z.string(),
 });
 
-const base = { surfaces: ["mcp"], unavailableMessage: unavailable } as const;
+const base = { surfaces: ["mcp", "page"], unavailableMessage: unavailable } as const;
 
 export const adminListContactMessages = defineSpec({
   ...base,
@@ -68,3 +68,5 @@ export const adminDeleteContactMessage = defineSpec({
   scopes: ["newsroom.write"],
   confirmation: { question: ({ id }) => `Permanently delete contact message ${id}?` },
 });
+
+export const supportSpecs = [adminListContactMessages, adminUpdateContactMessage, adminDeleteContactMessage] as const;

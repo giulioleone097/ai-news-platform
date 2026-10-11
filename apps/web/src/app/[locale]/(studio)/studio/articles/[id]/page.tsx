@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArticleForm } from "@/components/studio/article-form";
+import { Note } from "@/components/studio/note";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { getStudioEditorialRepositories } from "@/server/composition";
@@ -29,11 +30,7 @@ export default async function EditArticlePage({
 
   return (
     <>
-      {query.saved ? (
-        <p className="studio-alert studio-alert--success" role="status">
-          {locale === "it" ? "Articolo salvato." : "Article saved."}
-        </p>
-      ) : null}
+      {query.saved ? <Note tone="success">{locale === "it" ? "Articolo salvato." : "Article saved."}</Note> : null}
       <ArticleForm
         article={article}
         categories={{

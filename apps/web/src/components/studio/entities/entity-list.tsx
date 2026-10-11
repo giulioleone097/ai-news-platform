@@ -5,19 +5,17 @@ import { entityKinds } from "@atlasnews/core/editorial/domain/entity";
 import { entityCopy } from "@/app/[locale]/(studio)/studio/entities/copy";
 import type { EntityListItem } from "./entity-data";
 import { EntityDeleteButton } from "./entity-delete-button";
-import styles from "./entities.module.css";
 
 export function EntityList({ items, locale }: { items: EntityListItem[]; locale: Locale }) {
   const copy = entityCopy[locale];
 
   if (!items.length) {
     return (
-      <div className="studio-empty-state">
-        <span>00</span>
+      <div className="empty-state">
         <h2>{copy.emptyTitle}</h2>
         <p>{copy.emptyDescription}</p>
-        <Link className="studio-button studio-button--primary" href={`/${locale}/studio/entities/new`}>
-          <Plus aria-hidden="true" size={17} />
+        <Link className="button button--primary" href={`/${locale}/studio/entities/new`}>
+          <Plus aria-hidden="true" />
           {copy.newEntity}
         </Link>
       </div>
@@ -34,12 +32,8 @@ export function EntityList({ items, locale }: { items: EntityListItem[]; locale:
         const headingId = `entities-${kind}`;
 
         return (
-          <section aria-labelledby={headingId} className="studio-section" key={kind}>
-            <div className="studio-section__header">
-              <div>
-                <h2 id={headingId}>{copy.kindGroups[kind]}</h2>
-              </div>
-            </div>
+          <section aria-labelledby={headingId} className="studio-stack" key={kind}>
+            <h2 className="studio-section__title" id={headingId}>{copy.kindGroups[kind]}</h2>
             <div className="studio-table-wrap">
               <table className="studio-table">
                 <thead>
@@ -58,20 +52,20 @@ export function EntityList({ items, locale }: { items: EntityListItem[]; locale:
                     const href = `/${locale}/studio/entities/${item.slug}`;
                     return (
                       <tr key={item.slug}>
-                        <td>
-                          <Link className="studio-table__title" href={href}>
+                        <td className="studio-table__main">
+                          <Link className="studio-cell" href={href}>
                             <strong>{item.name}</strong>
                           </Link>
                         </td>
                         <td data-label={copy.slug}>{item.slug}</td>
                         <td data-label={copy.parent}>{item.parent?.name ?? "—"}</td>
                         <td data-label={copy.stories}>{item.storyCount}</td>
-                        <td>
-                          <div className={`studio-row-actions ${styles.rowActions}`}>
-                            <Link aria-label={`${copy.edit}: ${item.name}`} className={styles.action} href={href}>
-                              <Pencil aria-hidden="true" size={16} />
+                        <td className="studio-table__actions">
+                          <div className="studio-actions">
+                            <Link aria-label={`${copy.edit}: ${item.name}`} className="studio-icon-button" href={href}>
+                              <Pencil aria-hidden="true" />
                             </Link>
-                            <EntityDeleteButton locale={locale} name={item.name} slug={item.slug} />
+                            <EntityDeleteButton compact locale={locale} name={item.name} slug={item.slug} />
                           </div>
                         </td>
                       </tr>

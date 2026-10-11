@@ -37,15 +37,14 @@ const copy = {
 } as const satisfies Record<Locale, unknown>;
 
 const styles = `
-.studio-confirm{margin:auto;width:min(32rem,calc(100vw - 2rem));padding:1.4rem;border:1px solid var(--rule-strong);border-radius:var(--radius);color:var(--ink);background:var(--paper-raised);font-family:var(--font-ui)}
-.studio-confirm::backdrop{background:color-mix(in srgb,var(--ink) 55%,transparent)}
-.studio-confirm__heading{margin:0 0 .5rem;font-family:var(--font-display);font-size:1.15rem}
-.studio-confirm__agent{margin:0 0 .75rem;color:var(--muted);font-size:.85rem}
+.studio-confirm{margin:auto;width:min(32rem,calc(100vw - 2rem));padding:1.25rem;border:1px solid var(--line-strong);border-radius:var(--radius-lg);color:var(--fg);background:var(--bg-raised);font-family:var(--font-ui)}
+.studio-confirm::backdrop{background:color-mix(in srgb,var(--fg) 45%,transparent)}
+.studio-confirm__heading{margin:0 0 .5rem;font-size:1.125rem}
+.studio-confirm__agent{margin:0 0 .75rem;color:var(--fg-muted);font-size:.875rem}
 .studio-confirm__question{margin:0 0 .75rem;font-weight:700;overflow-wrap:anywhere}
-.studio-confirm__affects{margin:0 0 1rem;color:var(--muted);font-size:.8rem}
-.studio-confirm__list{margin:.25rem 0 0;padding-left:1.1rem;overflow-wrap:anywhere}
+.studio-confirm__affects{margin:0 0 1rem;color:var(--fg-muted);font-size:.875rem}
+.studio-confirm__list{margin:.25rem 0 0;padding-left:1.1rem;list-style:disc;overflow-wrap:anywhere}
 .studio-confirm__actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:.75rem}
-.studio-confirm__actions .studio-button{min-width:2.75rem;min-height:2.75rem}
 `;
 
 let counter = 0;
@@ -89,12 +88,12 @@ export function createConfirmPresenter(doc: Document, locale: Locale): ConfirmPr
     const heading = element("h2", "studio-confirm__heading", text.heading, `${id}-heading`);
     const agent = element("p", "studio-confirm__agent", text.agent(request.tool));
     const question = element("p", "studio-confirm__question", request.question, `${id}-question`);
-    const decline = element("button", "studio-button studio-button--secondary", text.decline);
+    const decline = element("button", "button button--quiet", text.decline);
     decline.type = "button";
     decline.setAttribute("autofocus", "");
     const approve = element(
       "button",
-      `studio-button ${request.destructive ? "studio-button--danger" : "studio-button--primary"}`,
+      `button ${request.destructive ? "button--danger" : "button--primary"}`,
       text.approve,
     );
     approve.type = "button";

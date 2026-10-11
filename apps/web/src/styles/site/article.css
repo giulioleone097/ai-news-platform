@@ -1,0 +1,422 @@
+/* An article is one column: head, picture, key points, body, then what follows the body. From 68rem a
+   sticky table of contents sits beside the body. Reading type and the markdown elements live in
+   components/markdown/markdown.css. */
+
+.article-page {
+  padding-bottom: 1rem;
+}
+
+/* The frame is the text column; with a table of contents it grows by the width of that column. */
+.article-frame {
+  width: min(100%, 44rem);
+  margin-inline: auto;
+}
+
+@media (min-width: 68rem) {
+  .article-frame:not(.article-frame--single) {
+    width: min(100%, 62rem);
+  }
+}
+
+.article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 68rem) {
+  .article-frame:not(.article-frame--single) .article {
+    grid-template-columns: minmax(0, 44rem) 15rem;
+    column-gap: 3rem;
+  }
+}
+
+.article > * {
+  grid-column: 1;
+}
+
+/* Head. */
+.article-head {
+  display: grid;
+  gap: 1rem;
+  padding-block: 0.25rem 1.5rem;
+}
+
+.article-back {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-self: start;
+  gap: 0.125rem;
+  margin-left: -0.25rem;
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.article-back svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  stroke-width: 1.75;
+}
+
+.article-back:hover {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 0.16em;
+  text-underline-offset: 0.14em;
+}
+
+.article-head .story-meta a {
+  text-decoration: underline transparent;
+  text-decoration-thickness: 0.16em;
+  text-underline-offset: 0.14em;
+  transition: text-decoration-color var(--ease);
+}
+
+.article-head .story-meta a:hover {
+  color: var(--fg);
+  text-decoration-color: var(--accent);
+}
+
+.article-head h1 {
+  max-width: 24ch;
+  font-size: clamp(2rem, 1.2rem + 3.2vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+.article-deck {
+  max-width: 38rem;
+  color: var(--fg-muted);
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+
+@media (min-width: 48rem) {
+  .article-deck {
+    font-size: 1.25rem;
+  }
+}
+
+/* Byline: who, when, how long, other language, then the quiet actions on the same row. */
+.article-byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 1rem;
+  margin-top: 0.5rem;
+  padding-block: 0.375rem;
+  border-block: 1px solid var(--line);
+}
+
+.article-byline__text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.125rem 0.875rem;
+  padding-block: 0.375rem;
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+}
+
+.article-byline__author {
+  color: var(--fg);
+  font-weight: 700;
+}
+
+.article-language {
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 0.0625em;
+  text-underline-offset: 0.2em;
+}
+
+.article-language:hover {
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 0.16em;
+}
+
+.article-actions,
+.article-actions__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.article-actions {
+  margin-right: -0.5rem;
+}
+
+.article-action {
+  display: inline-grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--fg-muted);
+  background: transparent;
+  transition: color var(--ease), background-color var(--ease);
+}
+
+.article-action:hover,
+.article-action[aria-pressed="true"] {
+  color: var(--fg);
+}
+
+.article-action:hover {
+  background: var(--bg-sunken);
+}
+
+.article-action svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  stroke-width: 1.75;
+}
+
+/* Brand marks are set as text. */
+.article-action__brand {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+@media (pointer: fine) {
+  .article-action {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+}
+
+/* Picture. It may run wider than the text, up to 60rem. */
+.article-cover {
+  grid-column: 1 / -1;
+  max-width: 60rem;
+  margin-bottom: 2rem;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+@media (min-width: 48rem) {
+  .article-cover {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+.article-cover picture {
+  height: 100%;
+}
+
+.article-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Key points. */
+.key-points {
+  margin-bottom: 2.5rem;
+  padding: 1.25rem 1.5rem 1.5rem;
+  border-left: 0.25rem solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--bg-sunken);
+}
+
+.key-points h2 {
+  margin-bottom: 0.75rem;
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+}
+
+.key-points ul {
+  display: grid;
+  gap: 0.625rem;
+}
+
+.key-points li {
+  position: relative;
+  padding-left: 1.125rem;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.key-points li::before {
+  position: absolute;
+  top: 0.5625em;
+  left: 0;
+  width: 0.4375rem;
+  height: 0.125rem;
+  background: var(--fg);
+  content: "";
+}
+
+/* Table of contents. A plain list under the key points on narrow screens; sticky beside the body from 68rem. */
+.article-toc {
+  margin-bottom: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.article-toc h2 {
+  margin-bottom: 0.25rem;
+  font-size: 0.9375rem;
+  letter-spacing: 0;
+}
+
+.article-toc ul {
+  display: grid;
+}
+
+.article-toc a {
+  display: flex;
+  min-height: 2.5rem;
+  align-items: center;
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.article-toc a:hover {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 0.16em;
+  text-underline-offset: 0.14em;
+}
+
+.article-toc__sub a {
+  padding-left: 1rem;
+  font-weight: 500;
+}
+
+@media (min-width: 68rem) {
+  .article-toc {
+    position: sticky;
+    top: 5.5rem;
+    grid-column: 2;
+    grid-row: 3 / span 2;
+    align-self: start;
+    margin-bottom: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .article-toc h2 {
+    padding-bottom: 0.625rem;
+    border-bottom: 0.125rem solid var(--fg);
+  }
+
+  .article-toc a {
+    min-height: 2.25rem;
+    padding-block: 0.375rem;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+/* Body and what follows it. */
+.article-main {
+  display: grid;
+  gap: 3.5rem;
+}
+
+.article-main .section-header {
+  margin-bottom: 0.25rem;
+}
+
+.source-list li {
+  display: grid;
+  padding-bottom: 0.875rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.source-list a {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-self: start;
+  gap: 0.375rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-decoration: underline transparent;
+  text-decoration-thickness: 0.16em;
+  text-underline-offset: 0.14em;
+  transition: text-decoration-color var(--ease);
+}
+
+.source-list a:hover {
+  text-decoration-color: var(--accent);
+}
+
+.source-list a svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  stroke-width: 1.75;
+}
+
+.source-list span {
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+}
+
+.entity-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 1rem;
+}
+
+.entity-links a {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  padding-inline: 0.875rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  transition: border-color var(--ease);
+}
+
+.entity-links a:hover {
+  border-color: var(--fg);
+}
+
+@media (pointer: coarse) {
+  .entity-links a {
+    min-height: 2.75rem;
+  }
+}
+
+.article-more {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  margin-top: 0.25rem;
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.article-more:hover {
+  color: var(--fg);
+}
+
+/* Tail: comments and more reading stay in the text column; the newsletter band takes the frame. */
+.article-tail {
+  max-width: 44rem;
+}
+
+.article-related {
+  margin-top: 4rem;
+}

@@ -1,11 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 import { localizedPath, type Locale } from "@atlasnews/core/locale";
 import type { Article } from "@atlasnews/core/editorial/domain/article";
-import { FeedMeta, type StatusLabels } from "./feed-row";
+import { EditorialCover } from "./editorial-cover";
+import { StoryMeta, type StatusLabels } from "./feed-row";
 import { toFeedItem } from "./feed-item";
 
-/** The one static lead of the home feed: a larger row with the excerpt and a small cover. */
+/** The one lead of the home page: the largest picture and headline on it. */
 export function FeedLead({
   article,
   locale,
@@ -16,26 +16,24 @@ export function FeedLead({
   statusLabels: StatusLabels;
 }) {
   return (
-    <article className="feed-row feed-row--lead">
-      <FeedMeta item={toFeedItem(article)} locale={locale} statusLabels={statusLabels} />
-      <h2 className="feed-row__title">
-        <Link href={localizedPath(`/articles/${article.slug}`, locale)} prefetch>
-          {article.title}
-        </Link>
-      </h2>
-      <p className="feed-row__excerpt">{article.excerpt}</p>
-      <span className="feed-row__cover">
-        <Image
+    <article className="story-lead">
+      <span className="story-lead__cover">
+        <EditorialCover
           src={article.coverImage}
           alt=""
-          width={360}
-          height={240}
-          sizes="(max-width: 47.99rem) 84px, 144px"
-          quality={70}
-          fetchPriority="high"
-          loading="eager"
+          sizes="(max-width: 59.99rem) 100vw, 46rem"
+          quality={75}
         />
       </span>
+      <div className="story-lead__text">
+        <StoryMeta item={toFeedItem(article)} locale={locale} statusLabels={statusLabels} stamp="time" />
+        <h2 className="story-lead__title">
+          <Link href={localizedPath(`/articles/${article.slug}`, locale)} prefetch>
+            {article.title}
+          </Link>
+        </h2>
+        <p className="story-lead__deck">{article.excerpt}</p>
+      </div>
     </article>
   );
 }

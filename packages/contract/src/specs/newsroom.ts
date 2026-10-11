@@ -26,7 +26,7 @@ export const adminListDistribution = defineSpec({
   output: z.object({ items: z.array(record) }),
   annotations: readOnly,
   scopes: ["newsroom.read"],
-  surfaces: ["mcp"],
+  surfaces: ["mcp", "page"],
   unavailableMessage: editorialUnavailable,
 });
 
@@ -45,7 +45,7 @@ export const adminUpdateDistribution = defineSpec({
   output: z.object({ publication: record }),
   annotations: write,
   scopes: ["newsroom.write"],
-  surfaces: ["mcp"],
+  surfaces: ["mcp", "page"],
   unavailableMessage: editorialUnavailable,
 });
 
@@ -65,7 +65,7 @@ export const adminListNewsletterSubscriptions = defineSpec({
   output: z.looseObject({ items: z.array(record), total: z.number(), contentTrust: contentTrustSchema }),
   annotations: readOnly,
   scopes: ["newsroom.read"],
-  surfaces: ["mcp"],
+  surfaces: ["mcp", "page"],
   unavailableMessage: editorialUnavailable,
 });
 
@@ -78,6 +78,10 @@ export const adminUpdateNewsletterSubscription = defineSpec({
   output: z.object({ id: z.string(), status: z.string() }),
   annotations: write,
   scopes: ["newsroom.write"],
-  surfaces: ["mcp"],
+  surfaces: ["mcp", "page"],
   unavailableMessage: editorialUnavailable,
 });
+
+export const newsroomSpecs = [
+  adminListDistribution, adminUpdateDistribution, adminListNewsletterSubscriptions, adminUpdateNewsletterSubscription,
+] as const;

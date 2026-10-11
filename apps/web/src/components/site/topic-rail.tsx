@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ArrowRight, Blocks, BriefcaseBusiness, Compass, Cpu, Scale, Wrench } from "lucide-react";
+import { Blocks, BriefcaseBusiness, Compass, Cpu, Scale, Wrench } from "lucide-react";
 import type { Category } from "@atlasnews/core/editorial/domain/article";
 import { getMessages, localizedPath, type Locale } from "@/i18n";
 import { SectionHeader } from "./section-header";
+import { plateTone } from "./story-cover";
 
 const icons = {
   research: Cpu,
@@ -14,6 +15,7 @@ const icons = {
 
 export function TopicRail({ categories, locale }: { categories: Category[]; locale: Locale }) {
   const messages = getMessages(locale);
+  if (!categories.length) return null;
 
   return (
     <section className="topic-section" aria-labelledby="topics-title">
@@ -23,18 +25,23 @@ export function TopicRail({ categories, locale }: { categories: Category[]; loca
         href={localizedPath("/latest", locale)}
         linkLabel={messages.home.allTopics}
       />
-      <div className="topic-rail">
+      <ul className="topic-rail">
         {categories.map((category) => {
           const Icon = icons[category.translationKey as keyof typeof icons] ?? Blocks;
           return (
-            <Link key={category.id} href={localizedPath(`/categories/${category.slug}`, locale)} prefetch={false}>
-              <Icon aria-hidden="true" />
-              <span>{category.name}</span>
-              <ArrowRight aria-hidden="true" />
-            </Link>
+            <li key={category.id}>
+              <Link
+                className={`plate--${plateTone(category.translationKey)}`}
+                href={localizedPath(`/categories/${category.slug}`, locale)}
+                prefetch={false}
+              >
+                <Icon aria-hidden="true" />
+                <span>{category.name}</span>
+              </Link>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   );
 }

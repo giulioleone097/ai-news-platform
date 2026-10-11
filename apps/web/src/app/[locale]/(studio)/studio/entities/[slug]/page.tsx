@@ -41,13 +41,12 @@ export default async function EditEntityPage({
   return (
     <>
       <EntityForm companies={companies.items} entity={record} locale={locale} />
-      <section className="studio-panel" aria-labelledby="entity-delete-title">
-        <div className="studio-panel__heading">
-          <span>02</span>
-          <h2 id="entity-delete-title">{copy.deleteTitle}</h2>
+      <section className="studio-section studio-form-width" aria-labelledby="entity-delete-title">
+        <h2 className="studio-section__title" id="entity-delete-title">{copy.deleteTitle}</h2>
+        <p className="studio-muted">{copy.deleteHelp}</p>
+        <div>
+          <EntityDeleteButton locale={locale} name={record.name} slug={record.slug} />
         </div>
-        <p>{copy.deleteHelp}</p>
-        <EntityDeleteButton locale={locale} name={record.name} slug={record.slug} />
       </section>
     </>
   );

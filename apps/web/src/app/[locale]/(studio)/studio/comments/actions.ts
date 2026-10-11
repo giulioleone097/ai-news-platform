@@ -5,8 +5,7 @@ import * as z from "zod/v4";
 import { isLocale, locales } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { moderationTargetStatuses } from "@atlasnews/core/comments/domain/comment";
-import { createMutationCommentService } from "@/server/composition";
-import { requireCommentModerator } from "@/server/comments/moderator-auth";
+import { runEditorCapability } from "@/server/capabilities";
 
 const moderationSchema = z.object({
   id: z.string().uuid(),
@@ -25,9 +24,12 @@ export async function moderateCommentAction(formData: FormData) {
   if (!isLocale(input.locale)) throw new Error("Invalid locale.");
 
   await requireEditor(input.locale);
-  const actor = await requireCommentModerator();
-  const service = createMutationCommentService();
-  if (!service) throw new Error("Comment moderation is not configured.");
-  await service.moderate({ id: input.id, status: input.status, reason: input.reason, actor });
+  // The page's own form is the person's confirmation. The capability records the moderator as a user actor.
+  const outcome = await runEditorCapability(
+    "admin_moderate_comment",
+    { id: input.id, status: input.status, reason: input.reason },
+    { confirmed: true },
+  );
+  if (!outcome.ok) throw new Error(outcome.error);
   revalidatePath(`/${input.locale}/studio/comments`);
 }

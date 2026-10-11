@@ -42,7 +42,8 @@ export const it = {
     statusEmptyTitle: "Ancora niente qui",
     statusEmptyDescription: "Nessuna storia ha questo stato in questo momento. Guarda invece tutte le storie.",
     seeAll: "Vedi tutte le storie",
-    mostFollowed: "Più seguiti",
+    mostFollowed: "Più raccontati",
+    legendTitle: "Quanto è solida ogni notizia",
     statusPageTitle: {
       confirmed: "Storie confermate",
       rollout: "Storie in rilascio",
@@ -159,6 +160,7 @@ export const it = {
     rss: "RSS",
     linkedIn: "LinkedIn",
     x: "X",
+    groups: { sections: "Sezioni", publication: "AtlasNews", tools: "Per redazione e AI" },
     copyright: "© 2026 AtlasNews. Contenuti dimostrativi; la piattaforma è pronta per una redazione.",
   },
   errors: {

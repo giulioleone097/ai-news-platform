@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowUpRight,
-  CheckCircle2,
-  Clock3,
-  DatabaseZap,
-  RotateCcw,
-  Send,
-  ShieldAlert,
-} from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { Badge, sentenceCase, type BadgeTone } from "@/components/studio/badge";
+import { Note } from "@/components/studio/note";
+import { PageHead } from "@/components/studio/page-head";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { getStudioEditorialRepositories } from "@/server/composition";
@@ -26,7 +21,6 @@ import {
 } from "@atlasnews/core/social-publishing/domain/social-publication";
 import { createSocialPublishingRuntime } from "@/server/composition";
 import { socialDistributionCopy } from "./copy";
-import styles from "./distribution.module.css";
 import { QueueActionButton } from "./queue-action-button";
 import { SocialComposer } from "./social-composer";
 
@@ -66,12 +60,16 @@ function formatUtc(value: string | null, locale: string) {
   }).format(date) + " UTC";
 }
 
-function statusIcon(status: SocialOutboxStatus) {
-  if (status === "sent") return CheckCircle2;
-  if (status === "failed") return ShieldAlert;
-  if (status === "cancelled") return RotateCcw;
-  return Clock3;
-}
+const statusTone: Record<SocialOutboxStatus, BadgeTone> = {
+  pending: "info",
+  processing: "info",
+  sent: "success",
+  failed: "danger",
+  cancelled: "neutral",
+};
+
+const providerLabel = (provider: SocialProvider) =>
+  provider === "x" ? "X" : provider === "linkedin" ? "LinkedIn" : "WhatsApp";
 
 export default async function StudioDistributionPage({
   params,
@@ -146,24 +144,14 @@ export default async function StudioDistributionPage({
 
   return (
     <>
-      <header className={`studio-page-header ${styles.hero}`}>
-        <div>
-          <p className="studio-kicker">{messages.studio.distribution}</p>
-          <h1>{copy.title}</h1>
-          <p>{copy.description}</p>
-        </div>
-        <div className={`${styles.connection} ${queueAvailable ? styles.connectionReady : styles.connectionOffline}`}>
-          <DatabaseZap aria-hidden="true" size={18} />
-          <span>{queueAvailable ? copy.configured : copy.unavailable}</span>
-        </div>
-      </header>
+      <PageHead description={copy.description} title={copy.title} />
 
       {queueUpdated === "cancel" ? (
-        <p className="studio-alert studio-alert--success" role="status">{copy.cancelled}</p>
+        <Note tone="success">{copy.cancelled}</Note>
       ) : queueUpdated === "retry" ? (
-        <p className="studio-alert studio-alert--success" role="status">{copy.retried}</p>
+        <Note tone="success">{copy.retried}</Note>
       ) : queueError ? (
-        <p className="studio-alert studio-alert--error" role="alert">{copy.mutationError}</p>
+        <Note tone="error">{copy.mutationError}</Note>
       ) : null}
 
       {queueAvailable && configuredProviders.length ? (
@@ -173,106 +161,108 @@ export default async function StudioDistributionPage({
           publications={composerPublications}
         />
       ) : (
-        <section className={styles.unavailable} role="status">
-          <ShieldAlert aria-hidden="true" size={24} />
-          <div>
-            <strong>{copy.unavailable}</strong>
-            <p>{copy.composerDescription}</p>
-          </div>
-        </section>
+        <Note tone="warning">{copy.unavailable}</Note>
       )}
 
-      <section className={styles.queue} aria-labelledby="social-queue-title">
-        <div className={styles.sectionHeading}>
-          <span className={styles.sectionNumber}>02</span>
-          <div>
-            <h2 id="social-queue-title">{copy.queueTitle}</h2>
-            <p>{copy.queueDescription}</p>
-          </div>
+      <section className="studio-stack" aria-labelledby="social-queue-title">
+        <div className="studio-section__head">
+          <h2 className="studio-section__title" id="social-queue-title">{copy.queueTitle}</h2>
+          <p>{copy.queueDescription}</p>
         </div>
 
-        <form className={styles.filters} method="get">
-          <label>
-            <span>{copy.channel}</span>
-            <select defaultValue={provider ?? ""} name="provider">
-              <option value="">{copy.allProviders}</option>
-              {socialProviders.map((candidate) => (
-                <option key={candidate} value={candidate}>{candidate === "x" ? "X" : candidate[0].toUpperCase() + candidate.slice(1)}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>{copy.delivery}</span>
-            <select defaultValue={status ?? ""} name="status">
-              <option value="">{copy.allStatuses}</option>
-              {socialOutboxStatuses.map((candidate) => <option key={candidate} value={candidate}>{candidate}</option>)}
-            </select>
-          </label>
-          <button className="studio-button studio-button--secondary" type="submit">{copy.filter}</button>
+        <form className="studio-toolbar" method="get">
+          <select aria-label={copy.channel} className="studio-control" defaultValue={provider ?? ""} name="provider">
+            <option value="">{copy.allProviders}</option>
+            {socialProviders.map((candidate) => (
+              <option key={candidate} value={candidate}>{providerLabel(candidate)}</option>
+            ))}
+          </select>
+          <select aria-label={copy.delivery} className="studio-control" defaultValue={status ?? ""} name="status">
+            <option value="">{copy.allStatuses}</option>
+            {socialOutboxStatuses.map((candidate) => <option key={candidate} value={candidate}>{sentenceCase(candidate)}</option>)}
+          </select>
+          <button className="button button--quiet" type="submit">{copy.filter}</button>
         </form>
 
         {jobs.length ? (
-          <div className={styles.queueList}>
-            {jobs.map((job) => {
-              const publication = publicationById.get(job.publicationId)!;
-              const StatusIcon = statusIcon(job.status);
-              const providerUrl = safeProviderUrl(job.provider, job.providerUrl);
-              return (
-                <article className={styles.queueCard} key={job.id}>
-                  <div className={styles.queueCardTop}>
-                    <span className={styles.providerBadge}>{job.provider === "x" ? "X" : job.provider}</span>
-                    <span className={`${styles.statusBadge} ${styles[`status_${job.status}`]}`}>
-                      <StatusIcon aria-hidden="true" size={13} />{job.status}
-                    </span>
-                  </div>
-                  <div className={styles.queueCardBody}>
-                    <div>
-                      <h3>{publication.articleTitle}</h3>
-                      <Link href={`/${locale}/studio/articles/${publication.articleId}`}>
-                        {messages.studio.articles}<ArrowUpRight aria-hidden="true" size={13} />
-                      </Link>
-                    </div>
-                    <dl>
-                      <div><dt>{copy.scheduledAt}</dt><dd>{formatUtc(job.availableAt, locale)}</dd></div>
-                      <div><dt>{copy.attempted}</dt><dd>{job.attempts}/{job.maxAttempts}</dd></div>
-                      <div><dt>{copy.delivery}</dt><dd>{job.providerStatus ?? job.lastErrorCode ?? "—"}</dd></div>
-                    </dl>
-                  </div>
-                  <footer className={styles.queueCardFooter}>
-                    {providerUrl ? (
-                      <a href={providerUrl} rel="noopener noreferrer" target="_blank">
-                        {copy.openPost}<ArrowUpRight aria-hidden="true" size={13} />
-                      </a>
-                    ) : <span />}
-                    {job.status === "pending" ? (
-                      <QueueActionButton
-                        confirmMessage={copy.cancelConfirm}
-                        id={job.id}
-                        intent="cancel"
-                        label={copy.cancel}
-                        locale={locale}
-                      />
-                    ) : job.status === "failed" && job.retrySafe ? (
-                      <QueueActionButton
-                        confirmMessage={copy.retryConfirm}
-                        id={job.id}
-                        intent="retry"
-                        label={copy.retry}
-                        locale={locale}
-                      />
-                    ) : null}
-                  </footer>
-                </article>
-              );
-            })}
+          <div className="studio-table-wrap">
+            <table className="studio-table">
+              <thead>
+                <tr>
+                  <th>{copy.story}</th>
+                  <th>{copy.channel}</th>
+                  <th>{messages.studio.statusLabel}</th>
+                  <th>{copy.scheduledAt}</th>
+                  <th>{copy.attempted}</th>
+                  <th>{copy.delivery}</th>
+                  <th>
+                    <span className="sr-only">{messages.studio.actionsLabel}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {jobs.map((job) => {
+                  const publication = publicationById.get(job.publicationId)!;
+                  const providerUrl = safeProviderUrl(job.provider, job.providerUrl);
+                  return (
+                    <tr key={job.id}>
+                      <td className="studio-table__main">
+                        <Link className="studio-cell" href={`/${locale}/studio/articles/${publication.articleId}`}>
+                          <strong>{publication.articleTitle}</strong>
+                        </Link>
+                      </td>
+                      <td data-label={copy.channel}>{providerLabel(job.provider)}</td>
+                      <td data-label={messages.studio.statusLabel}>
+                        <Badge tone={statusTone[job.status]}>{sentenceCase(job.status)}</Badge>
+                      </td>
+                      <td data-label={copy.scheduledAt}>{formatUtc(job.availableAt, locale)}</td>
+                      <td data-label={copy.attempted}>{job.attempts}/{job.maxAttempts}</td>
+                      <td data-label={copy.delivery}>{job.providerStatus ?? job.lastErrorCode ?? "—"}</td>
+                      <td className="studio-table__actions">
+                        <span className="studio-actions">
+                          {providerUrl ? (
+                            <a
+                              aria-label={copy.openPost}
+                              className="studio-icon-button"
+                              href={providerUrl}
+                              rel="noopener noreferrer"
+                              target="_blank"
+                              title={copy.openPost}
+                            >
+                              <ArrowUpRight aria-hidden="true" />
+                            </a>
+                          ) : null}
+                          {job.status === "pending" ? (
+                            <QueueActionButton
+                              confirmMessage={copy.cancelConfirm}
+                              id={job.id}
+                              intent="cancel"
+                              label={copy.cancel}
+                              locale={locale}
+                            />
+                          ) : job.status === "failed" && job.retrySafe ? (
+                            <QueueActionButton
+                              confirmMessage={copy.retryConfirm}
+                              id={job.id}
+                              intent="retry"
+                              label={copy.retry}
+                              locale={locale}
+                            />
+                          ) : null}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         ) : (
-          <div className={styles.emptyQueue}>
-            <Send aria-hidden="true" size={25} />
-            <strong>{copy.emptyQueue}</strong>
+          <div className="empty-state">
+            <h2>{copy.emptyQueue}</h2>
           </div>
         )}
-        <p className={styles.limitNote}>{copy.latestLimit}</p>
+        <p className="studio-muted">{copy.latestLimit}</p>
       </section>
     </>
   );
