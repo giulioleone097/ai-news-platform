@@ -15,6 +15,7 @@ const icons = {
 
 export function TopicRail({ categories, locale }: { categories: Category[]; locale: Locale }) {
   const messages = getMessages(locale);
+  if (!categories.length) return null;
 
   return (
     <section className="topic-section" aria-labelledby="topics-title">
