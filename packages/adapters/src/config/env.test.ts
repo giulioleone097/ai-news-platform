@@ -6,6 +6,7 @@ import {
   getMcpOAuthEnvironment,
   getOperationalCapabilities,
   getProductionReadiness,
+  isChatGptSignInEnabled,
   isDemoStudioEnabled,
   isStudioAvailable,
 } from "./env";
@@ -18,6 +19,19 @@ function disableSupabase() {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
 }
+
+describe("ChatGPT sign-in switch", () => {
+  it("is on unless the owner turns it off", () => {
+    for (const value of [undefined, "", "on", "true", "anything else"]) {
+      vi.stubEnv("ATLASNEWS_CHATGPT_SIGN_IN", value);
+      expect(isChatGptSignInEnabled(), String(value)).toBe(true);
+    }
+    for (const value of ["off", " OFF ", "false", "0", "no"]) {
+      vi.stubEnv("ATLASNEWS_CHATGPT_SIGN_IN", value);
+      expect(isChatGptSignInEnabled(), value).toBe(false);
+    }
+  });
+});
 
 describe("Studio environment boundary", () => {
   it("keeps the zero-config Studio available during local development", () => {

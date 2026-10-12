@@ -113,6 +113,7 @@ Runtime:
 | --- | --- | --- |
 | `ATLASNEWS_ADMIN_EMAILS` | yes | the ChatGPT account(s) that become admins at first sign-in |
 | `ATLASNEWS_EDITOR_EMAILS` | optional | accounts that become editors at first sign-in |
+| `ATLASNEWS_CHATGPT_SIGN_IN` | optional | `off` makes the app ignore the `oai-authenticated-*` headers everywhere (Studio, `/api/capabilities/*`, `/mcp`); default on. Turn it off if the probe in [GO_LIVE.md](GO_LIVE.md#before-the-site-is-public-the-identity-probe) fails |
 | `ATLASNEWS_SESSION_SECRET` | for Google and GitHub sign-in | signs the sign-in cookies, at least 32 characters (`openssl rand -hex 32`) |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional | turn on Google sign-in (with the session secret) |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | optional | turn on GitHub sign-in (with the session secret) |
@@ -209,7 +210,7 @@ Measured locally on the demo build, phone viewport (390 px, device pixel ratio 3
 ## Not verified without a real deployment
 
 1. That Sites accepts and runs this artifact end to end, provisions D1 and R2 from `hosting.json` and applies `dist/.openai/drizzle` before the upload.
-2. That the platform strips client-sent `oai-authenticated-*` headers before adding its own. The code relies on it, as OpenAI's starter does.
+2. That the platform strips client-sent `oai-authenticated-*` headers before adding its own. The code relies on it, as OpenAI's starter does. Run the probe in [GO_LIVE.md](GO_LIVE.md#before-the-site-is-public-the-identity-probe) before the audience is public; `ATLASNEWS_CHATGPT_SIGN_IN=off` turns the headers off without a code change. Tests pin that only `sites` mode reads them and that the switch ignores them (`apps/web/src/lib/editor-auth.test.ts`, `apps/mcp/src/auth.test.ts`).
 3. How MCP clients other than ChatGPT authenticate to a Site's `/mcp` (anonymous read tools do not need it).
 4. How the ChatGPT app treats a monorepo project root. The plugin's own install, build and package scripts worked from `apps/web` in a full checkout; a copy of `apps/web` alone fails to install. The managed environment's pnpm was not checked (see [Package manager](#package-manager)).
 5. Whether Sites passes variables to the build step, or only to the runtime. If only to the runtime, use `.env.production`.

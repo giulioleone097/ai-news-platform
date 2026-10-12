@@ -53,6 +53,17 @@ export function getContentMode(): ContentMode {
 }
 
 /**
+ * Whether the `oai-authenticated-*` headers of ChatGPT Sites identify people (`sites` mode only; the
+ * callers check the mode). On unless `ATLASNEWS_CHATGPT_SIGN_IN` is `off`: the owner's switch to ignore
+ * them everywhere (Studio, `/api/capabilities/*`, `/mcp`) should the platform not replace the copies a
+ * client sends. `readSitesIdentity` is the one reader.
+ */
+export function isChatGptSignInEnabled() {
+  const configured = process.env.ATLASNEWS_CHATGPT_SIGN_IN?.trim().toLowerCase();
+  return !(configured && ["off", "false", "0", "no"].includes(configured));
+}
+
+/**
  * Whether the server can write records that outlive the process: the Sites D1 binding, or Supabase with
  * the service-role key. Comments, newsletter delivery, the outboxes and MCP Events need it.
  */

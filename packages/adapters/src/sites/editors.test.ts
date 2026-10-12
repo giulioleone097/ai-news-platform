@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readSitesIdentity, resolveSitesEditor, type SitesIdentity } from "./editors";
 import { createSitesTestStore, type SitesTestStore } from "./testing";
 
@@ -14,6 +14,7 @@ describe("Sites editors", () => {
   beforeEach(async () => {
     await store.database.batch([store.database.prepare("DELETE FROM editors"), store.database.prepare("DELETE FROM authors")]);
   });
+  afterEach(() => vi.unstubAllEnvs());
 
   it("reads the identity headers the platform injects and decodes the full name", () => {
     const headers = new Headers({
@@ -24,6 +25,14 @@ describe("Sites editors", () => {
     });
     expect(readSitesIdentity(headers)).toEqual({ userId: "abc", email: "a@b.co", fullName: "José" });
     expect(readSitesIdentity(new Headers({ "oai-authenticated-user-email": "a@b.co" }))).toBeNull();
+  });
+
+  it("ignores the identity headers while ChatGPT sign-in is switched off", () => {
+    const headers = new Headers({ "oai-authenticated-user-id": "abc", "oai-authenticated-user-email": "a@b.co" });
+    vi.stubEnv("ATLASNEWS_CHATGPT_SIGN_IN", "off");
+    expect(readSitesIdentity(headers)).toBeNull();
+    vi.stubEnv("ATLASNEWS_CHATGPT_SIGN_IN", "");
+    expect(readSitesIdentity(headers)).toEqual({ userId: "abc", email: "a@b.co", fullName: null });
   });
 
   it("gives a reader no editor profile", async () => {
