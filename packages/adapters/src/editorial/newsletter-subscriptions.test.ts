@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 
-import { SupabaseEditorialRepository } from "./supabase-editorial-repository";
+import { createSupabaseEditorialRepository } from "./supabase-editorial-repository";
 
 type Call = [method: string, ...args: unknown[]];
 
@@ -41,7 +41,7 @@ describe("SupabaseEditorialRepository newsletter subscriptions", () => {
       data: statuses.map((status) => row(status, status)),
       error: null,
     });
-    const repository = new SupabaseEditorialRepository(client, { audience: "editorial" });
+    const repository = createSupabaseEditorialRepository(client, { audience: "editorial" });
 
     const page = await repository.listSubscriptions({ locale: "en" });
 
@@ -52,7 +52,7 @@ describe("SupabaseEditorialRepository newsletter subscriptions", () => {
 
   it("filters by one status when asked", async () => {
     const { calls, client } = fakeClient({ count: 1, data: [row("a", "suppressed")], error: null });
-    const repository = new SupabaseEditorialRepository(client, { audience: "editorial" });
+    const repository = createSupabaseEditorialRepository(client, { audience: "editorial" });
 
     await repository.listSubscriptions({ locale: "en", status: "suppressed" });
 
@@ -61,7 +61,7 @@ describe("SupabaseEditorialRepository newsletter subscriptions", () => {
 
   it("finds no subscriber and no article for an id that is not a uuid, without asking the database", async () => {
     const { calls, client } = fakeClient({ data: null, error: { message: "invalid input syntax for type uuid" } });
-    const repository = new SupabaseEditorialRepository(client, { audience: "editorial" });
+    const repository = createSupabaseEditorialRepository(client, { audience: "editorial" });
 
     expect(await repository.findSubscription("not-a-uuid")).toBeNull();
     expect(await repository.findById("not-a-uuid", "en")).toBeNull();
@@ -70,9 +70,9 @@ describe("SupabaseEditorialRepository newsletter subscriptions", () => {
 
   it("refuses direct reactivation and unsubscribes through the database function", async () => {
     const { calls, client } = fakeClient({ data: true, error: null });
-    const repository = new SupabaseEditorialRepository(client, { audience: "editorial" });
+    const repository = createSupabaseEditorialRepository(client, { audience: "editorial" });
 
-    await expect(repository.updateSubscriptionStatus("id", "active")).rejects.toThrow("double opt-in");
+    await expect(repository.updateSubscriptionStatus("id", "active" as never)).rejects.toThrow("double opt-in");
     expect(calls).toEqual([]);
     await repository.updateSubscriptionStatus("id", "unsubscribed");
     expect(calls).toEqual([["rpc", "admin_unsubscribe_newsletter_subscription", { p_subscription_id: "id" }]]);

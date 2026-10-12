@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SERVER_INFO_META_KEY } from "@modelcontextprotocol/server";
 
-import { MemoryEditorialRepository } from "@atlasnews/adapters/editorial/memory-editorial-repository";
+import { createMemoryEditorialRepository } from "@atlasnews/adapters/editorial/memory-editorial-repository";
 import { listPublishedArticleComments, mcpCapabilities, scopes } from "@atlasnews/contract";
 
 import { appToolNames } from "./apps";
@@ -89,7 +89,7 @@ describe("MCP endpoint", () => {
   });
 
   it("resolves approved comments from the published locale and slug", async () => {
-    const repository = new MemoryEditorialRepository();
+    const repository = createMemoryEditorialRepository();
     const article = (await repository.listPublished({ locale: "en", limit: 1 })).items[0];
     const listApproved = vi.fn().mockResolvedValue({ items: [], nextCursor: null });
 
@@ -169,7 +169,7 @@ describe("MCP endpoint", () => {
 
   it("answers a scoped tool called anonymously with 401 and a challenge, before anything runs", async () => {
     configureSignIn();
-    const repository = new MemoryEditorialRepository();
+    const repository = createMemoryEditorialRepository();
     const before = (await repository.listForStudio("en")).length;
     const ports = memoryPorts(repository);
     const { payload, response } = await sendRpc({
@@ -202,7 +202,7 @@ describe("MCP endpoint", () => {
   });
 
   it("challenges every content write and delete tool anonymously with its own scope, and writes nothing", async () => {
-    const repository = new MemoryEditorialRepository();
+    const repository = createMemoryEditorialRepository();
     const before = (await repository.listForStudio("en")).length;
     const ports = memoryPorts(repository);
     const cases: Array<[string, string]> = [

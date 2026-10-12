@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { MemoryEditorialRepository } from "./memory-editorial-repository";
+import { createMemoryEditorialRepository } from "./memory-editorial-repository";
 import { seedArticles, seedCategories } from "./seed";
 import { createEditorialBackends } from "./testing";
 
@@ -123,7 +123,7 @@ describe("MemoryEditorialRepository", () => {
   });
 
   it("preserves an unsubscribe; an editor cannot reactivate it directly", async () => {
-    const repository = new MemoryEditorialRepository();
+    const repository = createMemoryEditorialRepository();
 
     await expect(repository.subscribe("reader@example.com", "test", "en")).resolves.toBeUndefined();
     const { items: [created] } = await repository.listSubscriptions({ locale: "en" });
@@ -133,12 +133,12 @@ describe("MemoryEditorialRepository", () => {
     await expect(repository.subscribe("reader@example.com", "test", "it")).resolves.toBeUndefined();
     expect((await repository.listSubscriptions({ locale: "it" })).total).toBe(0);
     // Reactivation is never a direct status change: it goes through a fresh double opt-in email.
-    await expect(repository.updateSubscriptionStatus(created.id, "active")).rejects.toThrow("double opt-in");
+    await expect(repository.updateSubscriptionStatus(created.id, "active" as never)).rejects.toThrow("double opt-in");
     expect((await repository.listSubscriptions({ locale: "en" })).items[0].status).toBe("unsubscribed");
   });
 
   it("reads one subscriber and one asset by id, and returns null for an unknown one", async () => {
-    const repository = new MemoryEditorialRepository();
+    const repository = createMemoryEditorialRepository();
     await repository.subscribe("reader@example.com", "test", "en");
     const { items: [created] } = await repository.listSubscriptions({ locale: "en" });
     expect(await repository.findSubscription(created.id)).toEqual(created);
@@ -150,7 +150,7 @@ describe("MemoryEditorialRepository", () => {
   });
 
   it("paginates newsletter subscriptions without truncating exports", async () => {
-    const repository = new MemoryEditorialRepository();
+    const repository = createMemoryEditorialRepository();
     await repository.subscribe("first@example.com", "test", "en");
     await repository.subscribe("second@example.com", "test", "en");
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { MemoryEditorialRepository } from "./memory-editorial-repository";
+import { createMemoryEditorialRepository } from "./memory-editorial-repository";
 import { ArticleCommandService } from "@atlasnews/core/editorial/application/article-commands";
 
 function commandService() {
-  const repository = new MemoryEditorialRepository();
+  const repository = createMemoryEditorialRepository();
   return new ArticleCommandService(repository, repository);
 }
 

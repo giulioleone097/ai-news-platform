@@ -8,7 +8,8 @@ import type { ArticleCreate } from "@atlasnews/core/editorial/domain/article";
 import type { MediaRepository } from "@atlasnews/core/editorial/domain/article-repository";
 import { BatchValidationError, EditorialRuleError } from "@atlasnews/core/editorial/domain/errors";
 
-import { MemoryEditorialRepository } from "./memory-editorial-repository";
+import { composeAdminEditorialRepository } from "./compose";
+import { createMemoryEditorialParts, createMemoryEditorialRepository } from "./memory-editorial-repository";
 import { createEditorialBackends, type EditorialBackend } from "./testing";
 
 // The article, category and entity cases run against the in-memory repository and against D1.
@@ -240,10 +241,13 @@ describe.each(backends)("$name repository", (backend) => {
     });
 
     it.runIf(backend.name === "memory")("leaves nothing behind when the write fails halfway", async () => {
-      const { repository, articles } = await setup(backend);
+      // The batch saves item by item inside the articles port, so the failure is injected on that port.
+      const parts = createMemoryEditorialParts();
+      const repository = composeAdminEditorialRepository(parts);
+      const articles = new ArticleCommandService(repository, repository);
       const before = (await repository.listForStudio("en")).length;
-      const save = vi.spyOn(repository, "save");
-      const real = MemoryEditorialRepository.prototype.save.bind(repository as MemoryEditorialRepository);
+      const save = vi.spyOn(parts.articles, "save");
+      const real = parts.articles.save.bind(parts.articles);
       let calls = 0;
       save.mockImplementation(async (input) => {
         calls += 1;
@@ -358,11 +362,13 @@ describe.each(backends)("$name repository", (backend) => {
     });
 
     it.runIf(backend.name === "memory")("leaves nothing behind when the write fails halfway", async () => {
-      const repository = await backend.create();
+      const parts = createMemoryEditorialParts();
+      const repository = composeAdminEditorialRepository(parts);
       const commands = new CategoryCommandService(repository);
       const before = await repository.listCategoryRecords();
-      const write = vi.spyOn(repository as unknown as { writeCategory(item: unknown, create: boolean): void }, "writeCategory");
-      const real = (repository as unknown as { writeCategory(item: unknown, create: boolean): void }).writeCategory.bind(repository);
+      const port = parts.categories as unknown as { writeCategory(item: unknown, create: boolean): void };
+      const write = vi.spyOn(port, "writeCategory");
+      const real = port.writeCategory.bind(port);
       let calls = 0;
       write.mockImplementation((item, create) => {
         calls += 1;
@@ -451,11 +457,13 @@ describe.each(backends)("$name repository", (backend) => {
     });
 
     it.runIf(backend.name === "memory")("leaves nothing behind when the write fails halfway", async () => {
-      const repository = await backend.create();
+      const parts = createMemoryEditorialParts();
+      const repository = composeAdminEditorialRepository(parts);
       const commands = new EntityCommandService(repository);
       const before = await repository.listEntityRecords();
-      const write = vi.spyOn(repository as unknown as { writeEntity(item: unknown, create: boolean): void }, "writeEntity");
-      const real = (repository as unknown as { writeEntity(item: unknown, create: boolean): void }).writeEntity.bind(repository);
+      const port = parts.entityAdmin as unknown as { writeEntity(item: unknown, create: boolean): void };
+      const write = vi.spyOn(port, "writeEntity");
+      const real = port.writeEntity.bind(port);
       let calls = 0;
       write.mockImplementation((item, create) => {
         calls += 1;
@@ -536,7 +544,7 @@ describe("media", () => {
   });
 
   it("says plainly that the demo store is read only", async () => {
-    const commands = new MediaCommandService(new MemoryEditorialRepository());
+    const commands = new MediaCommandService(createMemoryEditorialRepository());
     await expect(commands.uploadMany([{ name: "a.png", mimeType: "image/png", bytes: png }])).rejects.toThrow("Media uploads require media storage.");
     await expect(commands.deleteOne("media/atlas-hero.webp")).rejects.toThrow("Media deletion requires media storage.");
   });

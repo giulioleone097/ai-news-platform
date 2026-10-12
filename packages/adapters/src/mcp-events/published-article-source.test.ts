@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { MemoryEditorialRepository } from "../editorial/memory-editorial-repository";
+import { createMemoryEditorialRepository } from "../editorial/memory-editorial-repository";
 
 import { EditorialPublishedArticleSource } from "./published-article-source";
 
 describe("EditorialPublishedArticleSource", () => {
   it("returns published articles newer than the boundary, newest first, and nothing for newer boundaries", async () => {
-    const repository = new MemoryEditorialRepository();
+    const repository = createMemoryEditorialRepository();
     const published = (await repository.listPublished({ locale: "en", limit: 50 })).items;
     expect(published.length).toBeGreaterThan(1);
     const source = new EditorialPublishedArticleSource(repository);
@@ -32,7 +32,7 @@ describe("EditorialPublishedArticleSource", () => {
   });
 
   it("carries the claim status and the linked entity slugs, primary first", async () => {
-    const [seed] = (await new MemoryEditorialRepository().listPublished({ locale: "en", limit: 1 })).items;
+    const [seed] = (await createMemoryEditorialRepository().listPublished({ locale: "en", limit: 1 })).items;
     const source = new EditorialPublishedArticleSource({
       listPublished: async () => ({
         nextCursor: null,

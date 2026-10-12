@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MemoryEditorialRepository } from "@atlasnews/adapters/editorial/memory-editorial-repository";
+import { createMemoryEditorialRepository } from "@atlasnews/adapters/editorial/memory-editorial-repository";
 
 import { modernParams, sendRpc } from "../mcp-test-client";
 import { briefingFormKey } from "./briefing";
@@ -117,7 +117,7 @@ describe("MCP Apps and OpenAI extensions", () => {
   });
 
   it("falls back to every topic when the host cannot render OpenAI forms", async () => {
-    const categories = await new MemoryEditorialRepository().listCategories("en");
+    const categories = await createMemoryEditorialRepository().listCategories("en");
     const result = await call("build_briefing", {});
 
     expect(result.isError).not.toBe(true);
@@ -136,7 +136,7 @@ describe("MCP Apps and OpenAI extensions", () => {
     expect(schema.properties.language.oneOf.map((option: { const: string }) => option.const)).toEqual(["en", "it"]);
 
     const topic = schema.properties.topics.items.anyOf[0];
-    const italianCategories = await new MemoryEditorialRepository().listCategories("it");
+    const italianCategories = await createMemoryEditorialRepository().listCategories("it");
     const italianTopic = italianCategories.find((category) => category.translationKey === topic.const)!;
     const answered = await call("build_briefing", {}, formCapabilities, {
       inputResponses: {

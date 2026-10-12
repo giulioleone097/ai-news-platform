@@ -1,8 +1,8 @@
 import type { AdminEditorialRepository, NewsletterRepository } from "@atlasnews/core/editorial/domain/article-repository";
 import type { D1Database } from "../sites/cloudflare";
 import { createSitesTestStore, type SitesTestStore } from "../sites/testing";
-import { D1EditorialRepository } from "./d1-editorial-repository";
-import { MemoryEditorialRepository } from "./memory-editorial-repository";
+import { createD1EditorialRepository } from "./d1-editorial-repository";
+import { createMemoryEditorialRepository } from "./memory-editorial-repository";
 import { seedArticles, seedAuthor, seedCategories, seedEntities } from "./seed";
 
 // Test support only: the editorial repository tests run their shared cases against the in-memory
@@ -122,13 +122,13 @@ export async function resetEditorialSeed(database: D1Database) {
 export function createEditorialBackends(): EditorialBackend[] {
   let store: SitesTestStore | undefined;
   return [
-    { name: "memory", create: async () => new MemoryEditorialRepository(), dispose: async () => undefined },
+    { name: "memory", create: async () => createMemoryEditorialRepository(), dispose: async () => undefined },
     {
       name: "d1",
       async create() {
         store ??= await createSitesTestStore();
         await resetEditorialSeed(store.database);
-        return new D1EditorialRepository(store.database, {
+        return createD1EditorialRepository(store.database, {
           audience: "editorial",
           media: store.media,
           newsletter: unusedNewsletter,

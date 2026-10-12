@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { MediaCommandService } from "@atlasnews/core/editorial/application/media-commands";
 import type { ArticleDraftInput } from "@atlasnews/core/editorial/domain/article";
-import type { NewsletterRepository } from "@atlasnews/core/editorial/domain/article-repository";
+import type { AdminEditorialRepository, NewsletterRepository } from "@atlasnews/core/editorial/domain/article-repository";
 import type { D1Database } from "../sites/cloudflare";
 import { createSitesTestStore, type SitesTestStore } from "../sites/testing";
 import {
-  D1EditorialRepository,
+  createD1EditorialRepository,
   readSitesMediaObject,
   type D1EditorialRepositoryOptions,
 } from "./d1-editorial-repository";
@@ -27,7 +27,7 @@ afterAll(() => store.dispose());
 beforeEach(() => resetEditorialSeed(store.database));
 
 function repository(options: Partial<D1EditorialRepositoryOptions> = {}, database: D1Database = store.database) {
-  return new D1EditorialRepository(database, {
+  return createD1EditorialRepository(database, {
     audience: "editorial",
     media: store.media,
     newsletter: unusedNewsletter,
@@ -376,7 +376,7 @@ describe("entities", () => {
     const editorial = repository();
     const anonymous = repository({ audience: "public" });
     const draft = await editorial.save(story("A draft about Gemini", { entities: [{ slug: "gemini" }] }));
-    const countOf = async (client: D1EditorialRepository) => (await client.listEntities("en")).find((entity) => entity.slug === "gemini")?.storyCount;
+    const countOf = async (client: AdminEditorialRepository) => (await client.listEntities("en")).find((entity) => entity.slug === "gemini")?.storyCount;
     expect(await countOf(editorial)).toBe(0);
     expect((await editorial.countEntityStories(["gemini"])).get("gemini")).toBe(1);
     expect((await anonymous.countEntityStories(["gemini"])).get("gemini")).toBe(0);
