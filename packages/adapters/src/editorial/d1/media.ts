@@ -1,4 +1,5 @@
 import type { MediaRepository } from "@atlasnews/core/editorial/domain/article-repository";
+import { maxMediaBytes, mediaImageTypes } from "@atlasnews/core/editorial/domain/editorial-image";
 import type { MediaAsset, MediaUpload } from "@atlasnews/core/editorial/domain/editorial-operations";
 import type { D1Database, R2Bucket, R2Object } from "../../sites/cloudflare";
 import { D1EditorialAccess, type D1EditorialRepositoryOptions } from "./access";
@@ -7,9 +8,6 @@ import { errorMessage } from "./sql";
 const mediaPrefix = "editorial-media/";
 /** Where the site serves an asset from, same origin; the web app's `/media-store/[...path]` route reads it from R2. */
 const mediaUrlPrefix = "/media-store/";
-/** The limits of the Supabase `editorial-media` bucket. */
-const allowedMediaTypes = new Set(["image/avif", "image/gif", "image/jpeg", "image/png", "image/webp"]);
-const maxMediaBytes = 8_388_608;
 const listedAssets = 100;
 const mediaPathPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
@@ -83,7 +81,7 @@ export class D1MediaRepository extends D1EditorialAccess implements MediaReposit
   async uploadAsset(input: MediaUpload) {
     this.assertEditorial();
     const bucket = this.requireBucket();
-    if (!allowedMediaTypes.has(input.mimeType)) throw new Error("Unable to upload media asset: mime type is not supported");
+    if (!(mediaImageTypes as readonly string[]).includes(input.mimeType)) throw new Error("Unable to upload media asset: mime type is not supported");
     if (input.bytes.byteLength > maxMediaBytes) {
       throw new Error("Unable to upload media asset: the object exceeded the maximum allowed size");
     }
