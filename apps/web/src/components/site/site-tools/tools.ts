@@ -66,6 +66,29 @@ function story(item: ListedStory, locale: string) {
   };
 }
 
+type Parsed<I> = { ok: true; input: I } | { ok: false; error: string };
+
+/**
+ * Checks the arguments, runs the tool and turns every failure into an `{ error }` result, because a WebMCP
+ * host does not pass the message of a thrown error to the agent. The reader and the Studio tools share it.
+ */
+export function guardTool<I>(
+  name: string,
+  parse: (raw: unknown) => Parsed<I>,
+  run: (input: I, signal?: AbortSignal) => Promise<ToolResult>,
+): SiteTool {
+  return async (raw, signal) => {
+    const parsed = parse(raw);
+    if (!parsed.ok) return { error: parsed.error };
+    try {
+      return await run(parsed.input, signal);
+    } catch (error) {
+      if (error instanceof ToolFailure) return { error: error.message };
+      return { error: signal?.aborted ? `${name} was cancelled.` : `${name} failed unexpectedly.` };
+    }
+  };
+}
+
 export function createSiteTools(env: SiteToolsEnvironment): Record<PageToolName, SiteTool> {
   async function listStories(
     filters: { locale: string; q?: string; entity?: string; status?: string },
@@ -179,18 +202,9 @@ export function createSiteTools(env: SiteToolsEnvironment): Record<PageToolName,
     [N in PageToolName]: (input: PageToolInput<N>, signal?: AbortSignal) => Promise<ToolResult>;
   };
 
-  /** Checks the arguments, runs the tool and turns every failure into an `{ error }` result. */
   function guard<N extends PageToolName>(name: N): SiteTool {
-    return async (raw, signal) => {
-      const parsed = parsePageInput(name, raw);
-      if (!parsed.ok) return { error: parsed.error };
-      try {
-        return await (run[name] as (input: PageToolInput<N>, signal?: AbortSignal) => Promise<ToolResult>)(parsed.input, signal);
-      } catch (error) {
-        if (error instanceof ToolFailure) return { error: error.message };
-        return { error: signal?.aborted ? `${name} was cancelled.` : `${name} failed unexpectedly.` };
-      }
-    };
+    const handler = run[name] as (input: PageToolInput<N>, signal?: AbortSignal) => Promise<ToolResult>;
+    return guardTool(name, (raw) => parsePageInput(name, raw), handler);
   }
 
   return {
