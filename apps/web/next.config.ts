@@ -46,6 +46,24 @@ if (parsedSupabaseUrl) {
   });
 }
 
+// What the site really loads: its own scripts, styles (inline too: the pages carry theirs), fonts and media; the
+// Supabase project's images and API when one is configured; and the two embed frames the reader clicks to load.
+// Next and vinext write inline scripts for the page's data and bootstrap, hence 'unsafe-inline'; nonces would
+// replace it in an enforced policy. Report-only and without a reporting endpoint: a violation shows in the
+// browser console and nothing is blocked. Enforce it once the console stays clean.
+const supabaseOrigin = parsedSupabaseUrl ? ` ${parsedSupabaseUrl.origin}` : "";
+const contentSecurityPolicyReportOnly = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`,
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob:${supabaseOrigin}`,
+  "font-src 'self'",
+  `connect-src 'self'${supabaseOrigin}`,
+  "frame-src 'self' https://www.youtube-nocookie.com https://platform.twitter.com",
+].join("; ");
+
 const nextConfig: NextConfig = {
   transpilePackages: ["@atlasnews/core", "@atlasnews/contract", "@atlasnews/adapters"],
   poweredByHeader: false,
@@ -65,8 +83,9 @@ const nextConfig: NextConfig = {
   },
   // Both builds read this: `next build` and the vinext Sites build (measured on the artifact in workerd).
   // Do not give two rules the same header for one path: Next lets the later rule win, vinext the first.
-  // The sensitive routes therefore only add a header the general rule lacks; src/proxy.ts, which both
-  // builds also run, upgrades their X-Frame-Options to DENY.
+  // The sensitive routes therefore only add a header the general rule lacks (Content-Security-Policy, where the
+  // general rule has only the Report-Only one); src/proxy.ts, which both builds also run, upgrades their
+  // X-Frame-Options to DENY.
   async headers() {
     const localePattern = locales.join("|");
     return [
@@ -76,6 +95,7 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy-Report-Only", value: contentSecurityPolicyReportOnly },
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), payment=()",

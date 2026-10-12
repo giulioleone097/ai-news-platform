@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import "./studio.css";
 import { StudioSiteTools } from "@/components/studio/site-tools/studio-site-tools";
@@ -8,6 +9,9 @@ import { signOutPath } from "@/lib/auth/paths";
 import { getSignedInUser, requireEditor } from "@/lib/editor-auth";
 
 export const dynamic = "force-dynamic";
+
+// Every Studio page, whatever it sets for itself, is kept out of search results.
+export const metadata: Metadata = { robots: { index: false } };
 
 export default async function StudioLayout({
   children,
