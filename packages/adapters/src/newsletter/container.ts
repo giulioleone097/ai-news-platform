@@ -12,7 +12,7 @@ import {
   NewsletterCampaignService,
   NewsletterDeliveryService,
 } from "@atlasnews/core/newsletter/application/service";
-import { D1NewsletterDeliveryRepository } from "./d1-newsletter-delivery-repository";
+import { createD1NewsletterDeliveryRepository } from "./d1-newsletter-delivery-repository";
 import type { NewsletterDeliveryRepository } from "@atlasnews/core/newsletter/domain/ports";
 import { SupabaseNewsletterDeliveryRepository } from "./supabase-repository";
 
@@ -28,7 +28,7 @@ function requireDeliveryEnvironment() {
 
 /** The delivery repository on the Site's D1 database, or the service-role Supabase client elsewhere. */
 function serviceRepository() {
-  if (getContentMode() === "sites") return new D1NewsletterDeliveryRepository(requireSitesBindings().database);
+  if (getContentMode() === "sites") return createD1NewsletterDeliveryRepository(requireSitesBindings().database);
   const client = createServiceSupabaseClient();
   if (!client) throw new NewsletterDeliveryConfigurationError();
   return new SupabaseNewsletterDeliveryRepository(client);

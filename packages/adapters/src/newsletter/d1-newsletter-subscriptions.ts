@@ -8,7 +8,7 @@ import {
 } from "@atlasnews/core/editorial/domain/editorial-operations";
 import type { Locale } from "@atlasnews/core/locale";
 import type { D1Database } from "../sites/cloudflare";
-import { D1NewsletterDeliveryRepository } from "./d1-newsletter-delivery-repository";
+import { D1NewsletterSubscriptionFlowRepository } from "./d1/subscription-flow";
 
 interface SubscriptionRow {
   id: string;
@@ -38,10 +38,10 @@ function toSubscription(row: SubscriptionRow): NewsletterSubscription {
 
 /** The Studio's view of the subscribers (list, unsubscribe) on D1. Joining the list goes through double opt-in only. */
 export class D1NewsletterSubscriptionRepository implements NewsletterRepository {
-  private readonly delivery: D1NewsletterDeliveryRepository;
+  private readonly delivery: D1NewsletterSubscriptionFlowRepository;
 
   constructor(private readonly database: D1Database) {
-    this.delivery = new D1NewsletterDeliveryRepository(database);
+    this.delivery = new D1NewsletterSubscriptionFlowRepository(database);
   }
 
   async subscribe(): Promise<void> {
