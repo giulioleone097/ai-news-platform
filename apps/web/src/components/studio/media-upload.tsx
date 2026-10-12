@@ -1,6 +1,7 @@
 "use client";
 
 import { Upload } from "lucide-react";
+import { mediaImageTypes } from "@atlasnews/core/editorial/domain/editorial-image";
 
 /** The upload control: a dashed drop area that submits as soon as a file is chosen or dropped on it. */
 export function MediaUpload({
@@ -20,7 +21,7 @@ export function MediaUpload({
         <strong>{copy.dropzone}</strong>
         <span className="studio-muted">{copy.help}</span>
         <input
-          accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
+          accept={mediaImageTypes.join(",")}
           aria-label={copy.label}
           name="asset"
           onChange={(event) => {

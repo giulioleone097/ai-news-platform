@@ -1,5 +1,9 @@
 import type { Locale } from "@/i18n";
+import { maxMediaBytes } from "@atlasnews/core/editorial/domain/editorial-image";
 import type { MarkdownEditorCopy } from "./markdown-editor";
+
+/** The largest image, as the media rules say it, for the sentences that tell the editor. */
+const maxMegabytes = maxMediaBytes / 1_048_576;
 
 export const studioSupplementalCopy = {
   en: {
@@ -38,7 +42,7 @@ export const studioSupplementalCopy = {
         dropHint: "Drop or paste images here to upload them.",
         uploading: "Uploading…",
         uploadType: "Choose a JPEG, PNG, WebP, GIF or AVIF image.",
-        uploadSize: "Choose an image of up to 8 MiB.",
+        uploadSize: `Choose an image of up to ${maxMegabytes} MiB.`,
         uploadBatch: "Upload up to 10 images at a time.",
         uploadError: "The image could not be uploaded. Try again.",
         uploadConfiguration: "Media storage is not configured, so images cannot be uploaded.",
@@ -82,7 +86,7 @@ export const studioSupplementalCopy = {
     confirmationRequested: "A fresh confirmation email was sent. The subscriber remains inactive until they confirm.",
     confirmationFailed: "The confirmation email could not be sent. Check the delivery configuration and try again.",
     mediaDropzone: "Drop an image or choose a file",
-    mediaUploadHelp: "AVIF, GIF, JPEG, PNG or WebP, up to 8 MB.",
+    mediaUploadHelp: `AVIF, GIF, JPEG, PNG or WebP, up to ${maxMegabytes} MB.`,
     mediaUploadAction: "Upload image",
     mediaOffTitle: "Image uploads are off",
     mediaOffBody: "Uploaded images can be reused as covers and inside articles.",
@@ -157,7 +161,7 @@ export const studioSupplementalCopy = {
         dropHint: "Trascina o incolla qui le immagini per caricarle.",
         uploading: "Caricamento…",
         uploadType: "Scegli un’immagine JPEG, PNG, WebP, GIF o AVIF.",
-        uploadSize: "Scegli un’immagine di massimo 8 MiB.",
+        uploadSize: `Scegli un’immagine di massimo ${maxMegabytes} MiB.`,
         uploadBatch: "Carica al massimo 10 immagini alla volta.",
         uploadError: "L’immagine non è stata caricata. Riprova.",
         uploadConfiguration: "Lo spazio media non è configurato, quindi non si possono caricare immagini.",
@@ -201,7 +205,7 @@ export const studioSupplementalCopy = {
     confirmationRequested: "È stata inviata una nuova email di conferma. L'iscritto resta inattivo fino alla conferma.",
     confirmationFailed: "Impossibile inviare l'email di conferma. Verifica la configurazione e riprova.",
     mediaDropzone: "Trascina un’immagine o scegli un file",
-    mediaUploadHelp: "AVIF, GIF, JPEG, PNG o WebP, fino a 8 MB.",
+    mediaUploadHelp: `AVIF, GIF, JPEG, PNG o WebP, fino a ${maxMegabytes} MB.`,
     mediaUploadAction: "Carica immagine",
     mediaOffTitle: "Il caricamento delle immagini è disattivato",
     mediaOffBody: "Le immagini caricate si riusano come copertine e negli articoli.",

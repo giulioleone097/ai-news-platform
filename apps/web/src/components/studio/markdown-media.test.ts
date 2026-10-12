@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { maxMediaBytes } from "@atlasnews/core/editorial/domain/editorial-image";
 import {
   altTextFromFileName,
   imageFileProblem,
   insertAtCursor,
   insertLine,
   markdownImage,
-  maxEditorImageBytes,
   removePlaceholder,
   replacePlaceholder,
   uniquePlaceholder,
@@ -37,14 +37,14 @@ describe("Markdown image syntax", () => {
 
 describe("Image file limits", () => {
   it("accepts the Studio image types up to 8 MiB", () => {
-    expect(imageFileProblem({ type: "image/webp", size: maxEditorImageBytes })).toBeNull();
+    expect(imageFileProblem({ type: "image/webp", size: maxMediaBytes })).toBeNull();
     expect(imageFileProblem({ type: "image/avif", size: 1 })).toBeNull();
   });
 
   it("refuses other types and oversized or empty files", () => {
     expect(imageFileProblem({ type: "image/svg+xml", size: 100 })).toBe("type");
     expect(imageFileProblem({ type: "application/pdf", size: 100 })).toBe("type");
-    expect(imageFileProblem({ type: "image/png", size: maxEditorImageBytes + 1 })).toBe("size");
+    expect(imageFileProblem({ type: "image/png", size: maxMediaBytes + 1 })).toBe("size");
     expect(imageFileProblem({ type: "image/png", size: 0 })).toBe("size");
   });
 });
