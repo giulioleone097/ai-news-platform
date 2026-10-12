@@ -6,6 +6,9 @@ import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { listEditorMediaAction, type EditorMediaItem } from "@/app/[locale]/(studio)/studio/actions";
 import { altTextFromFileName, markdownImage } from "./markdown-media";
 
+/** What the person chose: callers that do not write Markdown (the cover) take the url and alt text. */
+export type PickedImage = { url: string; alt: string };
+
 export type MediaPickerCopy = {
   search: string;
   library: string;
@@ -45,7 +48,7 @@ export function MediaPicker({
   copy: MediaPickerCopy;
   locale: string;
   onClose: () => void;
-  onInsert: (markdown: string) => void;
+  onInsert: (markdown: string, image: PickedImage) => void;
   open: boolean;
   title: string;
 }) {
@@ -91,7 +94,7 @@ function MediaPickerPanel({
   copy: MediaPickerCopy;
   locale: string;
   onCancel: () => void;
-  onInsert: (markdown: string) => void;
+  onInsert: (markdown: string, image: PickedImage) => void;
   title: string;
   titleId: string;
 }) {
@@ -146,7 +149,7 @@ function MediaPickerPanel({
       altRef.current?.focus();
       return;
     }
-    onInsert(markdownImage(text, chosen.url));
+    onInsert(markdownImage(text, chosen.url), { url: chosen.url, alt: text });
   }
 
   return (

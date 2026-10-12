@@ -30,10 +30,10 @@ export function NewsletterForm({
   const messageId = `newsletter-message-${source}`;
 
   return (
-    <section className="newsletter" id="newsletter" aria-labelledby="newsletter-title">
+    <section className="newsletter" id="newsletter" aria-labelledby="newsletter-band-title">
       <div className="newsletter__intro">
         <Mail aria-hidden="true" />
-        <h2 id="newsletter-title">{copy.title}</h2>
+        <h2 id="newsletter-band-title">{copy.title}</h2>
         <p>{copy.description}</p>
       </div>
       <form className="newsletter__form" action={action}>

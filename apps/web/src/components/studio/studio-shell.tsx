@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ExternalLink, LogOut } from "lucide-react";
+import { Bot, ExternalLink, LogOut } from "lucide-react";
 import type { Locale, Messages } from "@/i18n";
 import type { EditorIdentity } from "@/lib/editor-identity";
 import { signOutAction } from "@/app/[locale]/(studio)/login/actions";
 import { StudioBrand } from "./studio-brand";
+import { StudioLanguage } from "./studio-language";
 import { StudioNavigation } from "./studio-navigation";
 import { StudioSidebar } from "./studio-sidebar";
 
@@ -21,15 +22,40 @@ export function StudioShell({
   /** On Sites a plain form POST to the sign-out path of whatever signed the editor in (ChatGPT's or ours). Otherwise the Supabase action. */
   signOutPath?: string;
 }) {
-  const alternateLocale = locale === "en" ? "it" : "en";
+  const { studio } = messages;
+  const demoPill = editor.isDemo ? (
+    <span className="studio-mode" title={studio.demoModeHint}>
+      {studio.demoMode}
+    </span>
+  ) : null;
+  // Shown once the page has registered the Studio's tools with the browser's agent (see StudioSiteTools).
+  const agentStatus = (
+    <span className="studio-agent" title={studio.agentToolsHint}>
+      <Bot aria-hidden="true" size={14} />
+      {studio.agentTools}
+    </span>
+  );
+  const openSite = (
+    <Link className="studio-link" href={`/${locale}`} rel="noreferrer" target="_blank">
+      {studio.openSite}
+      <ExternalLink aria-hidden="true" size={14} />
+    </Link>
+  );
 
   return (
     <div className="studio-shell">
       <StudioSidebar
         brand={<StudioBrand href={`/${locale}/studio`} label="Studio" name={messages.common.brandName} />}
-        label={messages.studio.navigationLabel}
+        label={studio.navigationLabel}
+        status={demoPill}
       >
-        <StudioNavigation copy={messages.studio} isAdmin={editor.role === "admin"} locale={locale} />
+        <StudioNavigation copy={studio} isAdmin={editor.role === "admin"} locale={locale} />
+
+        <div className="studio-sidebar__tools">
+          <StudioLanguage label={studio.language} locale={locale} />
+          {openSite}
+          {agentStatus}
+        </div>
 
         <div className="studio-user">
           <span className="studio-user__avatar" aria-hidden="true">
@@ -37,7 +63,7 @@ export function StudioShell({
           </span>
           <span className="studio-user__name">
             <strong>{editor.author.name}</strong>
-            <small>{editor.role}</small>
+            <small>{editor.role === "admin" ? studio.roleAdmin : studio.roleEditor}</small>
           </span>
           <form
             action={signOutPath ?? signOutAction}
@@ -55,20 +81,13 @@ export function StudioShell({
 
       <div className="studio-workspace">
         <header className="studio-topbar">
-          {editor.isDemo ? <span className="studio-mode">{messages.studio.demoMode}</span> : <span />}
+          <div className="studio-topbar__status">
+            {demoPill}
+            {agentStatus}
+          </div>
           <div className="studio-topbar__links">
-            <Link
-              aria-label={locale === "en" ? "Passa all’italiano" : "Switch to English"}
-              className="studio-link"
-              href={`/${alternateLocale}/studio`}
-              hrefLang={alternateLocale}
-            >
-              {alternateLocale.toUpperCase()}
-            </Link>
-            <Link className="studio-link" href={`/${locale}`} rel="noreferrer" target="_blank">
-              {messages.studio.openSite}
-              <ExternalLink aria-hidden="true" size={14} />
-            </Link>
+            <StudioLanguage label={studio.language} locale={locale} />
+            {openSite}
           </div>
         </header>
         <main className="studio-main" id="studio-main">

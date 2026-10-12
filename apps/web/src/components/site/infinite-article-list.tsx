@@ -21,6 +21,9 @@ export interface FeedFilters {
   query?: string;
 }
 
+/** After this many automatic loads the reader asks for more with the button, so the footer stays reachable. */
+const autoLoadLimit = 2;
+
 const noSubscription = () => () => {};
 const utcToday = () => new Date().toISOString().slice(0, 10);
 
@@ -31,7 +34,7 @@ export function InfiniteArticleList({
   locale,
   filters = {},
   copy,
-  dayCopy,
+  feedCopy,
   statusLabels,
 }: {
   initialItems: FeedItem[];
@@ -39,7 +42,7 @@ export function InfiniteArticleList({
   locale: Locale;
   filters?: FeedFilters;
   copy: Messages["latest"];
-  dayCopy: Messages["feed"]["day"];
+  feedCopy: Pick<Messages["feed"], "day" | "timesUtc">;
   statusLabels: StatusLabels;
 }) {
   const [items, setItems] = useState(initialItems);
@@ -48,15 +51,17 @@ export function InfiniteArticleList({
   const [hasLoaded, setHasLoaded] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
+  const autoLoadsRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
   // "Today" and "Yesterday" need the reader's clock, so they appear after hydration only.
   const today = useSyncExternalStore(noSubscription, utcToday, () => "");
   const { category, entity, status: claimStatus, query } = filters;
 
-  const loadMore = useCallback(async () => {
+  const loadMore = useCallback(async (automatic = false) => {
     if (!cursor || loadingRef.current) return;
 
     loadingRef.current = true;
+    if (automatic) autoLoadsRef.current += 1;
     setStatus("loading");
     const controller = new AbortController();
     controllerRef.current = controller;
@@ -102,7 +107,7 @@ export function InfiniteArticleList({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) void loadMore();
+        if (entry.isIntersecting && autoLoadsRef.current < autoLoadLimit) void loadMore(true);
       },
       { rootMargin: "800px 0px", threshold: 0.01 },
     );
@@ -122,16 +127,19 @@ export function InfiniteArticleList({
     : "";
   const dayLabel = (date: string) => {
     const label = formatDay(date, locale);
-    if (date === today) return `${dayCopy.today} · ${label}`;
-    return date === yesterday ? `${dayCopy.yesterday} · ${label}` : label;
+    if (date === today) return `${feedCopy.day.today} · ${label}`;
+    return date === yesterday ? `${feedCopy.day.yesterday} · ${label}` : label;
   };
 
   return (
     <>
       <div aria-busy={status === "loading"} data-infinite-feed="true">
-        {groupByDay(items).map((group) => (
+        {groupByDay(items).map((group, index) => (
           <section className="feed-day" aria-labelledby={`feed-day-${group.date}`} key={group.date}>
-            <h2 className="feed-day__heading" id={`feed-day-${group.date}`}>{dayLabel(group.date)}</h2>
+            <div className="feed-day__head">
+              <h2 id={`feed-day-${group.date}`}>{dayLabel(group.date)}</h2>
+              {index === 0 ? <span>{feedCopy.timesUtc}</span> : null}
+            </div>
             <ul className="feed-list">
               {group.items.map((item) => (
                 <FeedRow item={item} locale={locale} statusLabels={statusLabels} key={item.id} />

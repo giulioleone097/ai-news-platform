@@ -1,44 +1,3 @@
-.toolbar {
-  display: flex;
-  align-items: center;
-}
-
-.selectAll {
-  display: inline-flex;
-  min-height: 2.5rem;
-  align-items: center;
-  gap: 0.625rem;
-  color: var(--fg-muted);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.checkCell {
-  display: inline-grid;
-  width: 2.5rem;
-  height: 2.5rem;
-  flex: none;
-  place-items: center;
-  margin-left: -0.625rem;
-  cursor: pointer;
-}
-
-.checkbox {
-  width: 1.125rem;
-  height: 1.125rem;
-  margin: 0;
-  accent-color: var(--fg);
-  cursor: pointer;
-}
-
-.titleCell {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  min-width: 0;
-}
-
 .bar {
   display: flex;
   flex-wrap: wrap;
@@ -65,15 +24,4 @@
   flex-basis: 100%;
   color: var(--danger);
   font-size: 0.875rem;
-}
-
-@media (pointer: coarse) {
-  .selectAll {
-    min-height: 2.75rem;
-  }
-
-  .checkCell {
-    width: 2.75rem;
-    height: 2.75rem;
-  }
 }

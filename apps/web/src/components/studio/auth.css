@@ -67,7 +67,6 @@
 }
 
 .auth-note--error { --note: var(--danger); }
-.auth-note--warning { --note: var(--warning); }
 
 .auth-back {
   display: inline-flex;
@@ -77,6 +76,41 @@
   color: var(--fg-muted);
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+.auth-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+.auth-language {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.auth-language a {
+  display: inline-flex;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.auth-language a:hover {
+  color: var(--fg);
+}
+
+.auth-language [aria-current="page"] {
+  color: var(--fg);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
 }
 
 .auth-back:hover {

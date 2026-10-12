@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowUpRight } from "lucide-react";
-import { Badge, sentenceCase, type BadgeTone } from "@/components/studio/badge";
-import { Note } from "@/components/studio/note";
+import { Badge, type BadgeTone } from "@/components/studio/badge";
+import { Note, OffNote } from "@/components/studio/note";
 import { PageHead } from "@/components/studio/page-head";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
@@ -20,7 +20,7 @@ import {
   type SocialProvider,
 } from "@atlasnews/core/social-publishing/domain/social-publication";
 import { createSocialPublishingRuntime } from "@/server/composition";
-import { socialDistributionCopy } from "./copy";
+import { socialDistributionCopy, socialPageCopy } from "./copy";
 import { QueueActionButton } from "./queue-action-button";
 import { SocialComposer } from "./social-composer";
 
@@ -84,6 +84,7 @@ export default async function StudioDistributionPage({
 
   const messages = getMessages(locale);
   const copy = socialDistributionCopy[locale];
+  const page = socialPageCopy[locale];
   const providerValue = queryValue(query.provider);
   const provider = isSocialProvider(providerValue) ? providerValue : undefined;
   const status = outboxStatus(queryValue(query.status));
@@ -142,9 +143,19 @@ export default async function StudioDistributionPage({
   const queueUpdated = queryValue(query.queueUpdated);
   const queueError = queryValue(query.queueError);
 
+  // Off: say so once, with the next step. No composer, filters or queue to look at.
+  if (!queueAvailable || !configuredProviders.length) {
+    return (
+      <>
+        <PageHead description={copy.description} scope={messages.studio.scope.social} title={messages.studio.distribution} />
+        <OffNote body={page.offBody} next={page.offNext} title={page.offTitle} />
+      </>
+    );
+  }
+
   return (
     <>
-      <PageHead description={copy.description} title={copy.title} />
+      <PageHead description={copy.description} scope={messages.studio.scope.social} title={messages.studio.distribution} />
 
       {queueUpdated === "cancel" ? (
         <Note tone="success">{copy.cancelled}</Note>
@@ -154,15 +165,11 @@ export default async function StudioDistributionPage({
         <Note tone="error">{copy.mutationError}</Note>
       ) : null}
 
-      {queueAvailable && configuredProviders.length ? (
-        <SocialComposer
-          configuredProviders={configuredProviders}
-          copy={copy}
-          publications={composerPublications}
-        />
-      ) : (
-        <Note tone="warning">{copy.unavailable}</Note>
-      )}
+      <SocialComposer
+        configuredProviders={configuredProviders}
+        copy={copy}
+        publications={composerPublications}
+      />
 
       <section className="studio-stack" aria-labelledby="social-queue-title">
         <div className="studio-section__head">
@@ -179,9 +186,9 @@ export default async function StudioDistributionPage({
           </select>
           <select aria-label={copy.delivery} className="studio-control" defaultValue={status ?? ""} name="status">
             <option value="">{copy.allStatuses}</option>
-            {socialOutboxStatuses.map((candidate) => <option key={candidate} value={candidate}>{sentenceCase(candidate)}</option>)}
+            {socialOutboxStatuses.map((candidate) => <option key={candidate} value={candidate}>{page.statuses[candidate]}</option>)}
           </select>
-          <button className="button button--quiet" type="submit">{copy.filter}</button>
+          <button className="button button--quiet" type="submit">{messages.studio.apply}</button>
         </form>
 
         {jobs.length ? (
@@ -213,7 +220,7 @@ export default async function StudioDistributionPage({
                       </td>
                       <td data-label={copy.channel}>{providerLabel(job.provider)}</td>
                       <td data-label={messages.studio.statusLabel}>
-                        <Badge tone={statusTone[job.status]}>{sentenceCase(job.status)}</Badge>
+                        <Badge tone={statusTone[job.status]}>{page.statuses[job.status]}</Badge>
                       </td>
                       <td data-label={copy.scheduledAt}>{formatUtc(job.availableAt, locale)}</td>
                       <td data-label={copy.attempted}>{job.attempts}/{job.maxAttempts}</td>
@@ -262,7 +269,7 @@ export default async function StudioDistributionPage({
             <h2>{copy.emptyQueue}</h2>
           </div>
         )}
-        <p className="studio-muted">{copy.latestLimit}</p>
+        {queueResult.items.length >= 200 ? <p className="studio-muted">{copy.latestLimit}</p> : null}
       </section>
     </>
   );

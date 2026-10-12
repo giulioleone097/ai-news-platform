@@ -50,15 +50,15 @@ export default async function StatusPage({
 
   return (
     <main id="main-content" className="site-shell list-main">
-      <header className="page-head">
-        <h1>{messages.feed.statusPageTitle[status]}</h1>
-        <p>{messages.feed.statusIntro[status]}</p>
-      </header>
-      <div className="list-filter">
-        <StatusFilter locale={locale} active={status} />
-      </div>
+      <div className="archive">
+        <header className="page-head">
+          <h1>{messages.feed.statusPageTitle[status]}</h1>
+          <p>{messages.feed.statusIntro[status]}</p>
+        </header>
+        <div className="archive__tools">
+          <StatusFilter locale={locale} active={status} />
+        </div>
 
-      <div className="feed-layout">
         <section className="feed" aria-label={messages.feed.statusPageTitle[status]}>
           {page.items.length ? (
             <InfiniteArticleList
@@ -67,7 +67,7 @@ export default async function StatusPage({
               locale={locale}
               filters={{ status }}
               copy={messages.latest}
-              dayCopy={messages.feed.day}
+              feedCopy={messages.feed}
               statusLabels={messages.story.claimStatus}
             />
           ) : (
@@ -78,7 +78,7 @@ export default async function StatusPage({
             </div>
           )}
         </section>
-        <FeedAside locale={locale} />
+        <FeedAside locale={locale} legend />
       </div>
     </main>
   );

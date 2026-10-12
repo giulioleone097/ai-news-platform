@@ -167,7 +167,7 @@ export function SocialComposer({
             ) : null}
 
             <label className="studio-field">
-              <span>{copy.schedule}</span>
+              <span>{copy.schedule} <span className="studio-field__optional">({copy.optional})</span></span>
               <input
                 aria-describedby="social-schedule-help"
                 aria-invalid={Boolean(error("scheduledFor")) || undefined}

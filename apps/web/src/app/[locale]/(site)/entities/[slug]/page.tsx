@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { notFound } from "next/navigation";
 import { toFeedItem } from "@/components/site/feed-item";
+import { EntityStatus, latestClaim } from "@/components/site/entity-status";
 import { InfiniteArticleList } from "@/components/site/infinite-article-list";
 import { SectionHeader } from "@/components/site/section-header";
 import "@/styles/site/lists.css";
@@ -79,6 +80,7 @@ export default async function EntityPage({
         </p>
         <h1>{entity.name}</h1>
         {entity.description ? <p>{entity.description}</p> : null}
+        <EntityStatus latest={latestClaim(timeline)} count={timeline.length} locale={locale} />
         {entity.officialUrl ? (
           <a className="page-head__link" href={entity.officialUrl} rel="noopener noreferrer" target="_blank">
             {copy.officialSite}
@@ -104,7 +106,7 @@ export default async function EntityPage({
             locale={locale}
             filters={{ entity: slug }}
             copy={messages.latest}
-            dayCopy={messages.feed.day}
+            feedCopy={messages.feed}
             statusLabels={messages.story.claimStatus}
           />
         </section>

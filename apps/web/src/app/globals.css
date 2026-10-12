@@ -10,6 +10,8 @@
   --fg-muted: var(--atlasnews-color-muted);
   --line: var(--atlasnews-color-rule);
   --line-strong: var(--atlasnews-color-rule-strong);
+  /* The outline of a field: a control needs 3:1 against the page, a decorative rule does not. */
+  --line-control: var(--atlasnews-color-control);
   --accent: var(--atlasnews-color-marker);
   --accent-hover: var(--atlasnews-color-marker-deep);
   /* Text on the marker and on cover plates is ink in both themes. */
@@ -38,9 +40,10 @@
     --fg-muted: var(--atlasnews-color-night-muted);
     --line: var(--atlasnews-color-night-rule);
     --line-strong: var(--atlasnews-color-night-rule-strong);
+    --line-control: var(--atlasnews-color-night-control);
     /* The light-page semantic colors are too dark to read as text on night, so each gets a lighter twin. */
     --success: #6fcf8a;
-    --warning: #f0b35a;
+    --warning: #f08a3c;
     --danger: #ff8a7d;
     --info: #8fb6ff;
     --focus: var(--atlasnews-color-marker);
@@ -262,7 +265,7 @@ h4 {
   width: 100%;
   min-height: 2.75rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line-control);
   border-radius: var(--radius-sm);
   color: var(--fg);
   background: var(--bg);
@@ -309,9 +312,9 @@ h4 {
 }
 
 .status__meter i {
-  width: 0.2em;
+  width: 0.22em;
   border-radius: 0.06em;
-  background: color-mix(in srgb, currentColor 28%, transparent);
+  background: color-mix(in srgb, currentColor 35%, transparent);
 }
 
 .status__meter i:nth-child(1) { height: 40%; }
@@ -340,6 +343,20 @@ h4 {
 
 .status__lines i:last-child {
   width: 60%;
+}
+
+/* Three sizes: a row keeps the base, a card is a step up, the lead and the article head carry the signature. */
+.status--card {
+  font-size: 0.875rem;
+}
+
+.status--lead {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.status--lead :is(.status__meter, .status__lines) {
+  font-size: 1.25em;
 }
 
 /* Feedback under a form. Empty until there is something to say. */

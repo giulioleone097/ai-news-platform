@@ -1,8 +1,9 @@
 "use client";
 
 import { CalendarClock, Save, Send, XCircle } from "lucide-react";
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import { useFormStatus } from "react-dom";
+import { type ConfirmCopy, useConfirmedSubmit } from "@/components/studio/confirm-dialog";
 import { saveNewsletterCampaignAction } from "@/app/[locale]/(studio)/studio/newsletter/campaigns/actions";
 import { idleStudioActionState } from "@/components/studio/action-state";
 import { MarkdownEditor, type MarkdownEditorCopy } from "@/components/studio/markdown-editor";
@@ -33,9 +34,15 @@ const copy = {
     scheduleAction: "Schedule",
     send: "Queue now",
     cancel: "Cancel campaign",
-    scheduleConfirm: "Schedule this campaign for the selected UTC time?",
-    sendConfirm: "Freeze the current audience and queue this campaign for email delivery now?",
-    cancelConfirm: "Cancel this campaign and every unsent delivery?",
+    optional: "optional",
+    subjectHelp: "What readers see first in their inbox. Up to 200 characters.",
+    preheaderHelp: "The preview line after the subject. Up to 300 characters.",
+    fromEmailHelp: "Set by the delivery account.",
+    replyToHelp: "Replies go here. Leave empty to use the sender address.",
+    scheduledForHelp: "Used by Schedule. Save draft and Queue now ignore it.",
+    scheduleConfirm: { title: "Schedule this campaign?", consequence: "It is queued for delivery at the UTC time you chose." },
+    sendConfirm: { title: "Queue this campaign now?", consequence: "The current audience is frozen and delivery starts. The content can no longer be edited." },
+    cancelConfirm: { title: "Cancel this campaign?", consequence: "Every delivery not yet sent is cancelled. This cannot be undone." },
     unavailable: "Campaign content is locked after it enters the delivery queue.",
     markdown: {
       toolbar: "Markdown formatting",
@@ -81,9 +88,15 @@ const copy = {
     scheduleAction: "Programma",
     send: "Metti in coda",
     cancel: "Annulla campagna",
-    scheduleConfirm: "Programmare la campagna per l’orario UTC selezionato?",
-    sendConfirm: "Congelare il pubblico attuale e mettere ora la campagna in coda per l’invio email?",
-    cancelConfirm: "Annullare la campagna e tutte le consegne non inviate?",
+    optional: "facoltativo",
+    subjectHelp: "Ciò che i lettori vedono per primo nella casella. Fino a 200 caratteri.",
+    preheaderHelp: "La riga di anteprima dopo l’oggetto. Fino a 300 caratteri.",
+    fromEmailHelp: "Imposta dall’account di invio.",
+    replyToHelp: "Le risposte arrivano qui. Se vuoto, si usa l’indirizzo del mittente.",
+    scheduledForHelp: "Usata da Programma. Salva bozza e Metti in coda la ignorano.",
+    scheduleConfirm: { title: "Programmare questa campagna?", consequence: "Viene messa in coda per l’invio all’orario UTC scelto." },
+    sendConfirm: { title: "Mettere ora in coda questa campagna?", consequence: "Il pubblico attuale viene congelato e l’invio parte. Il contenuto non sarà più modificabile." },
+    cancelConfirm: { title: "Annullare questa campagna?", consequence: "Ogni consegna non ancora inviata viene annullata. L’operazione non si può annullare." },
     unavailable: "Il contenuto è bloccato dopo l’ingresso nella coda di consegna.",
     markdown: {
       toolbar: "Formattazione Markdown",
@@ -110,44 +123,55 @@ const copy = {
   },
 } as const;
 
+function setConfirmation(input: HTMLInputElement | null, value: string) {
+  if (input) input.value = value;
+}
+
 function CampaignButton({
   intent,
   label,
   className,
-  confirmMessage,
+  confirm,
   pendingLabel,
   icon: Icon,
 }: {
   intent: "save" | "schedule" | "send" | "cancel";
   label: string;
   className: string;
-  confirmMessage?: string;
+  confirm?: Pick<ConfirmCopy, "title" | "consequence">;
   pendingLabel: string;
   icon: typeof Save;
 }) {
   const { pending } = useFormStatus();
+  const confirmationRef = useRef<HTMLInputElement | null>(null);
+  // The server acts on `confirmation` only when it names the intent: the dialog's Confirm sets it.
+  const ref = useRef<HTMLButtonElement>(null);
+  const confirmation = useConfirmedSubmit(
+    ref,
+    confirm && { ...confirm, tone: intent === "cancel" ? "danger" : "primary" },
+    label,
+    () => setConfirmation(confirmationRef.current, intent),
+  );
   return (
-    <button
-      className={className}
-      disabled={pending}
-      name="intent"
-      onClick={(event) => {
-        const confirmation = event.currentTarget.form?.elements.namedItem("confirmation");
-        if (confirmation instanceof HTMLInputElement) confirmation.value = "";
-        if (confirmMessage && !window.confirm(confirmMessage)) {
-          event.preventDefault();
-          return;
-        }
-        if (confirmMessage && confirmation instanceof HTMLInputElement) {
-          confirmation.value = intent;
-        }
-      }}
-      type="submit"
-      value={intent}
-    >
-      <Icon aria-hidden="true" />
-      {pending ? pendingLabel : label}
-    </button>
+    <>
+      <button
+        className={className}
+        disabled={pending}
+        name="intent"
+        onClick={(event) => {
+          confirmationRef.current = (event.currentTarget.form?.elements.namedItem("confirmation") as HTMLInputElement | null) ?? null;
+          setConfirmation(confirmationRef.current, "");
+          confirmation.onClick(event);
+        }}
+        ref={ref}
+        type="submit"
+        value={intent}
+      >
+        <Icon aria-hidden="true" />
+        {pending ? pendingLabel : label}
+      </button>
+      {confirmation.dialog}
+    </>
   );
 }
 
@@ -179,14 +203,14 @@ export function NewsletterCampaignForm({
       {editable ? (
         <>
           <CampaignButton className="button button--quiet" icon={Save} intent="save" label={labels.save} pendingLabel={labels.saving} />
-          <CampaignButton className="button button--quiet" confirmMessage={labels.scheduleConfirm} icon={CalendarClock} intent="schedule" label={labels.scheduleAction} pendingLabel={labels.working} />
-          <CampaignButton className="button button--primary" confirmMessage={labels.sendConfirm} icon={Send} intent="send" label={labels.send} pendingLabel={labels.working} />
+          <CampaignButton className="button button--quiet" confirm={labels.scheduleConfirm} icon={CalendarClock} intent="schedule" label={labels.scheduleAction} pendingLabel={labels.working} />
+          <CampaignButton className="button button--primary" confirm={labels.sendConfirm} icon={Send} intent="send" label={labels.send} pendingLabel={labels.working} />
         </>
       ) : null}
       {canCancel ? (
         <CampaignButton
           className="button button--danger"
-          confirmMessage={labels.cancelConfirm}
+          confirm={labels.cancelConfirm}
           icon={XCircle}
           intent="cancel"
           label={labels.cancel}
@@ -211,11 +235,13 @@ export function NewsletterCampaignForm({
               <label className="studio-field studio-field--title">
                 <span>{labels.subject}</span>
                 <input {...invalid("subject")} defaultValue={campaign?.subject} maxLength={200} name="subject" required />
+                <small className="studio-field__hint">{labels.subjectHelp}</small>
                 {fieldError("subject")}
               </label>
               <label className="studio-field">
-                <span>{labels.preheader}</span>
+                <span>{labels.preheader} <span className="studio-field__optional">({labels.optional})</span></span>
                 <textarea {...invalid("preheader")} defaultValue={campaign?.preheader} maxLength={300} name="preheader" rows={2} />
+                <small className="studio-field__hint">{labels.preheaderHelp}</small>
                 {fieldError("preheader")}
               </label>
               <MarkdownEditor
@@ -243,10 +269,12 @@ export function NewsletterCampaignForm({
               <label className="studio-field">
                 <span>{labels.fromEmail}</span>
                 <input defaultValue={campaign?.fromEmail ?? defaults.fromEmail} name="fromEmail" readOnly required type="email" />
+                <small className="studio-field__hint">{labels.fromEmailHelp}</small>
               </label>
               <label className="studio-field">
-                <span>{labels.replyTo}</span>
+                <span>{labels.replyTo} <span className="studio-field__optional">({labels.optional})</span></span>
                 <input {...invalid("replyTo")} defaultValue={campaign?.replyTo ?? defaults.replyTo ?? ""} name="replyTo" type="email" />
+                <small className="studio-field__hint">{labels.replyToHelp}</small>
                 {fieldError("replyTo")}
               </label>
             </fieldset>
@@ -271,13 +299,14 @@ export function NewsletterCampaignForm({
             <fieldset className="studio-section">
               <legend>{labels.schedule}</legend>
               <label className="studio-field">
-                <span>{labels.scheduledFor}</span>
+                <span>{labels.scheduledFor} <span className="studio-field__optional">({labels.optional})</span></span>
                 <input
                   {...invalid("scheduledFor")}
                   defaultValue={toUtcDateTimeInput(campaign?.scheduledFor ?? null)}
                   name="scheduledFor"
                   type="datetime-local"
                 />
+                <small className="studio-field__hint">{labels.scheduledForHelp}</small>
                 {fieldError("scheduledFor")}
               </label>
             </fieldset>

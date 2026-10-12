@@ -10,6 +10,7 @@ colors:
   muted: "#5c5d59"
   rule: "#e3e3de"
   rule-strong: "#b8b8b1"
+  control: "#767670"
   marker: "#ffd60a"
   marker-deep: "#f5c400"
   success: "#1f7a3d"
@@ -21,12 +22,14 @@ colors:
   night-raised: "#1a1b1e"
   night-rule: "#2d2f33"
   night-rule-strong: "#55575c"
+  night-control: "#7a7c82"
   night-ink: "#f3f3ef"
   night-muted: "#a4a59f"
   plate-sky: "#c9e4ff"
   plate-leaf: "#d7f2d0"
   plate-peach: "#ffd4c7"
   plate-lilac: "#e4dcff"
+  plate-sand: "#f1e6c8"
 typography:
   display:
     fontFamily: Schibsted Grotesk Variable
@@ -177,6 +180,15 @@ components:
   cover-plate-lilac:
     backgroundColor: "{colors.plate-lilac}"
     textColor: "{colors.ink}"
+  cover-plate-sand:
+    backgroundColor: "{colors.plate-sand}"
+    textColor: "{colors.ink}"
+  control-outline:
+    backgroundColor: "{colors.control}"
+    height: 1px
+  night-control-outline:
+    backgroundColor: "{colors.night-control}"
+    height: 1px
   status-success:
     backgroundColor: "{colors.success}"
     textColor: "{colors.white}"

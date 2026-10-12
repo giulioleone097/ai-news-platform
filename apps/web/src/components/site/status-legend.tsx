@@ -4,8 +4,9 @@ import { ClaimChip } from "./claim-chip";
 import { statusLadder } from "./status-filter";
 
 /**
- * What each step of the status meter means. Every step links to the stories that carry it.
- * `band` lays the steps out side by side across the page instead of stacking them in a side column.
+ * What each step of the status meter means, and the way into the stories that carry it: every
+ * step is one link. `band` lays the steps out side by side above the home stream instead of
+ * stacking them in a side column.
  */
 export function StatusLegend({ locale, band = false }: { locale: Locale; band?: boolean }) {
   const messages = getMessages(locale);
@@ -18,8 +19,8 @@ export function StatusLegend({ locale, band = false }: { locale: Locale; band?: 
           <li key={status}>
             <Link href={localizedPath(`/status/${status}`, locale)} prefetch={false}>
               <ClaimChip status={status} label={messages.story.claimStatus[status]} />
+              <span>{messages.feed.statusIntro[status]}</span>
             </Link>
-            <p>{messages.feed.statusIntro[status]}</p>
           </li>
         ))}
       </ul>

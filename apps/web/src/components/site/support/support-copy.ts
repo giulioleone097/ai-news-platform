@@ -54,6 +54,9 @@ export interface SupportCopy {
   description: string;
   faqLabel: string;
   faq: readonly PageSection[];
+  /** The questions for people who run the newsroom or build on it, grouped under one heading after the rest. */
+  editorsHeading: string;
+  editors: readonly PageSection[];
   relatedLabel: string;
   privacy: string;
   terms: string;
@@ -70,7 +73,6 @@ const en: SupportCopy = {
       heading: "What is AtlasNews?",
       paragraphs: [
         "AtlasNews is an English and Italian publication about artificial intelligence. Every story shows how settled its claim is (confirmed, rolling out, in test, rumour or analysis) and the sources behind it. The site shows no advertisements.",
-        "AI assistants can read the published stories and, for signed-in editors, run the newsroom through the AtlasNews plugin and its MCP server.",
       ],
     },
     {
@@ -84,9 +86,12 @@ const en: SupportCopy = {
       id: "unsubscribe",
       heading: "How do I unsubscribe from the newsletter?",
       paragraphs: [
-        "Every briefing email ends with an unsubscribe link. Open it and confirm. If you no longer have the email, write to us with the form below from the address you subscribed with and we will remove it.",
+        "Every briefing email ends with an unsubscribe link. Open it and confirm. If you no longer have the email, write to us with the form at the top of this page from the address you subscribed with and we will remove it.",
       ],
     },
+  ],
+  editorsHeading: "For editors and AI",
+  editors: [
     {
       id: "editor-sign-in",
       heading: "How do editors sign in?",
@@ -95,10 +100,17 @@ const en: SupportCopy = {
       ],
     },
     {
+      id: "ai-assistants",
+      heading: "What can AI assistants do on AtlasNews?",
+      paragraphs: [
+        "AI assistants can read the published stories and, for signed-in editors, run the newsroom through the AtlasNews plugin and its MCP server.",
+      ],
+    },
+    {
       id: "assistant-problem",
       heading: "Something does not work in ChatGPT or Claude",
       paragraphs: [
-        "Use the form below and tell us which assistant you use, which tool you called and what you asked. Do not send passwords or access tokens.",
+        "Use the form at the top of this page and tell us which assistant you use, which tool you called and what you asked. Do not send passwords or access tokens.",
       ],
     },
   ],
@@ -142,7 +154,6 @@ const it: SupportCopy = {
       heading: "Che cos'è AtlasNews?",
       paragraphs: [
         "AtlasNews è una testata in inglese e italiano sull'intelligenza artificiale. Ogni storia indica quanto è solida l'affermazione (confermata, in rilascio, in test, voce o analisi) e le fonti che la sostengono. Il sito non mostra pubblicità.",
-        "Gli assistenti AI possono leggere le storie pubblicate e, per i redattori che hanno effettuato l'accesso, usare la redazione tramite il plugin AtlasNews e il suo server MCP.",
       ],
     },
     {
@@ -156,9 +167,12 @@ const it: SupportCopy = {
       id: "unsubscribe",
       heading: "Come mi disiscrivo dalla newsletter?",
       paragraphs: [
-        "Ogni email del briefing termina con un link per annullare l'iscrizione. Aprilo e conferma. Se non hai più l'email, scrivici con il modulo qui sotto dall'indirizzo con cui ti sei iscritto e lo rimuoveremo.",
+        "Ogni email del briefing termina con un link per annullare l'iscrizione. Aprilo e conferma. Se non hai più l'email, scrivici con il modulo in cima a questa pagina dall'indirizzo con cui ti sei iscritto e lo rimuoveremo.",
       ],
     },
+  ],
+  editorsHeading: "Per redazione e AI",
+  editors: [
     {
       id: "editor-sign-in",
       heading: "Come accedono i redattori?",
@@ -167,10 +181,17 @@ const it: SupportCopy = {
       ],
     },
     {
+      id: "ai-assistants",
+      heading: "Cosa possono fare gli assistenti AI su AtlasNews?",
+      paragraphs: [
+        "Gli assistenti AI possono leggere le storie pubblicate e, per i redattori che hanno effettuato l'accesso, usare la redazione tramite il plugin AtlasNews e il suo server MCP.",
+      ],
+    },
+    {
       id: "assistant-problem",
       heading: "Qualcosa non funziona in ChatGPT o Claude",
       paragraphs: [
-        "Usa il modulo qui sotto e indicaci quale assistente usi, quale strumento hai chiamato e cosa hai chiesto. Non inviare password né token di accesso.",
+        "Usa il modulo in cima a questa pagina e indicaci quale assistente usi, quale strumento hai chiamato e cosa hai chiesto. Non inviare password né token di accesso.",
       ],
     },
   ],

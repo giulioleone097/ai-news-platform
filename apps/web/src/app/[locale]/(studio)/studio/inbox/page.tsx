@@ -5,10 +5,10 @@ import { Mail } from "lucide-react";
 import { loadInbox, parseInboxStatus } from "@/components/studio/inbox/inbox-data";
 import { MessageDeleteButton } from "@/components/studio/inbox/message-delete-button";
 import { Badge, type BadgeTone } from "@/components/studio/badge";
-import { Note } from "@/components/studio/note";
+import { Note, OffNote } from "@/components/studio/note";
 import { PageHead } from "@/components/studio/page-head";
 import { StudioSubmitButton } from "@/components/studio/studio-submit-button";
-import { isLocale } from "@/i18n";
+import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { contactMessageStatuses } from "@atlasnews/core/support/domain/contact-message";
 import { setContactStatusAction } from "./actions";
@@ -46,10 +46,20 @@ export default async function StudioInboxPage({
     return query.size ? `${base}?${query}` : base;
   };
   const when = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
+  const title = getMessages(locale).studio.inbox;
+
+  if (!inbox.ok && inbox.reason === "unavailable") {
+    return (
+      <>
+        <PageHead description={copy.description} title={title} />
+        <OffNote body={copy.offBody} next={copy.offNext} title={copy.offTitle} />
+      </>
+    );
+  }
 
   return (
     <>
-      <PageHead description={copy.description} title={copy.title} />
+      <PageHead description={copy.description} title={title} />
 
       {search.updated ? <Note tone="success">{copy.updated}</Note> : null}
       {search.deleted ? <Note tone="success">{copy.deleted}</Note> : null}
@@ -66,11 +76,11 @@ export default async function StudioInboxPage({
       </nav>
 
       {!inbox.ok ? (
-        <Note tone="error">{inbox.reason === "unavailable" ? copy.unavailable : copy.loadError}</Note>
+        <Note tone="error">{copy.loadError}</Note>
       ) : inbox.page.items.length ? (
         <>
           <p className="sr-only">{copy.untrusted}</p>
-          <section aria-label={copy.title} className="studio-feed">
+          <section aria-label={title} className="studio-feed">
             {inbox.page.items.map((message) => (
               <article aria-labelledby={`message-${message.id}`} key={message.id}>
                 <div className="studio-feed__head">

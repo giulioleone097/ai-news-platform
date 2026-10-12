@@ -1,0 +1,38 @@
+/* The Studio confirmation: a native modal dialog that looks like the agent-approval dialog. */
+.confirm-dialog {
+  width: min(32rem, calc(100vw - 2rem));
+  padding: 1.25rem;
+  margin: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  color: var(--fg);
+  background: var(--bg-raised);
+}
+
+.confirm-dialog::backdrop {
+  background: color-mix(in srgb, var(--fg) 45%, transparent);
+}
+
+.confirm-dialog__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+  overflow-wrap: anywhere;
+}
+
+.confirm-dialog__line {
+  margin: 0 0 1rem;
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.confirm-dialog__line + .confirm-dialog__actions {
+  margin-top: 0;
+}

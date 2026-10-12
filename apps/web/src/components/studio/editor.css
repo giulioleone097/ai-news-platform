@@ -41,6 +41,21 @@
   display: none;
 }
 
+/* A thin rule between the groups: headings and inline styles, link and quote, lists, code and image. */
+.studio-markdown__divider {
+  width: 1px;
+  flex: none;
+  margin: 0.375rem 0.25rem;
+  background: var(--line-strong);
+}
+
+/* Side by side needs room: below the two-column layout the editor stays a single pane. */
+@media (max-width: 63.99rem) {
+  .studio-segmented .studio-markdown__split {
+    display: none;
+  }
+}
+
 .studio-field.studio-markdown .studio-markdown__write-pane textarea {
   display: block;
   min-height: clamp(24rem, 60svh, 40rem);

@@ -10,10 +10,13 @@ import { useId, useState, type ReactNode } from "react";
  */
 export function StudioSidebar({
   brand,
+  status,
   label,
   children,
 }: {
   brand: ReactNode;
+  /** Sits beside the brand in the phone's top bar (the demo pill). */
+  status?: ReactNode;
   /** Names the menu button. */
   label: string;
   children: ReactNode;
@@ -33,6 +36,7 @@ export function StudioSidebar({
     >
       <div className="studio-sidebar__head">
         {brand}
+        {status}
         <button
           aria-controls={bodyId}
           aria-expanded={open}

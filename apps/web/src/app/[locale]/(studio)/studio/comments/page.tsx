@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge, sentenceCase, type BadgeTone } from "@/components/studio/badge";
-import { Note } from "@/components/studio/note";
+import { OffNote } from "@/components/studio/note";
 import { PageHead } from "@/components/studio/page-head";
-import { isLocale } from "@/i18n";
+import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import {
   moderationQueueStatuses,
@@ -18,11 +18,9 @@ export const dynamic = "force-dynamic";
 
 const copy = {
   en: {
-    title: "Comment moderation",
     description: "Review conversations, reports and the append-only moderation trail.",
     status: "Status",
     allStatuses: "All statuses",
-    filter: "Filter",
     empty: "No comments match this view",
     reason: "Required moderation reason",
     reports: "Reports",
@@ -34,15 +32,17 @@ const copy = {
     change: "Change",
     date: "Date",
     system: "System",
-    unavailable: "Comment moderation is not configured.",
+    statuses: { approved: "Approved", pending: "Pending", rejected: "Rejected", spam: "Spam", deleted: "Deleted" },
+    authorKinds: { authenticated: "Signed in", guest: "Guest" },
+    offTitle: "Comments are off",
+    offBody: "Readers can comment on articles, and you moderate the conversations here.",
+    offNext: "An admin turns them on in the Site settings.",
     actions: { approved: "Approve", rejected: "Reject", spam: "Mark spam", deleted: "Delete" },
   },
   it: {
-    title: "Moderazione commenti",
     description: "Revisiona conversazioni, segnalazioni e registro immutabile di moderazione.",
     status: "Stato",
     allStatuses: "Tutti gli stati",
-    filter: "Filtra",
     empty: "Nessun commento corrisponde a questa vista",
     reason: "Motivazione obbligatoria",
     reports: "Segnalazioni",
@@ -54,7 +54,11 @@ const copy = {
     change: "Modifica",
     date: "Data",
     system: "Sistema",
-    unavailable: "La moderazione commenti non è configurata.",
+    statuses: { approved: "Approvato", pending: "In attesa", rejected: "Rifiutato", spam: "Spam", deleted: "Eliminato" },
+    authorKinds: { authenticated: "Registrato", guest: "Ospite" },
+    offTitle: "I commenti sono disattivati",
+    offBody: "I lettori possono commentare gli articoli e qui moderi le conversazioni.",
+    offNext: "Un amministratore li attiva nelle Impostazioni del sito.",
     actions: { approved: "Approva", rejected: "Rifiuta", spam: "Segna spam", deleted: "Elimina" },
   },
 } as const;
@@ -83,13 +87,15 @@ export default async function StudioCommentsPage({
   const locale = rawLocale;
   await requireEditor(locale);
   const labels = copy[locale];
+  const { studio } = getMessages(locale);
+  const title = studio.comments;
   const service = createMutationCommentService();
 
   if (!service) {
     return (
       <>
-        <PageHead description={labels.description} title={labels.title} />
-        <Note tone="warning">{labels.unavailable}</Note>
+        <PageHead description={labels.description} title={title} />
+        <OffNote body={labels.offBody} next={labels.offNext} title={labels.offTitle} />
       </>
     );
   }
@@ -112,26 +118,26 @@ export default async function StudioCommentsPage({
 
   return (
     <>
-      <PageHead description={labels.description} title={labels.title} />
+      <PageHead description={labels.description} title={title} />
 
       <form className="studio-toolbar" method="get">
         <select aria-label={labels.status} className="studio-control" defaultValue={status ?? ""} name="status">
           <option value="">{labels.allStatuses}</option>
-          {moderationQueueStatuses.map((item) => <option key={item} value={item}>{sentenceCase(item)}</option>)}
+          {moderationQueueStatuses.map((item) => <option key={item} value={item}>{labels.statuses[item]}</option>)}
         </select>
         <input name="locale" type="hidden" value={locale} />
-        <button className="button button--quiet" type="submit">{labels.filter}</button>
+        <button className="button button--quiet" type="submit">{studio.apply}</button>
       </form>
 
       {page.items.length ? (
-        <section className="studio-feed" aria-label={labels.title}>
+        <section className="studio-feed" aria-label={title}>
           {page.items.map((comment) => (
             <article key={comment.id}>
               <div className="studio-feed__head">
                 <strong>{comment.displayName}</strong>
-                <Badge tone={statusTone[comment.status] ?? "neutral"}>{sentenceCase(comment.status)}</Badge>
+                <Badge tone={statusTone[comment.status] ?? "neutral"}>{labels.statuses[comment.status as keyof typeof labels.statuses]}</Badge>
                 <span className="studio-meta">
-                  <span>{sentenceCase(comment.authorKind)}</span>
+                  <span>{labels.authorKinds[comment.authorKind]}</span>
                   <time dateTime={comment.createdAt}>{when.format(new Date(comment.createdAt))} UTC</time>
                   {comment.reportCount ? <span>{comment.reportCount} {labels.reports.toLowerCase()}</span> : null}
                 </span>
@@ -193,12 +199,12 @@ export default async function StudioCommentsPage({
                 <tr key={event.id}>
                   <td className="studio-table__main">
                     <div className="studio-cell">
-                      <strong>{event.action}</strong>
+                      <strong>{sentenceCase(event.action.replaceAll("_", " "))}</strong>
                       {event.reason ? <small>{event.reason}</small> : null}
                     </div>
                   </td>
                   <td data-label={labels.actor}>{event.actorLabel || labels.system}</td>
-                  <td data-label={labels.change}>{event.previousStatus || "—"} → {event.nextStatus || "—"}</td>
+                  <td data-label={labels.change}>{event.previousStatus ? labels.statuses[event.previousStatus as keyof typeof labels.statuses] ?? event.previousStatus : "—"} → {event.nextStatus ? labels.statuses[event.nextStatus as keyof typeof labels.statuses] ?? event.nextStatus : "—"}</td>
                   <td data-label={labels.date}>
                     <time dateTime={event.createdAt}>{when.format(new Date(event.createdAt))} UTC</time>
                   </td>
