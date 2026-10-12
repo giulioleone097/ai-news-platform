@@ -11,7 +11,7 @@ import {
 } from "./social-actions";
 
 /** The row's own label for cancelling is just "Cancel", which the dialog already uses to dismiss itself. */
-const cancelDispatch = { en: "Cancel dispatch", it: "Annulla invio" } as const;
+const cancelDispatch = { en: "Cancel post", it: "Annulla post" } as const;
 
 function MutationSubmit({
   confirmMessage,

@@ -110,22 +110,23 @@ export default async function StudioMediaPage({
               />
               <a href={asset.url} rel="noreferrer" target="_blank" title={asset.name}>{asset.name}</a>
               <p>{asset.mimeType} · {formatBytes(asset.size, locale)}</p>
-              <p>
+              <div className="studio-media-use">
                 {asset.articles.length ? (
                   <>
-                    {copy.usedBy}{" "}
-                    {asset.articles.slice(0, 2).map((article, index) => (
-                      <span key={article.id}>
-                        {index ? ", " : null}
-                        <Link href={`/${locale}/studio/articles/${article.id}`}>{article.title}</Link>
-                      </span>
-                    ))}
-                    {asset.articles.length > 2 ? ` +${asset.articles.length - 2}` : null}
+                    <span>{copy.usedBy}</span>
+                    <ul>
+                      {asset.articles.slice(0, 2).map((article) => (
+                        <li key={article.id}>
+                          <Link href={`/${locale}/studio/articles/${article.id}`}>{article.title}</Link>
+                        </li>
+                      ))}
+                    </ul>
+                    {asset.articles.length > 2 ? <span>+{asset.articles.length - 2}</span> : null}
                   </>
                 ) : (
-                  copy.unusedAsset
+                  <span>{copy.unusedAsset}</span>
                 )}
-              </p>
+              </div>
               {asset.path && writable && !asset.articles.length ? (
                 <form action={deleteMediaAction}>
                   <input name="locale" type="hidden" value={locale} />

@@ -15,7 +15,7 @@ import type { NewsletterCampaign } from "@atlasnews/core/newsletter/domain/newsl
 const copy = {
   en: {
     subject: "Subject",
-    preheader: "Preheader",
+    preheader: "Preview line",
     sender: "Sender",
     fromName: "From name",
     fromEmail: "From email",
@@ -27,23 +27,23 @@ const copy = {
     schedule: "Delivery schedule",
     scheduledFor: "Send at (UTC)",
     content: "Email content",
-    contentHelp: "Markdown is rendered to safe email HTML. Raw HTML and remote images are omitted.",
+    contentHelp: "Write in Markdown. Raw HTML and images from other sites are left out of the email.",
     save: "Save draft",
     saving: "Saving…",
     working: "Working…",
     scheduleAction: "Schedule",
-    send: "Queue now",
+    send: "Send now",
     cancel: "Cancel campaign",
     optional: "optional",
     subjectHelp: "What readers see first in their inbox. Up to 200 characters.",
-    preheaderHelp: "The preview line after the subject. Up to 300 characters.",
+    preheaderHelp: "The line shown after the subject. Up to 300 characters.",
     fromEmailHelp: "Set by the delivery account.",
     replyToHelp: "Replies go here. Leave empty to use the sender address.",
-    scheduledForHelp: "Used by Schedule. Save draft and Queue now ignore it.",
-    scheduleConfirm: { title: "Schedule this campaign?", consequence: "It is queued for delivery at the UTC time you chose." },
-    sendConfirm: { title: "Queue this campaign now?", consequence: "The current audience is frozen and delivery starts. The content can no longer be edited." },
-    cancelConfirm: { title: "Cancel this campaign?", consequence: "Every delivery not yet sent is cancelled. This cannot be undone." },
-    unavailable: "Campaign content is locked after it enters the delivery queue.",
+    scheduledForHelp: "Used by Schedule. Save draft and Send now ignore it.",
+    scheduleConfirm: { title: "Schedule this campaign?", consequence: "It is sent at the UTC time you chose." },
+    sendConfirm: { title: "Send this campaign now?", consequence: "It goes to the confirmed subscribers right away. The content can no longer be edited." },
+    cancelConfirm: { title: "Cancel this campaign?", consequence: "Every email not yet sent is cancelled. This cannot be undone." },
+    unavailable: "The content is locked once a campaign is scheduled or sent.",
     markdown: {
       toolbar: "Markdown formatting",
       viewMode: "Editor view",
@@ -69,7 +69,7 @@ const copy = {
   },
   it: {
     subject: "Oggetto",
-    preheader: "Preheader",
+    preheader: "Riga di anteprima",
     sender: "Mittente",
     fromName: "Nome mittente",
     fromEmail: "Email mittente",
@@ -81,23 +81,23 @@ const copy = {
     schedule: "Programmazione",
     scheduledFor: "Invia alle (UTC)",
     content: "Contenuto email",
-    contentHelp: "Il Markdown diventa HTML email sicuro. HTML grezzo e immagini remote vengono omessi.",
+    contentHelp: "Scrivi in Markdown. L’HTML grezzo e le immagini da altri siti restano fuori dall’email.",
     save: "Salva bozza",
     saving: "Salvataggio…",
     working: "Elaborazione…",
     scheduleAction: "Programma",
-    send: "Metti in coda",
+    send: "Invia ora",
     cancel: "Annulla campagna",
     optional: "facoltativo",
     subjectHelp: "Ciò che i lettori vedono per primo nella casella. Fino a 200 caratteri.",
     preheaderHelp: "La riga di anteprima dopo l’oggetto. Fino a 300 caratteri.",
     fromEmailHelp: "Imposta dall’account di invio.",
     replyToHelp: "Le risposte arrivano qui. Se vuoto, si usa l’indirizzo del mittente.",
-    scheduledForHelp: "Usata da Programma. Salva bozza e Metti in coda la ignorano.",
-    scheduleConfirm: { title: "Programmare questa campagna?", consequence: "Viene messa in coda per l’invio all’orario UTC scelto." },
-    sendConfirm: { title: "Mettere ora in coda questa campagna?", consequence: "Il pubblico attuale viene congelato e l’invio parte. Il contenuto non sarà più modificabile." },
-    cancelConfirm: { title: "Annullare questa campagna?", consequence: "Ogni consegna non ancora inviata viene annullata. L’operazione non si può annullare." },
-    unavailable: "Il contenuto è bloccato dopo l’ingresso nella coda di consegna.",
+    scheduledForHelp: "Usata da Programma. Salva bozza e Invia ora la ignorano.",
+    scheduleConfirm: { title: "Programmare questa campagna?", consequence: "Viene inviata all’orario UTC scelto." },
+    sendConfirm: { title: "Inviare ora questa campagna?", consequence: "Parte subito verso gli iscritti confermati. Il contenuto non sarà più modificabile." },
+    cancelConfirm: { title: "Annullare questa campagna?", consequence: "Ogni email non ancora inviata viene annullata. L’operazione non si può annullare." },
+    unavailable: "Il contenuto è bloccato quando una campagna è programmata o inviata.",
     markdown: {
       toolbar: "Formattazione Markdown",
       viewMode: "Vista editor",
@@ -199,7 +199,7 @@ export function NewsletterCampaignForm({
     && (campaign.status === "draft" || campaign.status === "scheduled" || campaign.status === "sending");
 
   const actions = (
-    <div className="studio-buttons">
+    <div className="studio-buttons studio-buttons--flow">
       {editable ? (
         <>
           <CampaignButton className="button button--quiet" icon={Save} intent="save" label={labels.save} pendingLabel={labels.saving} />

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { StudioActionState } from "@/components/studio/action-state";
 import { editorImageTypes, maxEditorImageBytes } from "@/components/studio/markdown-media";
+import { studioFieldErrors } from "@/components/studio/field-errors";
 import { studioSupplementalCopy } from "@/components/studio/studio-copy";
 import { getMessages, locales } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
@@ -33,7 +34,7 @@ const imageSourceSchema = z
   .max(2048)
   .refine(
     (value) => !value || isAllowedEditorialImageSource(value),
-    "Use bundled media or an image from the configured editorial bucket",
+    "cover-source",
   );
 
 const articleDraftSchema = z
@@ -101,15 +102,6 @@ export type EditorMediaUploadResult =
   | { ok: true; asset: EditorMediaItem }
   | { ok: false; error: "type" | "size" | "configuration" | "upload" };
 
-function getFieldErrors(error: z.ZodError): Record<string, string[]> {
-  const flattened = error.flatten().fieldErrors as Record<string, string[] | undefined>;
-  const fieldErrors: Record<string, string[]> = {};
-  for (const [field, errors] of Object.entries(flattened)) {
-    if (errors?.length) fieldErrors[field] = errors;
-  }
-  return fieldErrors;
-}
-
 /** Public outputs are refreshed by the shared owner; the Studio pages that show the change are added here. */
 function revalidateEditorialPaths(locale: (typeof locales)[number], slug?: string) {
   invalidatePublicEditorialCache({ locale, slugs: slug ? [slug] : [] });
@@ -172,10 +164,12 @@ export async function saveArticleAction(
   if (!parsed.success || Object.keys(storyErrors).length) {
     const localeResult = z.enum(locales).safeParse(formData.get("locale"));
     const locale = localeResult.success ? localeResult.data : "en";
+    const articleErrors = parsed.success ? {} : studioFieldErrors(parsed.error, locale);
+    if (articleErrors.coverImage) articleErrors.coverImage = [studioSupplementalCopy[locale].coverSourceInvalid];
     return {
       status: "error",
       message: studioSupplementalCopy[locale].validationError,
-      fieldErrors: { ...(parsed.success ? {} : getFieldErrors(parsed.error)), ...storyErrors },
+      fieldErrors: { ...articleErrors, ...storyErrors },
     };
   }
 

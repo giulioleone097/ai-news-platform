@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { locales } from "@/i18n";
+import { studioFieldErrors } from "@/components/studio/field-errors";
+import { locales, type Locale } from "@/i18n";
 import { parseUtcDateTimeInput } from "@/lib/editorial-datetime";
 import { socialProviders } from "@atlasnews/core/social-publishing/domain/social-publication";
 
@@ -18,13 +19,13 @@ const composerSchema = z.object({
   expectedRevision: z.number().int(),
 }).superRefine((value, context) => {
   if (value.scheduledFor && !parseUtcDateTimeInput(value.scheduledFor)) {
-    context.addIssue({ code: "custom", path: ["scheduledFor"], message: "Invalid UTC date." });
+    context.addIssue({ code: "custom", path: ["scheduledFor"], message: "Enter a valid UTC date and time." });
   }
   if (value.provider === "whatsapp" && !recipientPattern.test(value.recipient)) {
-    context.addIssue({ code: "custom", path: ["recipient"], message: "Enter an explicit E.164 or wa_id recipient." });
+    context.addIssue({ code: "custom", path: ["recipient"], message: "Enter a phone number in international format or a WhatsApp ID." });
   }
   if (value.provider !== "whatsapp" && value.recipient) {
-    context.addIssue({ code: "custom", path: ["recipient"], message: "Recipients are only valid for WhatsApp." });
+    context.addIssue({ code: "custom", path: ["recipient"], message: "A recipient is only used for WhatsApp." });
   }
   if (value.intent === "requeue") {
     if (!z.uuid().safeParse(value.jobId).success) {
@@ -67,11 +68,17 @@ export function parseSocialQueueMutationForm(formData: FormData) {
   });
 }
 
-export function socialFormFieldErrors(error: z.ZodError) {
-  const result: Record<string, string[]> = {};
-  const flattened = error.flatten().fieldErrors as Record<string, string[] | undefined>;
-  for (const [field, errors] of Object.entries(flattened)) {
-    if (errors?.length) result[field] = errors.map(String);
-  }
-  return result;
+/** The rules above are written in English; an Italian editor reads them in Italian. */
+const italianRules: Record<string, string> = {
+  "Enter a valid UTC date and time.": "Inserisci una data e un’ora UTC valide.",
+  "Enter a phone number in international format or a WhatsApp ID.": "Inserisci un numero in formato internazionale o un ID WhatsApp.",
+  "A recipient is only used for WhatsApp.": "Il destinatario serve solo per WhatsApp.",
+};
+
+export function socialFormFieldErrors(error: z.ZodError, locale: Locale) {
+  const errors = studioFieldErrors(error, locale);
+  if (locale !== "it") return errors;
+  return Object.fromEntries(
+    Object.entries(errors).map(([field, messages]) => [field, messages.map((message) => italianRules[message] ?? message)]),
+  );
 }

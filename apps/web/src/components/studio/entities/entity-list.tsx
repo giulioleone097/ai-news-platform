@@ -21,6 +21,8 @@ export function EntityList({ items, locale }: { items: EntityListItem[]; locale:
     );
   }
 
+  // The article count is left out when every count is zero, so the column is too.
+  const showCounts = items.some((item) => item.storyCount > 0);
   const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name, locale));
 
   return (
@@ -39,7 +41,7 @@ export function EntityList({ items, locale }: { items: EntityListItem[]; locale:
                   <col className="studio-col--name" />
                   <col className="studio-col--slug" />
                   <col className="studio-col--parent" />
-                  <col className="studio-col--count" />
+                  {showCounts ? <col className="studio-col--count" /> : null}
                   <col className="studio-col--actions" />
                 </colgroup>
                 <thead>
@@ -47,7 +49,7 @@ export function EntityList({ items, locale }: { items: EntityListItem[]; locale:
                     <th>{copy.name}</th>
                     <th>{copy.slug}</th>
                     <th>{copy.parent}</th>
-                    <th className="studio-num">{copy.stories}</th>
+                    {showCounts ? <th className="studio-num">{copy.stories}</th> : null}
                     <th>
                       <span className="sr-only">{copy.actions}</span>
                     </th>
@@ -65,7 +67,9 @@ export function EntityList({ items, locale }: { items: EntityListItem[]; locale:
                         </td>
                         <td data-label={copy.slug}>{item.slug}</td>
                         <td data-label={copy.parent}>{item.parent?.name ?? "—"}</td>
-                        <td className="studio-num" data-label={copy.stories}>{item.storyCount || null}</td>
+                        {showCounts ? (
+                          <td className="studio-num" data-label={copy.stories}>{item.storyCount || null}</td>
+                        ) : null}
                         <td className="studio-table__actions">
                           <div className="studio-actions">
                             <Link aria-label={`${copy.edit}: ${item.name}`} className="studio-icon-button" href={href}>

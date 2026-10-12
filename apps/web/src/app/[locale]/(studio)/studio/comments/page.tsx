@@ -18,15 +18,15 @@ export const dynamic = "force-dynamic";
 
 const copy = {
   en: {
-    description: "Review conversations, reports and the append-only moderation trail.",
+    description: "Review conversations, reports and what moderators did.",
     status: "Status",
     allStatuses: "All statuses",
     empty: "No comments match this view",
-    reason: "Required moderation reason",
+    reason: "Reason (required)",
     reports: "Reports",
     noDetails: "No additional details",
     next: "Next page",
-    audit: "Recent moderation audit",
+    audit: "Recent moderation activity",
     action: "Action",
     actor: "By",
     change: "Change",
@@ -34,21 +34,33 @@ const copy = {
     system: "System",
     statuses: { approved: "Approved", pending: "Pending", rejected: "Rejected", spam: "Spam", deleted: "Deleted" },
     authorKinds: { authenticated: "Signed in", guest: "Guest" },
+    auditActions: {
+      created: "Created",
+      edited: "Edited",
+      pending: "Sent for review",
+      approved: "Approved",
+      rejected: "Rejected",
+      marked_spam: "Marked as spam",
+      deleted: "Deleted",
+      moderator_deleted: "Deleted by a moderator",
+      owner_deleted: "Deleted by the author",
+      reported: "Reported",
+    },
     offTitle: "Comments are off",
     offBody: "Readers can comment on articles, and you moderate the conversations here.",
     offNext: "An admin turns them on in the Site settings.",
     actions: { approved: "Approve", rejected: "Reject", spam: "Mark spam", deleted: "Delete" },
   },
   it: {
-    description: "Revisiona conversazioni, segnalazioni e registro immutabile di moderazione.",
+    description: "Revisiona conversazioni, segnalazioni e cosa hanno fatto i moderatori.",
     status: "Stato",
     allStatuses: "Tutti gli stati",
     empty: "Nessun commento corrisponde a questa vista",
-    reason: "Motivazione obbligatoria",
+    reason: "Motivazione (obbligatoria)",
     reports: "Segnalazioni",
     noDetails: "Nessun dettaglio aggiuntivo",
     next: "Pagina successiva",
-    audit: "Audit moderazione recente",
+    audit: "Attività di moderazione recente",
     action: "Azione",
     actor: "Da",
     change: "Modifica",
@@ -56,6 +68,18 @@ const copy = {
     system: "Sistema",
     statuses: { approved: "Approvato", pending: "In attesa", rejected: "Rifiutato", spam: "Spam", deleted: "Eliminato" },
     authorKinds: { authenticated: "Registrato", guest: "Ospite" },
+    auditActions: {
+      created: "Creato",
+      edited: "Modificato",
+      pending: "Inviato in revisione",
+      approved: "Approvato",
+      rejected: "Rifiutato",
+      marked_spam: "Segnato come spam",
+      deleted: "Eliminato",
+      moderator_deleted: "Eliminato da un moderatore",
+      owner_deleted: "Eliminato dall’autore",
+      reported: "Segnalato",
+    },
     offTitle: "I commenti sono disattivati",
     offBody: "I lettori possono commentare gli articoli e qui moderi le conversazioni.",
     offNext: "Un amministratore li attiva nelle Impostazioni del sito.",
@@ -199,7 +223,7 @@ export default async function StudioCommentsPage({
                 <tr key={event.id}>
                   <td className="studio-table__main">
                     <div className="studio-cell">
-                      <strong>{sentenceCase(event.action.replaceAll("_", " "))}</strong>
+                      <strong>{labels.auditActions[event.action as keyof typeof labels.auditActions] ?? sentenceCase(event.action.replaceAll("_", " "))}</strong>
                       {event.reason ? <small>{event.reason}</small> : null}
                     </div>
                   </td>

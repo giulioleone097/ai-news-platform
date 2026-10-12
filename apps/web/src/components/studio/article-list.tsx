@@ -139,10 +139,10 @@ export function ArticleList({
                   messages.studio.titleLabel
                 )}
               </th>
-              <th>{messages.studio.statusLabel}</th>
+              <th>{copy.publicationLabel}</th>
               {bulk ? <th>{messages.studio.claimColumn}</th> : null}
-              <th>{messages.studio.categoryLabel}</th>
-              {bulk ? <th>{messages.studio.authorLabel}</th> : null}
+              <th className={bulk ? "studio-wide-only" : undefined}>{messages.studio.categoryLabel}</th>
+              {bulk ? <th className="studio-wide-only">{messages.studio.authorLabel}</th> : null}
               <th aria-sort={sort ? (sort.order === "asc" ? "ascending" : "descending") : undefined}>
                 {sort ? (
                   <Link className="studio-sort" href={sort.href}>
@@ -181,13 +181,20 @@ export function ArticleList({
                       <Link className="studio-cell" href={`/${locale}/studio/articles/${article.id}`}>
                         <strong>{article.title}</strong>
                         <small>/{article.slug}</small>
+                        {bulk ? <small className="studio-cell__where">{article.category.name} · {article.author.name}</small> : null}
                         <small className="studio-cell__meta">
-                          {status} · {article.category.name} · {updated.text}
+                          {[
+                            status,
+                            bulk ? messages.story.claimStatus[article.claimStatus] : null,
+                            article.category.name,
+                            bulk ? article.author.name : null,
+                            updated.text,
+                          ].map((part, index) => (part ? <span key={index}>{part}</span> : null))}
                         </small>
                       </Link>
                     </div>
                   </td>
-                  <td data-label={messages.studio.statusLabel}>
+                  <td data-label={copy.publicationLabel}>
                     <Badge tone={statusTone[article.status]}>{status}</Badge>
                   </td>
                   {bulk ? (
@@ -195,8 +202,14 @@ export function ArticleList({
                       <ClaimChip label={messages.story.claimStatus[article.claimStatus]} status={article.claimStatus} />
                     </td>
                   ) : null}
-                  <td data-label={messages.studio.categoryLabel}>{article.category.name}</td>
-                  {bulk ? <td data-label={messages.studio.authorLabel}>{article.author.name}</td> : null}
+                  <td className={bulk ? "studio-wide-only" : undefined} data-label={messages.studio.categoryLabel}>
+                    {article.category.name}
+                  </td>
+                  {bulk ? (
+                    <td className="studio-nowrap studio-wide-only" data-label={messages.studio.authorLabel}>
+                      {article.author.name}
+                    </td>
+                  ) : null}
                   <td data-label={messages.studio.lastUpdatedLabel}>
                     <time dateTime={article.updatedAt} title={updated.title}>{updated.text}</time>
                   </td>

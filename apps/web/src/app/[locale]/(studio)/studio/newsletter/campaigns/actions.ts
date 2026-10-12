@@ -4,20 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { StudioActionState } from "@/components/studio/action-state";
+import { studioFieldErrors } from "@/components/studio/field-errors";
 import { parseNewsletterCampaignRequest } from "@/components/studio/newsletter-campaigns/campaign-confirmation";
 import { isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { parseUtcDateTimeInput } from "@/lib/editorial-datetime";
 import { getStudioNewsletterCampaignService } from "@/server/composition";
 import { newsletterCampaignInputSchema } from "@atlasnews/core/newsletter/domain/newsletter";
-
-function fieldErrors(error: z.ZodError) {
-  const result: Record<string, string[]> = {};
-  for (const [field, errors] of Object.entries(error.flatten().fieldErrors)) {
-    if (Array.isArray(errors) && errors.length) result[field] = errors.map(String);
-  }
-  return result;
-}
 
 export async function saveNewsletterCampaignAction(
   _previousState: StudioActionState,
@@ -26,7 +19,7 @@ export async function saveNewsletterCampaignAction(
   const localeValue = formData.get("locale");
   const request = parseNewsletterCampaignRequest(formData);
   if (!isLocale(localeValue) || !request.success) {
-    return { status: "error", message: "Invalid campaign request." };
+    return { status: "error", message: localeValue === "it" ? "Richiesta non valida. Ricarica la pagina e riprova." : "That request is not valid. Reload the page and try again." };
   }
 
   const locale = localeValue;
@@ -37,7 +30,7 @@ export async function saveNewsletterCampaignAction(
     const service = await getStudioNewsletterCampaignService();
 
     if (intent === "cancel") {
-      if (!id.success) return { status: "error", message: "Campaign not found." };
+      if (!id.success) return { status: "error", message: locale === "it" ? "Campagna non trovata." : "Campaign not found." };
       await service.cancel(id.data);
       revalidatePath(`/${locale}/studio/newsletter/campaigns`);
       revalidatePath(`/${locale}/studio/newsletter/campaigns/${id.data}`);
@@ -60,7 +53,7 @@ export async function saveNewsletterCampaignAction(
       return {
         status: "error",
         message: locale === "it" ? "Controlla i campi evidenziati." : "Check the highlighted fields.",
-        fieldErrors: fieldErrors(parsed.error),
+        fieldErrors: studioFieldErrors(parsed.error, locale),
       };
     }
 
@@ -96,8 +89,8 @@ export async function saveNewsletterCampaignAction(
     return {
       status: "error",
       message: locale === "it"
-        ? "Operazione non completata. Verifica configurazione e stato della campagna."
-        : "Operation failed. Check delivery configuration and campaign state.",
+        ? "Non è stato possibile completare l’operazione. Controlla lo stato della campagna e riprova."
+        : "The action could not be completed. Check the campaign and try again.",
     };
   }
 }

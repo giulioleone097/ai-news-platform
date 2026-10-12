@@ -12,7 +12,7 @@ import type { BulkAction } from "./types";
 const actions: BulkAction[] = ["publish", "unpublish", "delete"];
 
 const buttonClass: Record<BulkAction, string> = {
-  publish: "button button--small button--primary",
+  publish: "button button--small button--quiet",
   unpublish: "button button--small button--quiet",
   delete: "button button--small button--danger",
 };

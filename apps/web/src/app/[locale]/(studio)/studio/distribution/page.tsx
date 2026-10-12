@@ -184,7 +184,7 @@ export default async function StudioDistributionPage({
               <option key={candidate} value={candidate}>{providerLabel(candidate)}</option>
             ))}
           </select>
-          <select aria-label={copy.delivery} className="studio-control" defaultValue={status ?? ""} name="status">
+          <select aria-label={messages.studio.statusLabel} className="studio-control" defaultValue={status ?? ""} name="status">
             <option value="">{copy.allStatuses}</option>
             {socialOutboxStatuses.map((candidate) => <option key={candidate} value={candidate}>{page.statuses[candidate]}</option>)}
           </select>

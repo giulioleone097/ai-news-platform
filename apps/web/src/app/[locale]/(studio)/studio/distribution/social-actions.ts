@@ -25,17 +25,17 @@ import type { SocialComposerState } from "./types";
 
 function actionMessage(locale: Locale, kind: "validation" | "configuration" | "persistence" | "ownership" | "confirm") {
   const messages = locale === "it" ? {
-    validation: "Controlla i campi evidenziati e valida di nuovo.",
+    validation: "Controlla i campi evidenziati e controlla di nuovo l’anteprima.",
     configuration: "Questo canale non è configurato per la pubblicazione.",
-    persistence: "L’outbox non è disponibile. Nessun invio è stato eseguito.",
-    ownership: "La pubblicazione selezionata non appartiene a questa lingua o canale.",
-    confirm: "Conferma esplicitamente l’invio prima di accodarlo.",
+    persistence: "L’archivio dei post non è disponibile. Non è stato inviato nulla.",
+    ownership: "Il post scelto non appartiene a questa lingua o a questo canale.",
+    confirm: "Conferma il post prima di pubblicarlo.",
   } : {
-    validation: "Check the highlighted fields and validate again.",
+    validation: "Check the highlighted fields and check the preview again.",
     configuration: "This channel is not configured for publishing.",
-    persistence: "The outbox is unavailable. No dispatch was performed.",
-    ownership: "The selected publication does not belong to this language and channel.",
-    confirm: "Explicitly confirm the dispatch before queueing it.",
+    persistence: "The store for posts is unavailable. Nothing was sent.",
+    ownership: "The chosen post does not belong to this language and channel.",
+    confirm: "Confirm the post before publishing it.",
   };
   return messages[kind];
 }
@@ -90,7 +90,7 @@ export async function submitSocialPublicationAction(
     return {
       status: "error",
       message: actionMessage(locale, "validation"),
-      fieldErrors: socialFormFieldErrors(parsed.error),
+      fieldErrors: socialFormFieldErrors(parsed.error, locale),
     };
   }
 

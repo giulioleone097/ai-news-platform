@@ -180,6 +180,7 @@ export default async function StudioNewsletterPage({
         ) : (
           <div className="empty-state">
             <h2>{copy.noSubscribersYet}</h2>
+            <p>{copy.noSubscribersHelp}</p>
             <Link className="button button--quiet" href={`/${locale}#newsletter`} target="_blank">
               {copy.openBriefing}
             </Link>

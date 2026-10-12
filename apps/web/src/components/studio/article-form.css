@@ -230,3 +230,9 @@
     padding-bottom: 1rem;
   }
 }
+
+@media (pointer: coarse) {
+  .article-cover__url > summary {
+    min-height: 2.75rem;
+  }
+}

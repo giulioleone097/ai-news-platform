@@ -39,3 +39,9 @@
   font-weight: 500;
   letter-spacing: 0;
 }
+
+@media (pointer: coarse) {
+  .brand {
+    min-height: 2.75rem;
+  }
+}
