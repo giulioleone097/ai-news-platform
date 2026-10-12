@@ -1,5 +1,6 @@
 import { oauthProviderIds, type OAuthCredentials, type OAuthProviderId } from "../auth/oauth";
 import { getSitesBindings } from "../sites/bindings";
+import { getClientAddressHeader } from "./client-address";
 import {
   isLocalHostname,
   isSecureProductionOrigin,
@@ -108,11 +109,14 @@ export function getSupabaseEnvironment() {
   };
 }
 
+/**
+ * Browser origins that may call the MCP route: `MCP_ALLOWED_ORIGINS` when it is set, otherwise the site's
+ * own origin and the two hosts that run the supported clients. A caller that is not a browser (a server,
+ * a CLI) sends no `Origin` and needs no entry.
+ */
 export function getAllowedMcpOrigins() {
-  return (process.env.MCP_ALLOWED_ORIGINS || "")
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  return listValue("MCP_ALLOWED_ORIGINS")
+    ?? [...new Set([getPublicSiteUrl().origin, "https://chatgpt.com", "https://claude.ai"])];
 }
 
 export function getMcpAdminApiKey() {
@@ -216,13 +220,14 @@ export function getSupabaseServiceEnvironment() {
  */
 export function getMcpEventsLimits() {
   return {
+    perPrincipal: positiveInteger("ATLASNEWS_MCP_EVENTS_MAX_PER_PRINCIPAL"),
     perHost: positiveInteger("ATLASNEWS_MCP_EVENTS_MAX_PER_HOST"),
     perDomain: positiveInteger("ATLASNEWS_MCP_EVENTS_MAX_PER_DOMAIN"),
     total: positiveInteger("ATLASNEWS_MCP_EVENTS_MAX_SUBSCRIPTIONS"),
   };
 }
 
-/** Accepted `events/subscribe` calls per minute for one client network (all clients, when no client address header is trusted). */
+/** Accepted `events/subscribe` calls per minute for one signed-in caller. */
 export function getMcpEventsSubscribeRate() {
   return positiveInteger("ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE") ?? 30;
 }
@@ -370,12 +375,17 @@ export function getSocialProfiles() {
   };
 }
 
+/**
+ * `issues` block readiness (the health route answers 503); `warnings` name a protection that is weaker than
+ * it should be while the site still works, so they do not.
+ */
 export function getProductionReadiness() {
   const mode = getContentMode();
   const siteUrl = getPublicSiteUrl();
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   const supabaseUrl = parseHttpUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const issues: string[] = [];
+  const warnings: string[] = [];
   const capabilities = getOperationalCapabilities();
   if (mode === "supabase" && !hasSupabaseEnvironment()) issues.push("supabase-environment");
   if (mode === "sites" && !getSitesBindings()) issues.push("sites-bindings");
@@ -390,6 +400,8 @@ export function getProductionReadiness() {
     for (const [capability, configured] of Object.entries(capabilities)) {
       if (!configured) issues.push(`capability-${capability}`);
     }
+    // The per-network limits of comments and newsletter requests bind only behind the one header the edge sets.
+    if (mode === "sites" && !getClientAddressHeader()) warnings.push("client-address-header");
   }
-  return { ready: issues.length === 0, mode, siteUrl, capabilities, issues };
+  return { ready: issues.length === 0, mode, siteUrl, capabilities, issues, warnings };
 }

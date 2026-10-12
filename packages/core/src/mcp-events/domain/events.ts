@@ -3,9 +3,6 @@ import * as z from "zod/v4";
 import { locales } from "../../locale";
 import { claimStatuses, slugPattern } from "../../editorial/domain/article";
 
-/** Events cover published (public) data only, so every subscriber is the same principal. */
-export const mcpEventPrincipal = "public";
-
 export const mcpEventNames = ["article.published"] as const;
 export type McpEventName = (typeof mcpEventNames)[number];
 

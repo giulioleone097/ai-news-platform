@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { setSitesBindings } from "../sites/bindings";
 import {
+  getAllowedMcpOrigins,
   getConfiguredMcpUrl,
   getContentMode,
   getMcpOAuthEnvironment,
@@ -165,6 +167,42 @@ describe("Studio environment boundary", () => {
     expect(getOperationalCapabilities().commentNotifications).toBe(false);
     expect(getProductionReadiness().issues).toContain("capability-newsletterDelivery");
     expect(getProductionReadiness().issues).toContain("capability-commentNotifications");
+  });
+
+  it("warns on Sites, without failing readiness, while no client address header is configured", () => {
+    setSitesBindings({ DB: {}, BUCKET: {} });
+    try {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("ATLASNEWS_CONTENT_MODE", "sites");
+      vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://news.example.com");
+      vi.stubEnv("ATLASNEWS_CLIENT_IP_HEADER", "");
+      const without = getProductionReadiness();
+      expect(without.warnings).toEqual(["client-address-header"]);
+      expect(without.issues).not.toContain("client-address-header");
+
+      vi.stubEnv("ATLASNEWS_CLIENT_IP_HEADER", "cf-connecting-ip");
+      const configured = getProductionReadiness();
+      expect(configured.warnings).toEqual([]);
+      // A warning never decides readiness.
+      expect(configured.ready).toBe(without.ready);
+      expect(configured.issues).toEqual(without.issues);
+
+      vi.stubEnv("ATLASNEWS_CLIENT_IP_HEADER", "");
+      vi.stubEnv("ATLASNEWS_CONTENT_MODE", "supabase");
+      expect(getProductionReadiness().warnings).toEqual([]);
+    } finally {
+      setSitesBindings(null);
+    }
+  });
+
+  it("allows this site, chatgpt.com and claude.ai to call MCP from a browser unless the operator lists origins", () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://news.example.com/");
+    vi.stubEnv("MCP_ALLOWED_ORIGINS", "");
+    expect(getAllowedMcpOrigins()).toEqual(["https://news.example.com", "https://chatgpt.com", "https://claude.ai"]);
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://claude.ai");
+    expect(getAllowedMcpOrigins()).toEqual(["https://claude.ai", "https://chatgpt.com"]);
+    vi.stubEnv("MCP_ALLOWED_ORIGINS", " https://reader.example , ,https://other.example");
+    expect(getAllowedMcpOrigins()).toEqual(["https://reader.example", "https://other.example"]);
   });
 
   it("derives the MCP sign-in server from the Supabase project and fails closed without the service key", () => {

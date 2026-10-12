@@ -6,17 +6,14 @@ import { listPublishedArticleComments, mcpCapabilities, scopes } from "@atlasnew
 
 import { appToolNames } from "./apps";
 import { apiKeyVerifier, resolvePrincipal } from "./auth";
-import { handleMcpRequest, mcpOptionsResponse } from "./http";
+import { handleMcpRequest, mcpMethodNotAllowedResponse, mcpOptionsResponse } from "./http";
 import { mcpProtocolVersion } from "./metadata";
 import { memoryPorts, modernParams, rpcRequest, sendRpc, testApiKey } from "./mcp-test-client";
 import { GET as getMcpInfo } from "./routes/info";
 import { GET as getResourceMetadata } from "./routes/oauth-metadata";
 
-const originalAllowedOrigins = process.env.MCP_ALLOWED_ORIGINS;
-
 afterEach(() => {
-  if (originalAllowedOrigins === undefined) delete process.env.MCP_ALLOWED_ORIGINS;
-  else process.env.MCP_ALLOWED_ORIGINS = originalAllowedOrigins;
+  vi.unstubAllEnvs();
 });
 
 type Tool = {
@@ -33,6 +30,19 @@ const call = (name: string, args: Record<string, unknown>, authorization?: strin
     method: "tools/call",
     params: modernParams({ name, arguments: args }),
   }, mcpProtocolVersion, { authorization });
+
+const deps = { verifier: apiKeyVerifier(() => testApiKey), createPorts: () => memoryPorts() };
+const listArticlesRequest = (authorization?: string) => rpcRequest({
+  jsonrpc: "2.0",
+  id: 1,
+  method: "tools/call",
+  params: modernParams({ name: "list_articles", arguments: { locale: "en" } }),
+}, mcpProtocolVersion, authorization);
+
+function withOrigin(request: Request, origin: string) {
+  request.headers.set("Origin", origin);
+  return request;
+}
 
 describe("MCP endpoint", () => {
   it("discovers the latest protocol under the AtlasNews server name", async () => {
@@ -311,8 +321,12 @@ describe("MCP endpoint", () => {
     expect(created.response.headers.get("cache-control")).toBe("no-store");
     expect(created.response.headers.get("access-control-allow-origin")).toBeNull();
 
+    // A server-to-server read sends no Origin and gets no CORS header; a browser on an allowed origin gets its own back.
     const anonymousRead = await call("list_articles", { locale: "en" });
-    expect(anonymousRead.response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(anonymousRead.response.headers.get("access-control-allow-origin")).toBeNull();
+    const fromBrowser = await handleMcpRequest(withOrigin(listArticlesRequest(), "https://claude.ai"), deps);
+    expect(fromBrowser.headers.get("access-control-allow-origin")).toBe("https://claude.ai");
+    expect(fromBrowser.headers.get("vary")).toContain("Origin");
   });
 
   it("rejects an invalid bearer token with 401 and a Bearer challenge", async () => {
@@ -358,25 +372,62 @@ describe("MCP endpoint", () => {
     expect(metadata).toMatchObject({ resource: "https://mcp.example.com/mcp", scopes_supported: scopes });
   });
 
-  it("enforces the optional browser origin allow-list", async () => {
-    process.env.MCP_ALLOWED_ORIGINS = "https://reader.example";
-    const allowed = mcpOptionsResponse(new Request("http://localhost/mcp", {
+  describe("browser origins", () => {
+    const preflight = (origin: string) => mcpOptionsResponse(new Request("http://localhost/mcp", {
       method: "OPTIONS",
-      headers: { Origin: "https://reader.example" },
-    }));
-    const denied = mcpOptionsResponse(new Request("http://localhost/mcp", {
-      method: "OPTIONS",
-      headers: { Origin: "https://untrusted.example" },
+      headers: { Origin: origin },
     }));
 
-    expect(allowed.status).toBe(204);
-    expect(allowed.headers.get("access-control-allow-origin")).toBe("https://reader.example");
-    expect(denied.status).toBe(403);
-    expect(denied.headers.get("access-control-allow-origin")).toBeNull();
+    it("validates Origin on every POST and refuses a foreign one with 403 before anything runs", async () => {
+      vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://news.example.com");
+      const createPorts = vi.fn(() => memoryPorts());
+      for (const origin of ["https://untrusted.example", "http://localhost:3000", "null"]) {
+        const response = await handleMcpRequest(withOrigin(listArticlesRequest(), origin), { ...deps, createPorts });
+        expect(response.status, origin).toBe(403);
+        expect((await response.json()).error.code, origin).toBe(-32003);
+        expect(response.headers.get("access-control-allow-origin"), origin).toBeNull();
+      }
+      // A signed-in caller is held to it as well, with the API key included.
+      const signedIn = await handleMcpRequest(
+        withOrigin(listArticlesRequest(`Bearer ${testApiKey}`), "https://untrusted.example"),
+        { ...deps, createPorts },
+      );
+      expect(signedIn.status).toBe(403);
+      expect(createPorts).not.toHaveBeenCalled();
+      expect(mcpMethodNotAllowedResponse(withOrigin(new Request("http://localhost/mcp"), "https://untrusted.example")).status).toBe(403);
+    });
+
+    it("allows the site's own origin, chatgpt.com and claude.ai by default and echoes the one that called", async () => {
+      vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://news.example.com");
+      for (const origin of ["https://news.example.com", "https://chatgpt.com", "https://claude.ai"]) {
+        const response = await handleMcpRequest(withOrigin(listArticlesRequest(), origin), deps);
+        expect(response.status, origin).toBe(200);
+        expect(response.headers.get("access-control-allow-origin"), origin).toBe(origin);
+        expect(response.headers.get("vary"), origin).toContain("Origin");
+        expect(preflight(origin).status, origin).toBe(204);
+      }
+      expect(preflight("http://localhost:3000").status).toBe(403);
+    });
+
+    it("lets a caller that sends no Origin through, without a CORS header", async () => {
+      const response = await handleMcpRequest(listArticlesRequest(), deps);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    });
+
+    it("replaces the default with MCP_ALLOWED_ORIGINS when it is set", async () => {
+      vi.stubEnv("MCP_ALLOWED_ORIGINS", "https://reader.example");
+      const allowed = preflight("https://reader.example");
+      expect(allowed.status).toBe(204);
+      expect(allowed.headers.get("access-control-allow-origin")).toBe("https://reader.example");
+      const denied = preflight("https://chatgpt.com");
+      expect(denied.status).toBe(403);
+      expect(denied.headers.get("access-control-allow-origin")).toBeNull();
+      expect((await handleMcpRequest(withOrigin(listArticlesRequest(), "https://chatgpt.com"), deps)).status).toBe(403);
+    });
   });
 
   it("rejects oversized request bodies before protocol parsing", async () => {
-    const deps = { verifier: apiKeyVerifier(() => testApiKey), createPorts: () => memoryPorts() };
     const declared = await handleMcpRequest(new Request("http://localhost:8787/mcp", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Content-Length": "262145" },

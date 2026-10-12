@@ -25,11 +25,10 @@ const baseHeaders = {
 
 const maximumRequestBodyBytes = 262_144;
 
+/** The request's `Origin` when it is on the allow list; a request without one is not a browser's. */
 function getCorsOrigin(request?: Request) {
-  const allowedOrigins = getAllowedMcpOrigins();
-  if (!allowedOrigins.length) return "*";
   const origin = request?.headers.get("origin");
-  return origin && allowedOrigins.includes(origin) ? origin : null;
+  return origin && getAllowedMcpOrigins().includes(origin) ? origin : null;
 }
 
 /** Anonymous answers carry the CORS headers; answers for a signed-in editor never do. */
@@ -40,7 +39,7 @@ function withPublicHeaders(response: Response, request?: Request, cors = true) {
   }
   const corsOrigin = cors ? getCorsOrigin(request) : null;
   if (corsOrigin) headers.set("Access-Control-Allow-Origin", corsOrigin);
-  if (cors && corsOrigin !== "*") headers.append("Vary", "Origin");
+  if (cors) headers.append("Vary", "Origin");
 
   return new Response(response.body, {
     status: response.status,
@@ -145,16 +144,24 @@ function callsEventSubscribe(headers: Headers, body: Uint8Array<ArrayBuffer>) {
 
 const sharedSubscribeLimiter = new SubscribeRateLimiter();
 
-export function mcpOptionsResponse(request?: Request) {
-  const allowedOrigins = getAllowedMcpOrigins();
+/**
+ * 403 for a request from a browser origin that is not allowed (the transport requires servers to validate
+ * `Origin`, against DNS rebinding and cross-site calls). A request without `Origin` is not a browser's.
+ */
+function originRejection(request?: Request) {
   const origin = request?.headers.get("origin");
-  if (allowedOrigins.length && origin && !allowedOrigins.includes(origin)) {
-    return jsonRpcError(403, -32003, "Origin not allowed.", request);
-  }
-  return withPublicHeaders(new Response(null, { status: 204 }), request);
+  return origin && !getAllowedMcpOrigins().includes(origin)
+    ? jsonRpcError(403, -32003, "Origin not allowed.", request)
+    : null;
+}
+
+export function mcpOptionsResponse(request?: Request) {
+  return originRejection(request) ?? withPublicHeaders(new Response(null, { status: 204 }), request);
 }
 
 export function mcpMethodNotAllowedResponse(request?: Request) {
+  const rejected = originRejection(request);
+  if (rejected) return rejected;
   const response = jsonRpcError(405, -32000, "Method not allowed.", request);
   response.headers.set("Allow", "POST, OPTIONS");
   return response;
@@ -171,16 +178,16 @@ export interface McpEndpointDependencies {
 }
 
 /**
- * HTTP 401 with a Bearer challenge. With `required` scopes it answers an anonymous call to a scoped
- * tool: Claude and ChatGPT start sign-in only on a real 401, which a tool handler cannot produce, so
- * this runs before the SDK. That answer is public (CORS as for any anonymous caller) so browser hosts
- * can read it; a rejected token gets none.
+ * HTTP 401 with a Bearer challenge. With `required` scopes (possibly none, for `target` something other
+ * than a scoped tool) it answers an anonymous call: Claude and ChatGPT start sign-in only on a real 401,
+ * which a tool handler cannot produce, so this runs before the SDK. That answer is public (CORS as for any
+ * anonymous caller) so browser hosts can read it; a rejected token gets none.
  */
-function unauthorizedResponse(request: Request, required?: readonly Scope[]) {
+function unauthorizedResponse(request: Request, required?: readonly Scope[], target = "this tool") {
   const response = jsonRpcError(
     401,
     -32001,
-    required ? "Sign in to use this tool." : "Valid Bearer authentication required.",
+    required ? `Sign in to use ${target}.` : "Valid Bearer authentication required.",
     request,
     required !== undefined,
   );
@@ -188,7 +195,7 @@ function unauthorizedResponse(request: Request, required?: readonly Scope[]) {
     "WWW-Authenticate",
     bearerChallenge(request, {
       error: "invalid_token",
-      description: required ? "Authentication required for this tool" : "The access token is missing, expired or invalid",
+      description: required ? `Authentication required for ${target}` : "The access token is missing, expired or invalid",
       scope: required,
     }),
   );
@@ -201,6 +208,9 @@ function unauthorizedResponse(request: Request, required?: readonly Scope[]) {
  * a valid token means an editor with its scopes, and a token that does not verify is a 401 too.
  */
 export async function handleMcpRequest(request: Request, deps: McpEndpointDependencies) {
+  const foreignOrigin = originRejection(request);
+  if (foreignOrigin) return foreignOrigin;
+
   let principal;
   try {
     principal = await resolvePrincipal(request, deps.verifier);
@@ -225,7 +235,9 @@ export async function handleMcpRequest(request: Request, deps: McpEndpointDepend
   }
 
   if (callsEventSubscribe(request.headers, body)) {
-    const retryAfter = (deps.subscribeLimiter ?? sharedSubscribeLimiter).take(request.headers);
+    // Subscribing makes this server call an address of the caller's choosing: only a signed-in caller may.
+    if (principal.kind === "anonymous") return unauthorizedResponse(request, [], "event subscriptions");
+    const retryAfter = (deps.subscribeLimiter ?? sharedSubscribeLimiter).take(principal.subject);
     if (retryAfter !== null) {
       const response = jsonRpcError(429, -32029, "Too many subscription requests. Try again shortly.", request, cors);
       response.headers.set("Retry-After", String(retryAfter));

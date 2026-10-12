@@ -121,6 +121,10 @@ export class D1McpEventsRepository implements McpEventsRepository {
     );
   }
 
+  countLiveForPrincipal(principal: string, excludingId: string, now: Date) {
+    return this.count(`principal = ? AND ${liveSubscription} AND id <> ?`, principal, instant(now), excludingId);
+  }
+
   countLive(now: Date) {
     return this.count(liveSubscription, instant(now));
   }

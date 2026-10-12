@@ -57,6 +57,6 @@ export function createAtlasNewsServer({
 
   registerCapabilities(server, mcpCapabilities, { ports, principal, challenge });
   registerMcpApps(server, ports.articles, apps, [icon]);
-  registerMcpEvents(server, { service: events });
+  registerMcpEvents(server, { service: events, subscriber: principal.kind === "anonymous" ? null : principal.subject });
   return server;
 }

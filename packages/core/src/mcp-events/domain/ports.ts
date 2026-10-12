@@ -16,6 +16,8 @@ export interface McpEventsRepository {
   countLiveForHost(host: string, excludingId: string, now: Date): Promise<number>;
   /** Live subscriptions whose callback host is `domain` or one of its subdomains. */
   countLiveForDomain(domain: string, excludingId: string, now: Date): Promise<number>;
+  /** Live subscriptions owned by one principal. */
+  countLiveForPrincipal(principal: string, excludingId: string, now: Date): Promise<number>;
   /** All live subscriptions, whoever owns them. */
   countLive(now: Date): Promise<number>;
   /** Verification time of a still-trusted prior verification for the same principal, URL and secret. */

@@ -6,8 +6,12 @@ import type {
 
 export type SubscriptionStatus = "active" | "unsubscribed" | "gone";
 
+/** What the stores allow in `principal`. */
+export const maximumPrincipalLength = 80;
+
 export interface EventSubscription {
   id: string;
+  /** The signed-in caller that owns the subscription; it scopes the id, the verification cache and the cap. */
   principal: string;
   eventName: McpEventName;
   arguments: ArticlePublishedArguments;

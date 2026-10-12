@@ -7,7 +7,7 @@ import { getClientNetwork } from "@atlasnews/adapters/config/client-address";
  * Without a trusted header there is no honest network identity, and a header the client can set must not
  * pick the bucket. The request then gets a bucket of its own, so the per-network limits do not bind;
  * the per-visitor, per-address and global limits still do. A shared "unknown" bucket would let one
- * client exhaust the limit for everyone.
+ * client exhaust the limit for everyone. On Sites `/api/health` lists the missing variable as a warning.
  */
 export function getRequestNetworkAddress(headers: Headers) {
   return getClientNetwork(headers) ?? `unscoped:${crypto.randomUUID()}`;

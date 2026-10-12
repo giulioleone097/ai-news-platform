@@ -19,19 +19,26 @@ let repository: MemoryMcpEventsRepository;
 let client: FakeWebhookClient;
 let service: McpEventsService;
 
-function createHandler(events: McpEventsService | null) {
+const subscriber = "reader-1";
+
+function createHandler(events: McpEventsService | null, caller: string | null) {
   return createMcpHandler(
     () => {
       const server = new McpServer({ name: "atlasnews-test", version: "2.0.0" });
-      registerMcpEvents(server, { service: events });
+      registerMcpEvents(server, { service: events, subscriber: caller });
       return server;
     },
     { legacy: "stateless", responseMode: "auto" },
   );
 }
 
-async function call(method: string, params: Record<string, unknown> = {}, events: McpEventsService | null = service) {
-  const handler = createHandler(events);
+async function call(
+  method: string,
+  params: Record<string, unknown> = {},
+  events: McpEventsService | null = service,
+  caller: string | null = subscriber,
+) {
+  const handler = createHandler(events, caller);
   const response = await handler.fetch(new Request("http://localhost:3000/api/mcp", {
     method: "POST",
     headers: {
@@ -113,7 +120,7 @@ describe("MCP Events over createMcpHandler", () => {
     }));
     expect(filtered.error).toBeUndefined();
     expect(filtered.result.id).toBe(deriveSubscriptionId({
-      principal: "public",
+      principal: subscriber,
       url: callbackUrl,
       name: "article.published",
       arguments: { claim_status: "rumour", entity: "openai" },
@@ -127,7 +134,7 @@ describe("MCP Events over createMcpHandler", () => {
     const first = await call("events/subscribe", subscribeParams());
     expect(first.error).toBeUndefined();
     const id = deriveSubscriptionId({
-      principal: "public",
+      principal: subscriber,
       url: callbackUrl,
       name: "article.published",
       arguments: { category: "models", locale: "en" },
@@ -170,6 +177,8 @@ describe("MCP Events over createMcpHandler", () => {
   it("reports the per-host limit as invalid params with a reason", async () => {
     for (let index = 0; index < 25; index += 1) {
       await service.subscribe({
+        // Other accounts: one account is capped lower than one callback host.
+        principal: `other-${index}`,
         name: "article.published",
         arguments: {},
         delivery: { mode: "webhook", url: `https://receiver.example.com/cb/${index}`, secret: testSecret },
@@ -178,6 +187,49 @@ describe("MCP Events over createMcpHandler", () => {
     const limited = await call("events/subscribe", subscribeParams());
     expect(limited.error.code).toBe(-32602);
     expect(limited.error.data).toEqual({ reason: "subscription_limit" });
+  });
+
+  it("keeps each caller's subscriptions apart and caps them per caller", async () => {
+    const own = await call("events/subscribe", subscribeParams());
+    const other = await call("events/subscribe", subscribeParams(), service, "reader-2");
+    expect(other.result.id).not.toBe(own.result.id);
+    expect(repository.subscriptions.size).toBe(2);
+
+    const endedByOther = {
+      name: "article.published",
+      arguments: { locale: "en", category: "models" },
+      delivery: { mode: "webhook", url: callbackUrl },
+    };
+    await call("events/unsubscribe", endedByOther, service, "reader-2");
+    expect(repository.subscriptions.get(own.result.id)!.status).toBe("active");
+    expect(repository.subscriptions.get(other.result.id)!.status).toBe("unsubscribed");
+
+    for (let index = 0; index < 19; index += 1) {
+      await service.subscribe({
+        principal: subscriber,
+        name: "article.published",
+        arguments: {},
+        delivery: { mode: "webhook", url: `https://receiver-${index}.example.net/cb`, secret: testSecret },
+      });
+    }
+    const limited = await call("events/subscribe", subscribeParams({ arguments: { locale: "it" } }));
+    expect(limited.error.code).toBe(-32602);
+    expect(limited.error.data).toEqual({ reason: "subscription_limit" });
+    expect((await call("events/subscribe", subscribeParams({ arguments: { locale: "it" } }), service, "reader-3")).error).toBeUndefined();
+  });
+
+  it("lets an anonymous caller list the events but neither subscribe nor unsubscribe", async () => {
+    expect((await call("events/list", {}, service, null)).error).toBeUndefined();
+    const subscribed = await call("events/subscribe", subscribeParams(), service, null);
+    expect(subscribed.error.code).toBe(-32001);
+    const unsubscribed = await call("events/unsubscribe", {
+      name: "article.published",
+      arguments: {},
+      delivery: { mode: "webhook", url: callbackUrl },
+    }, service, null);
+    expect(unsubscribed.error.code).toBe(-32001);
+    expect(repository.subscriptions.size).toBe(0);
+    expect(client.requests).toHaveLength(0);
   });
 
   it("masks persistence failures", async () => {
