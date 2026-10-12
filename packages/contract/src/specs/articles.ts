@@ -7,7 +7,7 @@ import {
   socialChannels,
   storyLimits,
 } from "@atlasnews/core/editorial/domain/article";
-import { isAllowedEditorialImageSource } from "@atlasnews/core/editorial/domain/editorial-image";
+import { hasEditorialImageShape } from "@atlasnews/core/editorial/domain/editorial-image";
 import { batchLimit } from "@atlasnews/core/editorial/domain/errors";
 
 import { destructive, readOnly, write } from "../annotations";
@@ -68,7 +68,7 @@ const articleFields = {
   categorySlug: slugSchema,
   featured: z.boolean().optional(),
   coverImage: z.string().trim().min(1).max(2_048)
-    .refine(isAllowedEditorialImageSource, "Use bundled media or the configured editorial bucket")
+    .refine(hasEditorialImageShape, "Use bundled media, an upload from the media library or the configured editorial bucket")
     .optional(),
   coverAlt: z.string().trim().min(articleLimits.coverAlt.min).max(articleLimits.coverAlt.max).optional(),
   scheduledFor: z.string().datetime().nullable().optional(),

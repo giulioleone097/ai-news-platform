@@ -28,6 +28,8 @@ export type PublicCommentReader = Pick<CommentService, "listApproved">;
  */
 export interface CapabilityPorts {
   readonly site: SiteLinks;
+  /** URL of the Supabase project whose public bucket may host cover images; absent when the deployment has none. */
+  readonly imageStorageUrl?: string;
   readonly articles: PublicArticleReader;
   readonly entities: PublicEntityReader;
   readonly invalidateCache: EditorialCacheInvalidator;

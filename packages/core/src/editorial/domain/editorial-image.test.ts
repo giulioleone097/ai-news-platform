@@ -1,11 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   getEditorialMediaReferenceKey,
   hasExpectedImageSignature,
+  hasEditorialImageShape,
   isAllowedEditorialImageSource,
 } from "./editorial-image";
-
-afterEach(() => vi.unstubAllEnvs());
 
 describe("editorial image source boundary", () => {
   it("allows bundled media and rejects traversal", () => {
@@ -23,14 +22,26 @@ describe("editorial image source boundary", () => {
   });
 
   it("allows only the configured public editorial bucket", () => {
-    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
+    const storage = "https://project.supabase.co";
     expect(isAllowedEditorialImageSource(
       "https://project.supabase.co/storage/v1/object/public/editorial-media/cover.webp",
+      storage,
     )).toBe(true);
-    expect(isAllowedEditorialImageSource("https://images.example.com/cover.webp")).toBe(false);
+    expect(isAllowedEditorialImageSource("https://images.example.com/cover.webp", storage)).toBe(false);
     expect(isAllowedEditorialImageSource(
       "https://project.supabase.co/storage/v1/object/public/other/cover.webp",
+      storage,
     )).toBe(false);
+  });
+
+  it("allows no bucket when the deployment configures none, while the shape check only looks at the path", () => {
+    const object = "https://project.supabase.co/storage/v1/object/public/editorial-media/cover.webp";
+    expect(isAllowedEditorialImageSource(object)).toBe(false);
+    expect(isAllowedEditorialImageSource(object, "  ")).toBe(false);
+    expect(hasEditorialImageShape(object)).toBe(true);
+    expect(hasEditorialImageShape("/media/cover.webp")).toBe(true);
+    expect(hasEditorialImageShape("https://images.example.com/cover.webp")).toBe(false);
+    expect(hasEditorialImageShape("javascript:alert(1)")).toBe(false);
   });
 
   it("canonicalizes media references independently of query strings and hashes", () => {
@@ -41,15 +52,18 @@ describe("editorial image source boundary", () => {
   });
 
   it("allows local HTTP storage only when the configured origin is also HTTP", () => {
-    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "http://127.0.0.1:54321");
+    const storage = "http://127.0.0.1:54321";
     expect(isAllowedEditorialImageSource(
       "http://127.0.0.1:54321/storage/v1/object/public/editorial-media/cover.webp",
+      storage,
     )).toBe(true);
     expect(isAllowedEditorialImageSource(
       "http://localhost:54321/storage/v1/object/public/editorial-media/cover.webp",
+      storage,
     )).toBe(false);
     expect(isAllowedEditorialImageSource(
       "https://127.0.0.1:54321/storage/v1/object/public/editorial-media/cover.webp",
+      storage,
     )).toBe(false);
   });
 

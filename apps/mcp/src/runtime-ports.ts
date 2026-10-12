@@ -1,4 +1,4 @@
-import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
+import { getEditorialImageStorageUrl, getPublicSiteUrl } from "@atlasnews/adapters/config/env";
 import { getAdminEditorialRepository, getPublicEditorialRepositories } from "@atlasnews/adapters/editorial/container";
 import { CapabilityFailure, siteLinks, type CapabilityPorts } from "@atlasnews/contract";
 
@@ -16,6 +16,7 @@ export function createRuntimePorts(principal?: AuthenticatedPrincipal): Capabili
   const actorAuthorId = principal?.authorId;
   return {
     site: siteLinks(getPublicSiteUrl()),
+    imageStorageUrl: getEditorialImageStorageUrl(),
     articles: getPublicEditorialRepositories().articles,
     entities: getPublicEditorialRepositories().entities,
     invalidateCache,

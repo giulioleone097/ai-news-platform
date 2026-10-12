@@ -345,6 +345,7 @@ export const it = {
       "article.invalidSlug": "Lo slug può contenere solo lettere minuscole, numeri e trattini.",
       "article.invalidCategory": "Scegli una categoria valida.",
       "article.invalidStatus": "Scegli uno stato di pubblicazione valido.",
+      "article.invalidCoverImage": "Usa un’immagine inclusa, un caricamento dalla libreria media o un’immagine del bucket editoriale.",
       "article.invalidCoverAlt": "La descrizione dell’immagine di copertina deve avere da {min} a {max} caratteri.",
       "article.invalidChannel": "Scegli canali di condivisione validi.",
       "article.invalidClaimStatus": "Scegli quanto è solida la notizia.",

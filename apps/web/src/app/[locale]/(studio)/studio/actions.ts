@@ -9,7 +9,7 @@ import { studioSupplementalCopy } from "@/components/studio/studio-copy";
 import { getMessages, locales } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { parseUtcDateTimeInput } from "@/lib/editorial-datetime";
-import { isAllowedEditorialImageSource } from "@atlasnews/core/editorial/domain/editorial-image";
+import { isEditorialImageAllowed } from "@/lib/editorial-image-policy";
 import {
   articleLimits,
   articleStatuses,
@@ -28,7 +28,7 @@ const imageSourceSchema = z
   .trim()
   .max(2048)
   .refine(
-    (value) => !value || isAllowedEditorialImageSource(value),
+    (value) => !value || isEditorialImageAllowed(value),
     "cover-source",
   );
 

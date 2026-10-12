@@ -51,6 +51,7 @@ export const articleFieldOfCode: Partial<Record<CapabilityErrorCode, string>> = 
   "article.unknownCategory": "categorySlug",
   "article.invalidStatus": "status",
   "article.scheduleRequired": "scheduledFor",
+  "article.invalidCoverImage": "coverImage",
   "article.invalidCoverAlt": "coverAlt",
   "article.invalidChannel": "distribution",
   "article.invalidClaimStatus": "claimStatus",

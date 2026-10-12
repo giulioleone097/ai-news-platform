@@ -29,21 +29,46 @@ export function getEditorialMediaReferenceKey(value: string) {
   }
 }
 
-export function isAllowedEditorialImageSource(value: string) {
-  const source = value.trim();
-  if (localMediaPath.test(source) && !source.split("/").includes("..")) return true;
-  if (isSiteMediaPath(source)) return true;
-
-  const configured = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  if (!configured) return false;
+/** The origin of an object in the public editorial bucket (`/storage/v1/object/public/editorial-media/...`), whoever hosts it. */
+function storageOriginOf(source: string) {
   try {
     const candidate = new URL(source);
-    const supabase = new URL(configured);
-    return candidate.protocol === supabase.protocol
-      && (candidate.protocol === "https:" || candidate.protocol === "http:")
-      && candidate.origin === supabase.origin
+    return (candidate.protocol === "https:" || candidate.protocol === "http:")
       && candidate.pathname.startsWith(storagePathPrefix)
-      && candidate.pathname.length > storagePathPrefix.length;
+      && candidate.pathname.length > storagePathPrefix.length
+      ? candidate
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function isBundledOrSiteMedia(source: string) {
+  return (localMediaPath.test(source) && !source.split("/").includes("..")) || isSiteMediaPath(source);
+}
+
+/**
+ * Whether an address can be an editorial image at all: bundled media, an upload the site serves, or an object
+ * of a public editorial bucket. It does not know which bucket this deployment uses; see `isAllowedEditorialImageSource`.
+ */
+export function hasEditorialImageShape(value: string) {
+  const source = value.trim();
+  return isBundledOrSiteMedia(source) || storageOriginOf(source) !== null;
+}
+
+/**
+ * Whether this deployment accepts the image. `storageUrl` is the URL of the Supabase project whose public bucket
+ * it uses, handed in by the caller (core reads no environment); without one only bundled and site media pass.
+ */
+export function isAllowedEditorialImageSource(value: string, storageUrl?: string) {
+  const source = value.trim();
+  if (isBundledOrSiteMedia(source)) return true;
+
+  const candidate = storageOriginOf(source);
+  if (!candidate || !storageUrl?.trim()) return false;
+  try {
+    const supabase = new URL(storageUrl.trim());
+    return candidate.protocol === supabase.protocol && candidate.origin === supabase.origin;
   } catch {
     return false;
   }

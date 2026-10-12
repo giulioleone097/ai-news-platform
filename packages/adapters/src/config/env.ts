@@ -46,6 +46,11 @@ export function hasSupabaseEnvironment() {
     && requiredSupabaseKeys.every((key) => Boolean(process.env[key]?.trim()));
 }
 
+/** The Supabase project whose public bucket may host editorial images: the one reader that hands core its image policy. */
+export function getEditorialImageStorageUrl() {
+  return process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || undefined;
+}
+
 export function getContentMode(): ContentMode {
   const configured = process.env.ATLASNEWS_CONTENT_MODE?.trim().toLowerCase();
   if (contentModes.includes(configured as ContentMode)) return configured as ContentMode;

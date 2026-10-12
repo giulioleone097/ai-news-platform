@@ -348,6 +348,7 @@ export const en = {
       "article.invalidSlug": "The slug can only use lowercase letters, numbers and hyphens.",
       "article.invalidCategory": "Choose a valid category.",
       "article.invalidStatus": "Choose a valid publication state.",
+      "article.invalidCoverImage": "Use a bundled image, an upload from the media library or an image from the editorial bucket.",
       "article.invalidCoverAlt": "The cover image description must be {min} to {max} characters.",
       "article.invalidChannel": "Choose valid sharing channels.",
       "article.invalidClaimStatus": "Choose how firm the claim is.",

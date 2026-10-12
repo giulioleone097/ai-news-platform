@@ -21,7 +21,7 @@ import {
 
 async function articleCommands(ports: CapabilityPorts) {
   const repository = await ports.editorial();
-  return { repository, commands: new ArticleCommandService(repository, repository) };
+  return { repository, commands: new ArticleCommandService(repository, repository, ports.imageStorageUrl) };
 }
 
 async function findOrFail(repository: Awaited<ReturnType<typeof articleCommands>>["repository"], id: string, locale: "en" | "it") {

@@ -16,6 +16,7 @@ import {
 } from "../domain/article";
 import type { ArticleRepository } from "../domain/article-repository";
 import type { EntityRepository } from "../domain/entity";
+import { isAllowedEditorialImageSource } from "../domain/editorial-image";
 import {
   assertBatchSize,
   batchLimit,
@@ -126,6 +127,8 @@ export class ArticleCommandService {
   constructor(
     private readonly repository: ArticleRepository,
     private readonly entities: Pick<EntityRepository, "findEntityBySlug">,
+    /** The Supabase project URL whose public bucket may host covers; without one only bundled and site media pass. */
+    private readonly imageStorageUrl?: string,
   ) {}
 
   /** Saves the draft with whatever status it carries, published included. */
@@ -142,7 +145,7 @@ export class ArticleCommandService {
 
   async patch(current: Article, changes: ArticlePatch) {
     const draft = await this.planPatch(current, changes);
-    await this.checkReferences(draft);
+    await this.checkReferences(draft, current);
     return this.repository.save(draft);
   }
 
@@ -188,7 +191,7 @@ export class ArticleCommandService {
         const current = await this.repository.findById(id, locale);
         if (!current) throw new EditorialRuleError(`Article ${id} not found in ${locale}.`, "article.notFound");
         const draft = await this.planPatch(current, changes);
-        await this.checkReferences(draft);
+        await this.checkReferences(draft, current);
         return { previousSlug: current.slug, draft };
       },
       ({ id }) => id,
@@ -284,8 +287,17 @@ export class ArticleCommandService {
     return target.translationKey;
   }
 
-  /** The category, the entity links and the slug must be usable, so the write cannot fail on them halfway. */
-  private async checkReferences(draft: ArticleDraftInput) {
+  /**
+   * The cover, the category, the entity links and the slug must be usable, so the write cannot fail on them halfway.
+   * A cover the article already had is not checked again: an edit of something else must not fail on an old image.
+   */
+  private async checkReferences(draft: ArticleDraftInput, current?: Article) {
+    if (draft.coverImage && draft.coverImage !== current?.coverImage && !isAllowedEditorialImageSource(draft.coverImage, this.imageStorageUrl)) {
+      throw new EditorialRuleError(
+        "The cover image must be bundled media, an upload from the media library or an object of the configured editorial bucket.",
+        "article.invalidCoverImage",
+      );
+    }
     const [categories, taken] = await Promise.all([
       this.repository.listCategories(draft.locale),
       this.repository.findBySlug(slugify(draft.slug || draft.title), draft.locale),

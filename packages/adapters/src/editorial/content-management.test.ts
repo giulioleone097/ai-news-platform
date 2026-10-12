@@ -75,6 +75,20 @@ describe.each(backends)("$name repository", (backend) => {
       expect(await refused(articles.create(story("Another story", { slug: draft.slug }))))
         .toMatchObject({ code: "article.slugTaken" });
     });
+
+    it("accepts a cover only from the places the deployment hosts images", async () => {
+      const { repository } = await setup(backend);
+      const object = "https://project.supabase.co/storage/v1/object/public/editorial-media/cover.webp";
+      const own = new ArticleCommandService(repository, repository);
+      const withBucket = new ArticleCommandService(repository, repository, "https://project.supabase.co");
+
+      await expect(own.create(story("A story with a bundled cover", { coverImage: "/media/atlas-hero.webp" }))).resolves.toBeTruthy();
+      await expect(own.create(story("A story with a bucket cover but no bucket", { coverImage: object })))
+        .rejects.toMatchObject({ code: "article.invalidCoverImage" });
+      await expect(own.create(story("A story with a foreign cover", { coverImage: "https://images.example.com/cover.webp" })))
+        .rejects.toMatchObject({ code: "article.invalidCoverImage" });
+      await expect(withBucket.create(story("A story with the bucket cover", { coverImage: object }))).resolves.toBeTruthy();
+    });
   });
 
   describe("articles: the publish bypass is closed", () => {

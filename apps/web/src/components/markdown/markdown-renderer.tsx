@@ -4,7 +4,7 @@ import ReactMarkdown, {
   type Components,
 } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { isAllowedEditorialImageSource } from "@atlasnews/core/editorial/domain/editorial-image";
+import { isEditorialImageAllowed } from "@/lib/editorial-image-policy";
 import { markdownHeadingIdsPlugin } from "@/lib/markdown";
 import { markdownCalloutsPlugin } from "./callouts";
 import { EmbedFrame } from "./embed-frame";
@@ -53,7 +53,7 @@ export function MarkdownRenderer({
       const source = typeof src === "string" ? src : "";
       const accessibleLabel = alt?.trim() || imageUnavailableLabel;
 
-      if (!source || !isAllowedEditorialImageSource(source)) {
+      if (!source || !isEditorialImageAllowed(source)) {
         return (
           <span
             aria-label={accessibleLabel}
