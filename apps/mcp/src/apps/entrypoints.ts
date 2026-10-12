@@ -35,6 +35,25 @@ const outputSchema = {
   categories: z.array(categoryOutputSchema),
 };
 
+/** What tells the two ChatGPT entrypoints apart; the input, the output and the handler are shared. */
+const entrypoints: Record<
+  (typeof newsroomEntrypointTools)[number],
+  { title: string; description: string; type: "global" | "thread" }
+> = {
+  open_newsroom: {
+    title: "AtlasNews",
+    description:
+      "Open the AtlasNews AI newsroom fullscreen from the ChatGPT sidebar: latest stories, categories, search and reading.",
+    type: "global",
+  },
+  open_news_panel: {
+    title: "AI news beside chat",
+    description:
+      "Open a AtlasNews reading panel next to the current conversation to browse stories and add them to the chat.",
+    type: "thread",
+  },
+};
+
 export function registerNewsroomEntrypoints(
   server: McpServer,
   reader: EntrypointReader,
@@ -54,33 +73,20 @@ export function registerNewsroomEntrypoints(
       };
     });
 
-  server.registerTool(
-    "open_newsroom",
-    {
-      title: "AtlasNews",
-      description:
-        "Open the AtlasNews AI newsroom fullscreen from the ChatGPT sidebar: latest stories, categories, search and reading.",
-      inputSchema,
-      outputSchema,
-      annotations: readOnly,
-      icons,
-      _meta: newsroomToolMeta({ visibility: ["app"], entrypoint: { type: "global" } }),
-    },
-    openFeed,
-  );
-
-  server.registerTool(
-    "open_news_panel",
-    {
-      title: "AI news beside chat",
-      description:
-        "Open a AtlasNews reading panel next to the current conversation to browse stories and add them to the chat.",
-      inputSchema,
-      outputSchema,
-      annotations: readOnly,
-      icons,
-      _meta: newsroomToolMeta({ visibility: ["app"], entrypoint: { type: "thread" } }),
-    },
-    openFeed,
-  );
+  for (const name of newsroomEntrypointTools) {
+    const { title, description, type } = entrypoints[name];
+    server.registerTool(
+      name,
+      {
+        title,
+        description,
+        inputSchema,
+        outputSchema,
+        annotations: readOnly,
+        icons,
+        _meta: newsroomToolMeta({ visibility: ["app"], entrypoint: { type } }),
+      },
+      openFeed,
+    );
+  }
 }

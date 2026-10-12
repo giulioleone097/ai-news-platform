@@ -10,4 +10,4 @@ export {
   categorySlugSchema,
   localeSchema,
 } from "./specs/shared";
-export { listPublishedArticleComments } from "./handlers/public";
+export { listPublishedArticleComments, searchPublishedAcrossLocales } from "./handlers/public";

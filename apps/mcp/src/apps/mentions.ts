@@ -1,10 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 
-import { locales } from "@atlasnews/core/locale";
 import type { ArticleRepository } from "@atlasnews/core/editorial/domain/article-repository";
 
-import { readOnly, sourceUnavailableMessage } from "@atlasnews/contract";
+import { readOnly, searchPublishedAcrossLocales, sourceUnavailableMessage } from "@atlasnews/contract";
 
 import { securitySchemes } from "../auth";
 import { failure } from "../results";
@@ -42,19 +41,12 @@ export function registerMentionSearch(server: McpServer, reader: MentionReader) 
     async ({ query }) => {
       const text = query.trim();
       try {
-        const pages = await Promise.all(
-          locales.map((locale) =>
-            reader.listPublished({ locale, limit: 5, ...(text.length >= 2 ? { query: text } : {}) }),
-          ),
-        );
-        const items = pages
-          .flatMap((page) => page.items)
-          .sort((left, right) =>
-            (right.publishedAt ?? right.updatedAt).localeCompare(left.publishedAt ?? left.updatedAt),
-          )
-          .slice(0, 10)
-          .map(articleResourceLink);
-        return { content: [], structuredContent: { items } };
+        const found = await searchPublishedAcrossLocales(reader, {
+          query: text.length >= 2 ? text : undefined,
+          perLocale: 5,
+          limit: 10,
+        });
+        return { content: [], structuredContent: { items: found.map(articleResourceLink) } };
       } catch {
         return failure(sourceUnavailableMessage);
       }
