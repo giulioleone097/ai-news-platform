@@ -204,6 +204,8 @@ export const it = {
     enterStudio: "Entra nello Studio",
     callbackInvalid: "Il collegamento di accesso non è valido o è scaduto.",
     backToSite: "Torna a AtlasNews",
+    signedInTitle: "Hai effettuato l’accesso",
+    signedInDescription: "Questo account non può aprire lo Studio.",
   },
   story: storyLabels.it,
   studio: {

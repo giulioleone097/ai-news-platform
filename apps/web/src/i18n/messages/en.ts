@@ -204,6 +204,8 @@ export const en = {
     enterStudio: "Enter Studio",
     callbackInvalid: "The sign-in link is invalid or has expired.",
     backToSite: "Back to AtlasNews",
+    signedInTitle: "You are signed in",
+    signedInDescription: "This account cannot open Studio.",
   },
   story: storyLabels.en,
   studio: {
