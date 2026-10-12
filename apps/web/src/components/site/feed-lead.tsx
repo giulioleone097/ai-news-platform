@@ -26,7 +26,7 @@ export function FeedLead({
         />
       </span>
       <div className="story-lead__text">
-        <StoryMeta item={toFeedItem(article)} locale={locale} statusLabels={statusLabels} stamp="time" />
+        <StoryMeta item={toFeedItem(article)} locale={locale} statusLabels={statusLabels} stamp="time" size="lead" />
         <h2 className="story-lead__title">
           <Link href={localizedPath(`/articles/${article.slug}`, locale)} prefetch>
             {article.title}

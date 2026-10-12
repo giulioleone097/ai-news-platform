@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ArticleArchive } from "@/components/site/article-archive";
-import { NewsletterForm } from "@/components/site/newsletter-form";
 import {
   getMessages,
   isLocale,
@@ -76,7 +75,6 @@ export default async function CategoryPage({
   const { locale, slug } = await params;
   if (!isLocale(locale)) notFound();
 
-  const messages = getMessages(locale);
   const categories = await getPublicCategories(locale);
   const category = categories.find((item) => item.slug === slug);
   if (!category) {
@@ -107,11 +105,6 @@ export default async function CategoryPage({
         activeCategory={category.slug}
         locale={locale}
         nextCursor={page.nextCursor}
-      />
-      <NewsletterForm
-        locale={locale}
-        copy={messages.newsletter}
-        source={`category-${category.translationKey}-${locale}`}
       />
     </main>
   );

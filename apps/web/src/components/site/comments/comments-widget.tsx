@@ -902,7 +902,7 @@ function LoadedComments({ articleId, locale }: { articleId: string; locale: Comm
           />
         ))}
         {loaded && feed.items.length === 0 && ownComments.length === 0 && feed.status !== "error" ? <p className={styles.empty}>{text.empty}</p> : null}
-        {feed.status === "error" ? <p className="form-message form-message--error" role="alert">{text.loadError}</p> : null}
+        {feed.status === "error" ? <p className={styles.unavailable} role="alert">{text.loadError}</p> : null}
         {feed.status === "error" && feed.cursor === undefined ? (
           <div className={styles.autoLoad}>
             <button className="button button--quiet" onClick={() => void feed.loadMore()} type="button">{text.retry}</button>
@@ -938,13 +938,7 @@ export function CommentsWidget({
         </div>
         <p>{text.intro}</p>
       </header>
-      {activated ? <LoadedComments articleId={articleId} locale={locale} /> : (
-        <div className={styles.skeleton} aria-label={text.loading} aria-busy="true">
-          <span />
-          <span />
-          <span />
-        </div>
-      )}
+      {activated ? <LoadedComments articleId={articleId} locale={locale} /> : <p className={styles.waiting}>{text.loading}</p>}
     </section>
   );
 }

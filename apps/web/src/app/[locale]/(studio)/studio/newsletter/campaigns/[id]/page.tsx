@@ -1,15 +1,18 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { MarkdownRenderer } from "@/components/markdown/markdown-renderer";
 import { NewsletterCampaignForm } from "@/components/studio/newsletter-campaigns/campaign-form";
-import { Badge, sentenceCase } from "@/components/studio/badge";
+import { Badge } from "@/components/studio/badge";
 import {
+  campaignStatusLabels,
   campaignStatusTone,
+  deliveryStatusLabels,
   deliveryStatusTone,
 } from "@/components/studio/newsletter-campaigns/campaign-status";
 import { PageHead } from "@/components/studio/page-head";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { getStudioNewsletterCampaignService } from "@/server/composition";
+import { NewsletterDeliveryConfigurationError } from "@atlasnews/core/newsletter/domain/newsletter";
 
 export const dynamic = "force-dynamic";
 
@@ -22,13 +25,17 @@ export default async function NewsletterCampaignPage({
   if (!isLocale(rawLocale)) notFound();
   const locale = rawLocale;
   await requireEditor(locale);
-  const service = await getStudioNewsletterCampaignService();
+  // Without a delivery account the list explains how to turn campaigns on; a form or a detail would only fail.
+  const service = await getStudioNewsletterCampaignService().catch((error: unknown) => {
+    if (error instanceof NewsletterDeliveryConfigurationError) redirect(`/${locale}/studio/newsletter/campaigns`);
+    throw error;
+  });
   const campaign = await service.getCampaign(id);
   if (!campaign || campaign.locale !== locale) notFound();
   const recipients = campaign.recipientCount ? await service.listRecipients(campaign.id, 100) : [];
   const labels = locale === "it"
-    ? { campaigns: "Campagne", recipients: "Destinatari", sent: "Inviate", delivered: "Consegnate", engagement: "Interazioni", incidents: "Bounce / reclami", preview: "Anteprima email", delivery: "Consegna destinatari", empty: "La snapshot destinatari verrà creata quando la campagna entra in coda." }
-    : { campaigns: "Campaigns", recipients: "Recipients", sent: "Sent", delivered: "Delivered", engagement: "Engagement", incidents: "Bounces / complaints", preview: "Email preview", delivery: "Recipient delivery", empty: "The recipient snapshot is created when the campaign enters the queue." };
+    ? { campaigns: "Campagne", recipients: "Destinatari", sent: "Inviate", delivered: "Consegnate", engagement: "Aperture / clic", incidents: "Respinte / segnalate come spam", preview: "Anteprima email", delivery: "Consegna per destinatario", empty: "L’elenco dei destinatari viene fissato quando la campagna è inviata." }
+    : { campaigns: "Campaigns", recipients: "Recipients", sent: "Sent", delivered: "Delivered", engagement: "Opens / clicks", incidents: "Bounced / marked as spam", preview: "Email preview", delivery: "Delivery by recipient", empty: "The list of recipients is fixed when the campaign is sent." };
 
   const recipientLabels = locale === "it" ? { email: "Email", status: "Stato" } : { email: "Email", status: "Status" };
   const stats = [
@@ -42,7 +49,7 @@ export default async function NewsletterCampaignPage({
     <>
       <PageHead
         back={{ href: `/${locale}/studio/newsletter/campaigns`, label: labels.campaigns }}
-        badge={<Badge tone={campaignStatusTone(campaign.status)}>{sentenceCase(campaign.status)}</Badge>}
+        badge={<Badge tone={campaignStatusTone(campaign.status)}>{campaignStatusLabels[locale][campaign.status]}</Badge>}
         title={campaign.subject}
       />
 
@@ -86,7 +93,7 @@ export default async function NewsletterCampaignPage({
                       </div>
                     </td>
                     <td data-label={recipientLabels.status}>
-                      <Badge tone={deliveryStatusTone(recipient.deliveryStatus)}>{sentenceCase(recipient.deliveryStatus)}</Badge>
+                      <Badge tone={deliveryStatusTone(recipient.deliveryStatus)}>{deliveryStatusLabels[locale][recipient.deliveryStatus]}</Badge>
                     </td>
                   </tr>
                 ))}

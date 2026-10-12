@@ -1,8 +1,9 @@
 /* Rendered markdown (components/markdown): the body of an article, a newsletter preview and the Studio
-   preview. Reading type is Newsreader; headings, tables and code stay in the UI face. The container sets
-   the width; text blocks keep a 60 to 72 character measure inside it. */
+   preview. Reading type is Newsreader; headings, tables and code stay in the UI face. 35rem keeps a line
+   at 60 to 72 characters. */
 
 .markdown-content {
+  max-width: 35rem;
   color: var(--fg);
   font-family: var(--font-reading);
   font-size: 1.1875rem;
@@ -12,16 +13,6 @@
 
 .markdown-content > * + * {
   margin-top: 1.25rem;
-}
-
-.markdown-content > p,
-.markdown-content > ul,
-.markdown-content > ol,
-.markdown-content > blockquote,
-.markdown-content > h2,
-.markdown-content > h3,
-.markdown-content > h4 {
-  max-width: 68ch;
 }
 
 /* Headings are in the UI face, and sit closer to what they introduce than to what came before. */
@@ -67,6 +58,7 @@
 }
 
 .markdown-content a {
+  padding-block: 0.125rem;
   text-decoration: underline;
   text-decoration-thickness: 0.0625em;
   text-underline-offset: 0.18em;
@@ -80,7 +72,7 @@
 
 .markdown-content blockquote {
   padding-left: 1.25rem;
-  border-left: 0.25rem solid var(--accent);
+  border-left: 0.25rem solid var(--fg);
   font-size: 1.3125rem;
   line-height: 1.5;
 }
@@ -307,7 +299,6 @@
 }
 
 .markdown-content .markdown-callout__title {
-  max-width: none;
   font-family: var(--font-ui);
   font-size: 0.9375rem;
   font-weight: 700;

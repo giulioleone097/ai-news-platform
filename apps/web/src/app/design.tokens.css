@@ -7,6 +7,7 @@
   --atlasnews-color-muted: #5c5d59;
   --atlasnews-color-rule: #e3e3de;
   --atlasnews-color-rule-strong: #b8b8b1;
+  --atlasnews-color-control: #767670;
   --atlasnews-color-marker: #ffd60a;
   --atlasnews-color-marker-deep: #f5c400;
   --atlasnews-color-success: #1f7a3d;
@@ -18,12 +19,14 @@
   --atlasnews-color-night-raised: #1a1b1e;
   --atlasnews-color-night-rule: #2d2f33;
   --atlasnews-color-night-rule-strong: #55575c;
+  --atlasnews-color-night-control: #7a7c82;
   --atlasnews-color-night-ink: #f3f3ef;
   --atlasnews-color-night-muted: #a4a59f;
   --atlasnews-color-plate-sky: #c9e4ff;
   --atlasnews-color-plate-leaf: #d7f2d0;
   --atlasnews-color-plate-peach: #ffd4c7;
   --atlasnews-color-plate-lilac: #e4dcff;
+  --atlasnews-color-plate-sand: #f1e6c8;
   --atlasnews-spacing-xxs: 0.25rem;
   --atlasnews-spacing-xs: 0.5rem;
   --atlasnews-spacing-sm: 0.75rem;

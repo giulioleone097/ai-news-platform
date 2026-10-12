@@ -6,7 +6,7 @@ import { listEntityItems } from "@/components/studio/entities/entity-data";
 import { EntityList } from "@/components/studio/entities/entity-list";
 import { Note } from "@/components/studio/note";
 import { PageHead } from "@/components/studio/page-head";
-import { isLocale } from "@/i18n";
+import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { entityCopy } from "./copy";
 
@@ -30,7 +30,7 @@ export default async function StudioEntitiesPage({
 
   return (
     <>
-      <PageHead description={copy.description} title={copy.title}>
+      <PageHead description={copy.description} title={getMessages(locale).studio.entities}>
         <Link className="button button--primary" href={`/${locale}/studio/entities/new`}>
           <Plus aria-hidden="true" />
           {copy.newEntity}

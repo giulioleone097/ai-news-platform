@@ -54,6 +54,9 @@ export interface SupportCopy {
   description: string;
   faqLabel: string;
   faq: readonly PageSection[];
+  /** The questions for people who run the newsroom or build on it, grouped under one heading after the rest. */
+  editorsHeading: string;
+  editors: readonly PageSection[];
   relatedLabel: string;
   privacy: string;
   terms: string;
@@ -70,7 +73,6 @@ const en: SupportCopy = {
       heading: "What is AtlasNews?",
       paragraphs: [
         "AtlasNews is an English and Italian publication about artificial intelligence. Every story shows how settled its claim is (confirmed, rolling out, in test, rumour or analysis) and the sources behind it. The site shows no advertisements.",
-        "AI assistants can read the published stories and, for signed-in editors, run the newsroom through the AtlasNews plugin and its MCP server.",
       ],
     },
     {
@@ -84,9 +86,12 @@ const en: SupportCopy = {
       id: "unsubscribe",
       heading: "How do I unsubscribe from the newsletter?",
       paragraphs: [
-        "Every briefing email ends with an unsubscribe link. Open it and confirm. If you no longer have the email, write to us with the form below from the address you subscribed with and we will remove it.",
+        "Every briefing email ends with an unsubscribe link. Open it and confirm. If you no longer have the email, write to us with the form at the top of this page from the address you subscribed with and we will remove it.",
       ],
     },
+  ],
+  editorsHeading: "For editors and AI",
+  editors: [
     {
       id: "editor-sign-in",
       heading: "How do editors sign in?",
@@ -95,10 +100,17 @@ const en: SupportCopy = {
       ],
     },
     {
+      id: "ai-assistants",
+      heading: "What can AI assistants do on AtlasNews?",
+      paragraphs: [
+        "AI assistants can read the published stories and, for signed-in editors, run the newsroom through the AtlasNews plugin and its MCP server.",
+      ],
+    },
+    {
       id: "assistant-problem",
       heading: "Something does not work in ChatGPT or Claude",
       paragraphs: [
-        "Use the form below and tell us which assistant you use, which tool you called and what you asked. Do not send passwords or access tokens.",
+        "Use the form at the top of this page and tell us which assistant you use, which tool you called and what you asked. Do not send passwords or access tokens.",
       ],
     },
   ],
@@ -134,15 +146,14 @@ const en: SupportCopy = {
 
 const it: SupportCopy = {
   title: "Assistenza",
-  description: "Aiuto su AtlasNews: cos'è, come segnalare un commento, come disiscriversi, come accedono i redattori e come scriverci.",
+  description: "Aiuto su AtlasNews: cos’è, come segnalare un commento, come disiscriversi, come accedono i redattori e come scriverci.",
   faqLabel: "Domande frequenti",
   faq: [
     {
       id: "what-is-atlasnews",
-      heading: "Che cos'è AtlasNews?",
+      heading: "Che cos’è AtlasNews?",
       paragraphs: [
-        "AtlasNews è una testata in inglese e italiano sull'intelligenza artificiale. Ogni storia indica quanto è solida l'affermazione (confermata, in rilascio, in test, voce o analisi) e le fonti che la sostengono. Il sito non mostra pubblicità.",
-        "Gli assistenti AI possono leggere le storie pubblicate e, per i redattori che hanno effettuato l'accesso, usare la redazione tramite il plugin AtlasNews e il suo server MCP.",
+        "AtlasNews è una testata in inglese e italiano sull’intelligenza artificiale. Ogni storia indica quanto è solida l’affermazione (confermata, in rilascio, in test, indiscrezione o analisi) e le fonti che la sostengono. Il sito non mostra pubblicità.",
       ],
     },
     {
@@ -156,21 +167,31 @@ const it: SupportCopy = {
       id: "unsubscribe",
       heading: "Come mi disiscrivo dalla newsletter?",
       paragraphs: [
-        "Ogni email del briefing termina con un link per annullare l'iscrizione. Aprilo e conferma. Se non hai più l'email, scrivici con il modulo qui sotto dall'indirizzo con cui ti sei iscritto e lo rimuoveremo.",
+        "Ogni email del briefing termina con un link per annullare l’iscrizione. Aprilo e conferma. Se non hai più l’email, scrivici con il modulo in cima a questa pagina dall’indirizzo con cui ti sei iscritto e lo rimuoveremo.",
       ],
     },
+  ],
+  editorsHeading: "Per redazione e AI",
+  editors: [
     {
       id: "editor-sign-in",
       heading: "Come accedono i redattori?",
       paragraphs: [
-        "I redattori aprono lo Studio dal piè di pagina e accedono con l'indirizzo con cui sono stati invitati, usando ChatGPT, Google o GitHub dove il sito li offre, oppure email e password su un'installazione propria. Se hai effettuato l'accesso ma non sei un redattore, chiedi a un amministratore del sito di aggiungere il tuo indirizzo. I lettori non hanno bisogno di un account: l'accesso serve solo a commentare con il proprio nome.",
+        "I redattori aprono lo Studio dal piè di pagina e accedono con l’indirizzo con cui sono stati invitati, usando ChatGPT, Google o GitHub dove il sito li offre, oppure email e password su un’installazione propria. Se hai effettuato l’accesso ma non sei un redattore, chiedi a un amministratore del sito di aggiungere il tuo indirizzo. I lettori non hanno bisogno di un account: l’accesso serve solo a commentare con il proprio nome.",
+      ],
+    },
+    {
+      id: "ai-assistants",
+      heading: "Cosa possono fare gli assistenti AI su AtlasNews?",
+      paragraphs: [
+        "Gli assistenti AI possono leggere le storie pubblicate e, per i redattori che hanno effettuato l’accesso, usare la redazione tramite il plugin AtlasNews e il suo server MCP.",
       ],
     },
     {
       id: "assistant-problem",
       heading: "Qualcosa non funziona in ChatGPT o Claude",
       paragraphs: [
-        "Usa il modulo qui sotto e indicaci quale assistente usi, quale strumento hai chiamato e cosa hai chiesto. Non inviare password né token di accesso.",
+        "Usa il modulo in cima a questa pagina e indicaci quale assistente usi, quale strumento hai chiamato e cosa hai chiesto. Non inviare password né token di accesso.",
       ],
     },
   ],
@@ -189,7 +210,7 @@ const it: SupportCopy = {
     submitting: "Invio…",
     success: "Grazie. Il tuo messaggio è stato inviato.",
     privacyBefore: "Usiamo questi dati solo per risponderti. Leggi",
-    privacyLink: "l'informativa sulla privacy",
+    privacyLink: "l’informativa sulla privacy",
     privacyAfter: ".",
     errorSummary: "Controlla i campi evidenziati e invia di nuovo il messaggio.",
     errors: {
@@ -224,8 +245,8 @@ const privacyEn: LegalCopy = {
       id: "reading",
       heading: "Reading the site",
       paragraphs: [
-        "You do not need an account to read. Like every web server, ours and our hosting provider's record technical details of each request (network address, browser, requested page, time) in server logs, to deliver the site, keep it secure and find faults.",
-        "Stories you save are kept only in your browser's local storage on your device. They are never sent to us.",
+        "You do not need an account to read. Like every web server, ours and our hosting provider’s record technical details of each request (network address, browser, requested page, time) in server logs, to deliver the site, keep it secure and find faults.",
+        "Stories you save are kept only in your browser’s local storage on your device. They are never sent to us.",
       ],
     },
     {
@@ -326,7 +347,7 @@ const privacyIt: LegalCopy = {
       id: "who",
       heading: "Chi è responsabile",
       paragraphs: [
-        "AtlasNews, l'editore di questo sito, decide perché e come vengono trattati i dati qui sotto. Per qualsiasi domanda o richiesta sui tuoi dati usa il modulo nella pagina Assistenza.",
+        "AtlasNews, l’editore di questo sito, decide perché e come vengono trattati i dati qui sotto. Per qualsiasi domanda o richiesta sui tuoi dati usa il modulo nella pagina Assistenza.",
       ],
     },
     {
@@ -341,7 +362,7 @@ const privacyIt: LegalCopy = {
       id: "comments",
       heading: "Commenti",
       paragraphs: [
-        "Quando commenti conserviamo il nome che hai scritto, il testo, la lingua, l'orario e la storia a cui appartiene. Un commento approvato è pubblico, con quel nome. Se non hai effettuato l'accesso, impostiamo un cookie (atlasnews_comment_guest, valido un anno) che contiene un identificativo casuale e firmato, per permetterti di modificare o eliminare il tuo commento per un tempo limitato e per limitare gli abusi. Se hai effettuato l'accesso, colleghiamo invece il commento al tuo identificativo di account.",
+        "Quando commenti conserviamo il nome che hai scritto, il testo, la lingua, l’orario e la storia a cui appartiene. Un commento approvato è pubblico, con quel nome. Se non hai effettuato l’accesso, impostiamo un cookie (atlasnews_comment_guest, valido un anno) che contiene un identificativo casuale e firmato, per permetterti di modificare o eliminare il tuo commento per un tempo limitato e per limitare gli abusi. Se hai effettuato l’accesso, colleghiamo invece il commento al tuo identificativo di account.",
         "Se chiedi di ricevere email su risposte e moderazione, conserviamo il tuo indirizzo solo per questo scopo, dopo che lo hai confermato, e inviamo quelle email tramite il nostro fornitore di posta. Se segnali un commento, conserviamo il motivo, i dettagli che aggiungi e chi ha segnalato.",
       ],
     },
@@ -349,8 +370,8 @@ const privacyIt: LegalCopy = {
       id: "newsletter",
       heading: "Newsletter",
       paragraphs: [
-        "Per inviare il briefing conserviamo il tuo indirizzo email, la lingua, dove ti sei iscritto e quando hai dato il consenso. Prima ti inviamo un link di conferma e ti iscriviamo solo dopo che lo hai aperto. Ogni briefing contiene un link per annullare l'iscrizione. Dopo la disiscrizione conserviamo l'indirizzo contrassegnato come disiscritto e, se un messaggio è rimbalzato o è stato segnalato come spam, un hash a senso unico dell'indirizzo, per non scriverti più.",
-        "Le email partono tramite Resend, che riceve l'indirizzo, il messaggio e gli eventi di consegna (consegnato, rimbalzato, aperto, cliccato).",
+        "Per inviare il briefing conserviamo il tuo indirizzo email, la lingua, dove ti sei iscritto e quando hai dato il consenso. Prima ti inviamo un link di conferma e ti iscriviamo solo dopo che lo hai aperto. Ogni briefing contiene un link per annullare l’iscrizione. Dopo la disiscrizione conserviamo l’indirizzo contrassegnato come disiscritto e, se un messaggio è rimbalzato o è stato segnalato come spam, un hash a senso unico dell’indirizzo, per non scriverti più.",
+        "Le email partono tramite Resend, che riceve l’indirizzo, il messaggio e gli eventi di consegna (consegnato, rimbalzato, aperto, cliccato).",
       ],
     },
     {
@@ -358,14 +379,14 @@ const privacyIt: LegalCopy = {
       heading: "I messaggi che ci invii",
       paragraphs: [
         "Il modulo di contatto conserva nome, indirizzo email, oggetto, messaggio, lingua della pagina e orario. I nostri redattori lo leggono nello Studio e con i loro strumenti, per risponderti e migliorare il sito. Eliminiamo i messaggi quando non servono più.",
-        "Per fermare gli abusi contiamo i messaggi per rete. Il contatore contiene un hash a senso unico del tuo indirizzo di rete, non l'indirizzo né il messaggio, e viene eliminato dopo un giorno senza messaggi.",
+        "Per fermare gli abusi contiamo i messaggi per rete. Il contatore contiene un hash a senso unico del tuo indirizzo di rete, non l’indirizzo né il messaggio, e viene eliminato dopo un giorno senza messaggi.",
       ],
     },
     {
       id: "sign-in",
       heading: "Accesso",
       paragraphs: [
-        "I redattori, e i lettori dove l'accesso è offerto, accedono con ChatGPT, Google o GitHub dove il sito li offre, oppure con email e password in un'installazione propria. Il fornitore che scegli comunica al sito il tuo identificativo di account, un indirizzo email verificato e il nome (GitHub: l'email principale verificata). Li usiamo per riconoscerti, attribuire storie e commenti e dare ai redattori il loro accesso. Non riceviamo le tue conversazioni su ChatGPT.",
+        "I redattori, e i lettori dove l’accesso è offerto, accedono con ChatGPT, Google o GitHub dove il sito li offre, oppure con email e password in un’installazione propria. Il fornitore che scegli comunica al sito il tuo identificativo di account, un indirizzo email verificato e il nome (GitHub: l’email principale verificata). Li usiamo per riconoscerti, attribuire storie e commenti e dare ai redattori il loro accesso. Non riceviamo le tue conversazioni su ChatGPT.",
       ],
     },
     {
@@ -384,7 +405,7 @@ const privacyIt: LegalCopy = {
       items: [
         "Il tuo consenso: la newsletter, le email sui tuoi commenti e il cookie dei commenti dove la legge lo richiede. Puoi revocarlo in qualsiasi momento.",
         "Il nostro legittimo interesse a gestire una pubblicazione sicura: log del server, limiti agli abusi, moderazione e risposta ai tuoi messaggi.",
-        "L'esecuzione di ciò che chiedi, come rispondere al tuo messaggio o pubblicare il tuo commento.",
+        "L’esecuzione di ciò che chiedi, come rispondere al tuo messaggio o pubblicare il tuo commento.",
         "Gli obblighi di legge, dove si applicano.",
       ],
     },
@@ -392,9 +413,9 @@ const privacyIt: LegalCopy = {
       id: "recipients",
       heading: "Chi altro gestisce i tuoi dati",
       items: [
-        "Il fornitore di hosting che gestisce il sito, il suo database e l'archiviazione dei file.",
+        "Il fornitore di hosting che gestisce il sito, il suo database e l’archiviazione dei file.",
         "Resend, per inviare le email di conferma, di newsletter e di notifica.",
-        "OpenAI, Google o GitHub, se accedi con loro, oppure il fornitore di autenticazione di un'installazione propria.",
+        "OpenAI, Google o GitHub, se accedi con loro, oppure il fornitore di autenticazione di un’installazione propria.",
       ],
       paragraphs: [
         "Questi fornitori agiscono per nostro conto secondo i propri termini. I dati possono essere trattati fuori dal tuo paese, con le garanzie richieste dalla legge. Non vendiamo i tuoi dati.",
@@ -404,14 +425,14 @@ const privacyIt: LegalCopy = {
       id: "keeping",
       heading: "Per quanto tempo li conserviamo",
       paragraphs: [
-        "I commenti restano finché tu o un moderatore non li eliminate. I dati della newsletter restano finché sei iscritto, poi solo il contrassegno di disiscrizione o l'hash descritto sopra. I messaggi restano finché non abbiamo risposto e non ci servono più. I log del server sono conservati dal fornitore di hosting per un periodo breve.",
+        "I commenti restano finché tu o un moderatore non li eliminate. I dati della newsletter restano finché sei iscritto, poi solo il contrassegno di disiscrizione o l’hash descritto sopra. I messaggi restano finché non abbiamo risposto e non ci servono più. I log del server sono conservati dal fornitore di hosting per un periodo breve.",
       ],
     },
     {
       id: "rights",
       heading: "I tuoi diritti",
       paragraphs: [
-        "Puoi chiederci di accedere ai tuoi dati, correggerli, eliminarli, limitarne o fermarne l'uso, o riceverli in forma portabile, e puoi revocare il consenso in qualsiasi momento. Scrivici con il modulo nella pagina Assistenza dall'indirizzo interessato. Puoi anche presentare reclamo all'autorità per la protezione dei dati; in Italia è il Garante per la protezione dei dati personali.",
+        "Puoi chiederci di accedere ai tuoi dati, correggerli, eliminarli, limitarne o fermarne l’uso, o riceverli in forma portabile, e puoi revocare il consenso in qualsiasi momento. Scrivici con il modulo nella pagina Assistenza dall’indirizzo interessato. Puoi anche presentare reclamo all’autorità per la protezione dei dati; in Italia è il Garante per la protezione dei dati personali.",
       ],
     },
     {
@@ -442,7 +463,7 @@ const termsEn: LegalCopy = {
       id: "comments",
       heading: "Comments",
       paragraphs: [
-        "You are responsible for what you post. Do not post anything unlawful, abusive, hateful, deceptive, spam or that invades someone's privacy. Comments are checked before they appear, and we may reject, hide or delete any comment. By posting you let us display your comment, with the name you chose, on the site. You can edit or delete your own comment for a limited time.",
+        "You are responsible for what you post. Do not post anything unlawful, abusive, hateful, deceptive, spam or that invades someone’s privacy. Comments are checked before they appear, and we may reject, hide or delete any comment. By posting you let us display your comment, with the name you chose, on the site. You can edit or delete your own comment for a limited time.",
       ],
     },
     {
@@ -501,21 +522,21 @@ const termsIt: LegalCopy = {
       id: "use",
       heading: "Uso del sito",
       paragraphs: [
-        "AtlasNews pubblica notizie e analisi sull'intelligenza artificiale a scopo informativo. Non costituisce consulenza professionale, legale o finanziaria. Ogni storia mostra le fonti e quanto è solida l'affermazione: verificale prima di fare affidamento su una storia.",
+        "AtlasNews pubblica notizie e analisi sull’intelligenza artificiale a scopo informativo. Non costituisce consulenza professionale, legale o finanziaria. Ogni storia mostra le fonti e quanto è solida l’affermazione: verificale prima di fare affidamento su una storia.",
       ],
     },
     {
       id: "comments",
       heading: "Commenti",
       paragraphs: [
-        "Sei responsabile di ciò che pubblichi. Non pubblicare nulla di illecito, offensivo, d'odio, ingannevole, spam o che violi la privacy di qualcuno. I commenti sono controllati prima della pubblicazione e possiamo rifiutare, nascondere o eliminare qualsiasi commento. Pubblicando ci autorizzi a mostrare il tuo commento, con il nome che hai scelto, sul sito. Puoi modificare o eliminare il tuo commento per un tempo limitato.",
+        "Sei responsabile di ciò che pubblichi. Non pubblicare nulla di illecito, offensivo, d’odio, ingannevole, spam o che violi la privacy di qualcuno. I commenti sono controllati prima della pubblicazione e possiamo rifiutare, nascondere o eliminare qualsiasi commento. Pubblicando ci autorizzi a mostrare il tuo commento, con il nome che hai scelto, sul sito. Puoi modificare o eliminare il tuo commento per un tempo limitato.",
       ],
     },
     {
       id: "newsletter",
       heading: "Newsletter e messaggi",
       paragraphs: [
-        "La newsletter è inviata solo agli indirizzi che hanno confermato l'iscrizione e puoi disiscriverti in qualsiasi momento con il link presente in ogni email. Usa il modulo di contatto per domande e richieste reali; non promettiamo una risposta a ogni messaggio e possiamo ignorare i messaggi offensivi o di spam.",
+        "La newsletter è inviata solo agli indirizzi che hanno confermato l’iscrizione e puoi disiscriverti in qualsiasi momento con il link presente in ogni email. Usa il modulo di contatto per domande e richieste reali; non promettiamo una risposta a ogni messaggio e possiamo ignorare i messaggi offensivi o di spam.",
       ],
     },
     {
@@ -536,14 +557,14 @@ const termsIt: LegalCopy = {
       id: "availability",
       heading: "Disponibilità e responsabilità",
       paragraphs: [
-        "Cerchiamo di mantenere AtlasNews disponibile e accurato, ma è fornito così com'è, senza garanzie. Nei limiti consentiti dalla legge non rispondiamo delle perdite derivanti dall'uso o dall'impossibilità di usare il sito. Nulla qui limita una responsabilità che non può essere limitata per legge, né i diritti che hai come consumatore.",
+        "Cerchiamo di mantenere AtlasNews disponibile e accurato, ma è fornito così com’è, senza garanzie. Nei limiti consentiti dalla legge non rispondiamo delle perdite derivanti dall’uso o dall’impossibilità di usare il sito. Nulla qui limita una responsabilità che non può essere limitata per legge, né i diritti che hai come consumatore.",
       ],
     },
     {
       id: "law",
       heading: "Modifiche e legge applicabile",
       paragraphs: [
-        "Possiamo aggiornare questi termini e, quando lo facciamo, cambiamo la data qui sopra; continuare a usare il sito dopo l'aggiornamento significa accettarlo. Questi termini sono regolati dalla legge del paese in cui l'editore è stabilito, fermi restando i diritti inderogabili del consumatore del paese in cui vivi.",
+        "Possiamo aggiornare questi termini e, quando lo facciamo, cambiamo la data qui sopra; continuare a usare il sito dopo l’aggiornamento significa accettarlo. Questi termini sono regolati dalla legge del paese in cui l’editore è stabilito, fermi restando i diritti inderogabili del consumatore del paese in cui vivi.",
       ],
     },
     {

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { isLocale } from "@/i18n";
+import { getMessages, isLocale } from "@/i18n";
 import { unsubscribeCommentNotificationsAction } from "../actions";
 import "@/styles/site/notice.css";
 
@@ -17,7 +17,6 @@ const copy = {
     success: "Comment notifications are now disabled.",
     invalid: "This unsubscribe link is invalid or has expired.",
     confirm: "Disable notifications",
-    home: "Return to AtlasNews",
   },
   it: {
     title: "Disattiva le notifiche dei commenti",
@@ -25,7 +24,6 @@ const copy = {
     success: "Le notifiche dei commenti sono state disattivate.",
     invalid: "Questo link di disiscrizione non è valido o è scaduto.",
     confirm: "Disattiva notifiche",
-    home: "Torna su AtlasNews",
   },
 } as const;
 
@@ -40,8 +38,10 @@ export default async function UnsubscribeCommentNotificationsPage({
   if (!isLocale(rawLocale)) notFound();
   const locale = rawLocale;
   const token = Array.isArray(search.token) ? search.token[0] : search.token;
-  const status = Array.isArray(search.status) ? search.status[0] : search.status;
+  // A link without its token cannot do anything, so it is the same as an invalid one.
+  const status = (Array.isArray(search.status) ? search.status[0] : search.status) ?? (token ? undefined : "invalid");
   const labels = copy[locale];
+  const homeLabel = getMessages(locale).errors.backHome;
 
   return (
     <main className="notice" id="main-content">
@@ -57,7 +57,7 @@ export default async function UnsubscribeCommentNotificationsPage({
             <button className="button button--primary" type="submit">{labels.confirm}</button>
           </form>
         ) : null}
-        <Link className={!status && token ? "button" : "button button--primary"} href={`/${locale}`}>{labels.home}</Link>
+        <Link className={!status && token ? "button" : "button button--primary"} href={`/${locale}`}>{homeLabel}</Link>
       </div>
     </main>
   );

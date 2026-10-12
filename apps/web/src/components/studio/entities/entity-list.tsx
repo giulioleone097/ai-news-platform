@@ -4,7 +4,6 @@ import type { Locale } from "@/i18n";
 import { entityKinds } from "@atlasnews/core/editorial/domain/entity";
 import { entityCopy } from "@/app/[locale]/(studio)/studio/entities/copy";
 import type { EntityListItem } from "./entity-data";
-import { EntityDeleteButton } from "./entity-delete-button";
 
 export function EntityList({ items, locale }: { items: EntityListItem[]; locale: Locale }) {
   const copy = entityCopy[locale];
@@ -22,6 +21,8 @@ export function EntityList({ items, locale }: { items: EntityListItem[]; locale:
     );
   }
 
+  // The article count is left out when every count is zero, so the column is too.
+  const showCounts = items.some((item) => item.storyCount > 0);
   const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name, locale));
 
   return (
@@ -35,13 +36,20 @@ export function EntityList({ items, locale }: { items: EntityListItem[]; locale:
           <section aria-labelledby={headingId} className="studio-stack" key={kind}>
             <h2 className="studio-section__title" id={headingId}>{copy.kindGroups[kind]}</h2>
             <div className="studio-table-wrap">
-              <table className="studio-table">
+              <table className="studio-table studio-table--fixed">
+                <colgroup>
+                  <col className="studio-col--name" />
+                  <col className="studio-col--slug" />
+                  <col className="studio-col--parent" />
+                  {showCounts ? <col className="studio-col--count" /> : null}
+                  <col className="studio-col--actions" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>{copy.name}</th>
                     <th>{copy.slug}</th>
                     <th>{copy.parent}</th>
-                    <th>{copy.stories}</th>
+                    {showCounts ? <th className="studio-num">{copy.stories}</th> : null}
                     <th>
                       <span className="sr-only">{copy.actions}</span>
                     </th>
@@ -59,13 +67,14 @@ export function EntityList({ items, locale }: { items: EntityListItem[]; locale:
                         </td>
                         <td data-label={copy.slug}>{item.slug}</td>
                         <td data-label={copy.parent}>{item.parent?.name ?? "—"}</td>
-                        <td data-label={copy.stories}>{item.storyCount}</td>
+                        {showCounts ? (
+                          <td className="studio-num" data-label={copy.stories}>{item.storyCount || null}</td>
+                        ) : null}
                         <td className="studio-table__actions">
                           <div className="studio-actions">
                             <Link aria-label={`${copy.edit}: ${item.name}`} className="studio-icon-button" href={href}>
                               <Pencil aria-hidden="true" />
                             </Link>
-                            <EntityDeleteButton compact locale={locale} name={item.name} slug={item.slug} />
                           </div>
                         </td>
                       </tr>

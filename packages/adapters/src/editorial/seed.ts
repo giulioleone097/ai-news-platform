@@ -40,7 +40,7 @@ const categoryTranslations: Record<
     },
     it: {
       slug: "aziende",
-      name: "Aziende",
+      name: "Economia",
       description: "Prodotti, mercato e lavoro.",
     },
   },
@@ -52,7 +52,7 @@ const categoryTranslations: Record<
     },
     it: {
       slug: "policy",
-      name: "Policy",
+      name: "Normativa",
       description: "Regole, diritti e governance.",
     },
   },

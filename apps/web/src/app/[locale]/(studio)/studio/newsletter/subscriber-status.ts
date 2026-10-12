@@ -8,13 +8,13 @@ export const subscriberStatusLabels: Record<Locale, Record<NewsletterStatus, str
     pending: "Awaiting confirmation",
     active: "Active",
     unsubscribed: "Unsubscribed",
-    suppressed: "Suppressed",
+    suppressed: "Blocked",
   },
   it: {
     pending: "In attesa di conferma",
-    active: "Attivi",
-    unsubscribed: "Disiscritti",
-    suppressed: "Soppressi",
+    active: "Attivo",
+    unsubscribed: "Disiscritto",
+    suppressed: "Bloccato",
   },
 };
 

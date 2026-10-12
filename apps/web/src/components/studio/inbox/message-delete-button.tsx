@@ -33,9 +33,7 @@ export function MessageDeleteButton({
         className="studio-icon-button studio-icon-button--danger"
         icon={<Trash2 aria-hidden="true" />}
         idleLabel={copy.delete}
-        onClick={(event) => {
-          if (!window.confirm(copy.deleteConfirmation)) event.preventDefault();
-        }}
+        confirm={{ title: copy.deleteConfirmation }}
         pendingLabel={copy.deleting}
       />
       {state.status === "error" && state.message ? <Note tone="error">{state.message}</Note> : null}

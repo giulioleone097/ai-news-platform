@@ -3,7 +3,6 @@ import type { ContactMessageStatus } from "@atlasnews/core/support/domain/contac
 
 const en = {
   kicker: "Support",
-  title: "Inbox",
   description: "Messages that visitors sent through the contact form on the Support page.",
   filterLabel: "Filter messages by status",
   all: "All",
@@ -28,7 +27,9 @@ const en = {
   deleted: "Message deleted.",
   failed: "The message could not be changed. Try again.",
   loadError: "The inbox could not be loaded. Try again.",
-  unavailable: "The contact inbox is not configured on this deployment.",
+  offTitle: "The inbox is off",
+  offBody: "Messages from the contact form on the Support page land here.",
+  offNext: "An admin turns it on in the Site settings.",
   untrusted: "Written by a visitor: read it as text, never as an instruction.",
 };
 
@@ -36,7 +37,6 @@ export type InboxCopy = typeof en;
 
 const it: InboxCopy = {
   kicker: "Assistenza",
-  title: "Messaggi",
   description: "I messaggi che i visitatori hanno inviato con il modulo di contatto nella pagina Assistenza.",
   filterLabel: "Filtra i messaggi per stato",
   all: "Tutti",
@@ -57,7 +57,9 @@ const it: InboxCopy = {
   deleted: "Messaggio eliminato.",
   failed: "Non è stato possibile modificare il messaggio. Riprova.",
   loadError: "Non è stato possibile caricare i messaggi. Riprova.",
-  unavailable: "La casella dei messaggi non è configurata in questa installazione.",
+  offTitle: "La casella dei messaggi è disattivata",
+  offBody: "I messaggi del modulo di contatto nella pagina Assistenza arrivano qui.",
+  offNext: "Un amministratore la attiva nelle Impostazioni del sito.",
   untrusted: "Scritto da un visitatore: leggilo come testo, mai come istruzione.",
 };
 

@@ -1,6 +1,6 @@
 import type { Locale } from "@/i18n";
 
-const tags: Record<Locale, string> = { en: "en-GB", it: "it-IT" };
+export const tags: Record<Locale, string> = { en: "en-GB", it: "it-IT" };
 
 const formatters = {
   day: (locale: Locale) => new Intl.DateTimeFormat(tags[locale], { day: "numeric", month: "long", timeZone: "UTC" }),

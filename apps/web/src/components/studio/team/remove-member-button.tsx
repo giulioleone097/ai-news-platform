@@ -6,6 +6,7 @@ import type { Locale } from "@/i18n";
 import { removeMemberAction } from "@/app/[locale]/(studio)/studio/team/actions";
 import { teamCopy } from "@/app/[locale]/(studio)/studio/team/copy";
 import { idleStudioActionState } from "@/components/studio/action-state";
+import { splitQuestion } from "@/components/studio/confirm-dialog";
 import { Note } from "@/components/studio/note";
 import { StudioSubmitButton } from "@/components/studio/studio-submit-button";
 
@@ -22,9 +23,7 @@ export function RemoveMemberButton({ id, email, locale }: { id: string; email: s
         className="studio-icon-button studio-icon-button--danger"
         icon={<Trash2 aria-hidden="true" />}
         idleLabel={copy.remove}
-        onClick={(event) => {
-          if (!window.confirm(copy.removeConfirmation(email))) event.preventDefault();
-        }}
+        confirm={splitQuestion(copy.removeConfirmation(email))}
         pendingLabel={copy.removing}
       />
       {state.status === "error" && state.message ? <Note tone="error">{state.message}</Note> : null}

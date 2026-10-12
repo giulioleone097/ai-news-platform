@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EntityLeaderboard } from "@/components/site/entity-leaderboard";
+import { bundledHero } from "@/components/site/editorial-cover";
 import { FeedLead } from "@/components/site/feed-lead";
 import { toFeedItem } from "@/components/site/feed-item";
 import { formatTime } from "@/components/site/feed-format";
 import { InfiniteArticleList } from "@/components/site/infinite-article-list";
 import { JsonLd } from "@/components/site/json-ld";
-import { NewsletterForm } from "@/components/site/newsletter-form";
-import { StatusFilter } from "@/components/site/status-filter";
 import { StatusLegend } from "@/components/site/status-legend";
 import { StoryCard } from "@/components/site/story-card";
 import { TopicRail } from "@/components/site/topic-rail";
@@ -34,10 +33,10 @@ export default async function Home({
   const following = feed.days.flatMap((day) => day.items);
   const cards = following.slice(0, cardCount);
   const stream = following.slice(cardCount);
-  // A picture is shown once per page: a card whose cover already appeared higher gets a plate instead.
+  // A card shows a picture only when the story has one of its own that the page has not shown yet; any other card is text.
   const shownCovers = new Set(feed.lead ? [feed.lead.coverImage] : []);
   const cardImages = cards.map((article) => {
-    const show = !shownCovers.has(article.coverImage);
+    const show = Boolean(article.coverImage) && article.coverImage !== bundledHero && !shownCovers.has(article.coverImage);
     shownCovers.add(article.coverImage);
     return show;
   });
@@ -63,17 +62,14 @@ export default async function Home({
   return (
     <main id="main-content" className="site-shell home-main">
       <JsonLd data={siteLd} />
-      <header className="home-head">
-        <div>
-          <h1>{messages.feed.title}</h1>
-          {feed.updatedAt ? (
-            <p>
-              {messages.feed.updated}{" "}
-              <time dateTime={feed.updatedAt}>{formatTime(feed.updatedAt, locale)} UTC</time>
-            </p>
-          ) : null}
-        </div>
-        <StatusFilter locale={locale} />
+      <header className="page-head">
+        <h1>{messages.feed.title}</h1>
+        {feed.updatedAt ? (
+          <p>
+            {messages.feed.updated}{" "}
+            <time dateTime={feed.updatedAt}>{formatTime(feed.updatedAt, locale)} UTC</time>
+          </p>
+        ) : null}
       </header>
 
       {feed.lead ? (
@@ -100,7 +96,7 @@ export default async function Home({
                 initialNextCursor={encodeArticleCursor(feed.nextCursor)}
                 locale={locale}
                 copy={messages.latest}
-                dayCopy={messages.feed.day}
+                feedCopy={messages.feed}
                 statusLabels={messages.story.claimStatus}
               />
             </section>
@@ -117,7 +113,6 @@ export default async function Home({
         </div>
       )}
 
-      <NewsletterForm locale={locale} copy={messages.newsletter} source={`home-${locale}`} />
       <TopicRail categories={feed.categories} locale={locale} />
     </main>
   );

@@ -1,33 +1,26 @@
-/* An article is one column: head, picture, key points, body, then what follows the body. From 68rem a
-   sticky table of contents sits beside the body. Reading type and the markdown elements live in
-   components/markdown/markdown.css. */
+/* An article is one 35rem column: head, byline, key points, the story so far, body, sources and what follows
+   share its left and right edges. The picture may run wider, to the frame. From 68rem a sticky table of
+   contents sits beside the column, inside a frame that the picture, the contents and the frame end on together.
+   Reading type and the markdown elements live in components/markdown/markdown.css. */
 
 .article-page {
   padding-bottom: 1rem;
 }
 
-/* The frame is the text column; with a table of contents it grows by the width of that column. */
 .article-frame {
-  width: min(100%, 44rem);
+  width: min(100%, 42rem);
   margin-inline: auto;
 }
 
 @media (min-width: 68rem) {
   .article-frame:not(.article-frame--single) {
-    width: min(100%, 62rem);
+    width: min(100%, 53rem);
   }
 }
 
 .article {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-@media (min-width: 68rem) {
-  .article-frame:not(.article-frame--single) .article {
-    grid-template-columns: minmax(0, 44rem) 15rem;
-    column-gap: 3rem;
-  }
+  grid-template-columns: minmax(0, 35rem) minmax(0, 1fr);
 }
 
 .article > * {
@@ -41,11 +34,19 @@
   padding-block: 0.25rem 1.5rem;
 }
 
+/* The way up on the left, the other language on the right. */
+.article-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 1rem;
+}
+
 .article-back {
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
-  justify-self: start;
   gap: 0.125rem;
   margin-left: -0.25rem;
   color: var(--fg-muted);
@@ -67,7 +68,15 @@
   text-underline-offset: 0.14em;
 }
 
+.article-head .story-meta {
+  gap: 0.25rem 1rem;
+  font-size: 0.9375rem;
+}
+
 .article-head .story-meta a {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
   text-decoration: underline transparent;
   text-decoration-thickness: 0.16em;
   text-underline-offset: 0.14em;
@@ -100,12 +109,11 @@
   }
 }
 
-/* Byline: who, when, how long, other language, then the quiet actions on the same row. */
+/* Byline: who, when and how long on the left; the quiet actions pushed to the right. */
 .article-byline {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 0 1rem;
   margin-top: 0.5rem;
   padding-block: 0.375rem;
@@ -128,7 +136,11 @@
 }
 
 .article-language {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
   color: var(--fg);
+  font-size: 0.9375rem;
   font-weight: 600;
   text-decoration: underline;
   text-decoration-thickness: 0.0625em;
@@ -148,8 +160,18 @@
   gap: 0.125rem;
 }
 
+/* --pad is the space around an icon inside its button. The last icon lines up with the right edge; on a phone
+   the actions take their own line and the first icon lines up with the text above it. */
 .article-actions {
-  margin-right: -0.5rem;
+  --pad: 0.8125rem;
+  margin: 0 calc(var(--pad) * -1) 0 auto;
+}
+
+@media (max-width: 34rem) {
+  .article-actions {
+    flex-basis: 100%;
+    margin-left: calc(var(--pad) * -1);
+  }
 }
 
 .article-action {
@@ -191,23 +213,22 @@
     width: 2.25rem;
     height: 2.25rem;
   }
+
+  .article-actions {
+    --pad: 0.5625rem;
+  }
 }
 
-/* Picture. It may run wider than the text, up to 60rem. */
+/* Picture: 16:10 like the home, with a faint edge so a dark picture does not melt into the night page. */
 .article-cover {
   grid-column: 1 / -1;
-  max-width: 60rem;
   margin-bottom: 2rem;
-  aspect-ratio: 3 / 2;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
   border-radius: var(--radius);
+  outline: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
+  outline-offset: -1px;
   background: var(--bg-sunken);
-}
-
-@media (min-width: 48rem) {
-  .article-cover {
-    aspect-ratio: 16 / 9;
-  }
 }
 
 .article-cover picture {
@@ -224,7 +245,7 @@
 .key-points {
   margin-bottom: 2.5rem;
   padding: 1.25rem 1.5rem 1.5rem;
-  border-left: 0.25rem solid var(--accent);
+  border-left: 0.25rem solid var(--fg);
   border-radius: 0 var(--radius) var(--radius) 0;
   background: var(--bg-sunken);
 }
@@ -257,17 +278,78 @@
   content: "";
 }
 
-/* Table of contents. A plain list under the key points on narrow screens; sticky beside the body from 68rem. */
+/* The story so far: a strip of status and date per story, linked, scrolling sideways on a phone. */
+.story-so-far {
+  min-width: 0;
+  margin-bottom: 2.5rem;
+}
+
+.story-so-far__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 1rem;
+  margin-bottom: 0.625rem;
+}
+
+.story-so-far h2 {
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+}
+
+.story-so-far__head a {
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.story-so-far__head a:hover {
+  color: var(--fg);
+}
+
+/* Table of contents. Under 68rem it is a folded list under the key points; from 68rem a sticky list beside the body. */
 .article-toc {
   margin-bottom: 2.5rem;
-  padding-top: 1rem;
   border-top: 1px solid var(--line);
 }
 
+.article-toc summary,
 .article-toc h2 {
-  margin-bottom: 0.25rem;
   font-size: 0.9375rem;
+  font-weight: 700;
   letter-spacing: 0;
+}
+
+.article-toc summary {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+
+.article-toc summary::-webkit-details-marker {
+  display: none;
+}
+
+.article-toc summary::after {
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.25rem;
+  border-right: 0.125rem solid currentColor;
+  border-bottom: 0.125rem solid currentColor;
+  content: "";
+  rotate: 45deg;
+  translate: 0 -0.125rem;
+}
+
+.article-toc[open] summary::after {
+  rotate: -135deg;
+  translate: 0 0.125rem;
 }
 
 .article-toc ul {
@@ -297,15 +379,23 @@
   font-weight: 500;
 }
 
+.article-toc--side {
+  display: none;
+}
+
 @media (min-width: 68rem) {
-  .article-toc {
+  .article-toc--fold {
+    display: none;
+  }
+
+  .article-toc--side {
     position: sticky;
     top: 5.5rem;
     grid-column: 2;
-    grid-row: 3 / span 2;
+    grid-row: 3 / span 3;
+    display: block;
     align-self: start;
-    margin-bottom: 0;
-    padding-top: 0;
+    margin: 0 0 0 3rem;
     border-top: 0;
   }
 
@@ -318,6 +408,12 @@
     min-height: 2.25rem;
     padding-block: 0.375rem;
     border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (pointer: coarse) {
+  .article-toc a {
+    min-height: 2.75rem;
   }
 }
 
@@ -396,25 +492,15 @@
   }
 }
 
-.article-more {
-  display: inline-flex;
-  min-height: 2.75rem;
-  align-items: center;
-  margin-top: 0.25rem;
-  color: var(--fg-muted);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-}
-
-.article-more:hover {
-  color: var(--fg);
-}
-
-/* Tail: comments and more reading stay in the text column; the newsletter band takes the frame. */
+/* Tail: comments and more reading stay in the text column. Its headings, like Sources above, are furniture:
+   smaller than the headings inside the body. */
 .article-tail {
-  max-width: 44rem;
+  max-width: 35rem;
+}
+
+.article-main .section-header h2,
+.article-tail .section-header h2 {
+  font-size: 1.125rem;
 }
 
 .article-related {

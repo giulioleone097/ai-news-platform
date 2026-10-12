@@ -17,10 +17,9 @@ export default async function NewArticlePage({
 
   await requireEditor(locale);
   const repositories = await getStudioEditorialRepositories();
-  const [englishCategories, italianCategories, media, entities] = await Promise.all([
+  const [englishCategories, italianCategories, entities] = await Promise.all([
     repositories.articles.listCategories("en"),
     repositories.articles.listCategories("it"),
-    repositories.media.listAssets(),
     repositories.entities.listEntities(locale),
   ]);
 
@@ -29,7 +28,6 @@ export default async function NewArticlePage({
       categories={{ en: englishCategories, it: italianCategories }}
       entities={entities}
       locale={locale}
-      media={media}
       messages={getMessages(locale)}
     />
   );

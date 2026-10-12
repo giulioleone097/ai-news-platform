@@ -20,10 +20,8 @@ export async function SiteFooter({ locale }: { locale: Locale }) {
         </div>
         <nav aria-label={messages.footer.ariaLabel} className="site-footer__nav">
           <div>
-            <h2>{messages.footer.groups.sections}</h2>
+            <h2>{messages.footer.groups.topics}</h2>
             <ul>
-              <li><Link href={localizedPath("/latest", locale)} prefetch={false}>{messages.footer.latest}</Link></li>
-              <li><Link href={localizedPath("/entities", locale)} prefetch={false}>{messages.navigation.allEntities}</Link></li>
               {categories.map((category) => (
                 <li key={category.id}>
                   <Link href={localizedPath(`/categories/${category.slug}`, locale)} prefetch={false}>{category.name}</Link>
@@ -32,9 +30,17 @@ export async function SiteFooter({ locale }: { locale: Locale }) {
             </ul>
           </div>
           <div>
-            <h2>{messages.footer.groups.publication}</h2>
+            <h2>{messages.footer.groups.follow}</h2>
             <ul>
-              <li><Link href={localizedPath("/search", locale)} prefetch={false}>{messages.footer.search}</Link></li>
+              <li><Link href={localizedPath("/latest", locale)} prefetch={false}>{messages.footer.latest}</Link></li>
+              <li><Link href={localizedPath("/entities", locale)} prefetch={false}>{messages.navigation.allEntities}</Link></li>
+              <li><Link href={localizedPath("/feed.xml", locale)} prefetch={false}>{messages.footer.rss}</Link></li>
+              <li><Link href="#newsletter" prefetch={false}>{messages.footer.newsletter}</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h2>{messages.footer.groups.about}</h2>
+            <ul>
               <li><Link href={localizedPath("/support", locale)} prefetch={false}>{messages.footer.support}</Link></li>
               <li><Link href={localizedPath("/privacy", locale)} prefetch={false}>{messages.footer.privacy}</Link></li>
               <li><Link href={localizedPath("/terms", locale)} prefetch={false}>{messages.footer.terms}</Link></li>
@@ -46,16 +52,12 @@ export async function SiteFooter({ locale }: { locale: Locale }) {
               ) : null}
             </ul>
           </div>
-          <div>
-            <h2>{messages.footer.groups.tools}</h2>
-            <ul>
-              <li><Link href={localizedPath("/studio", locale)} prefetch={false}>{messages.footer.studio}</Link></li>
-              <li><a href={new URL("/info", getPublicMcpUrl()).toString()}>{messages.footer.mcp}</a></li>
-              <li><Link href={localizedPath("/feed.xml", locale)} prefetch={false}>{messages.footer.rss}</Link></li>
-            </ul>
-          </div>
         </nav>
-        <small className="site-footer__legal">{messages.footer.copyright}</small>
+        <div className="site-footer__legal">
+          <small>{messages.footer.copyright}</small>
+          <Link href={localizedPath("/studio", locale)} prefetch={false}>{messages.footer.studio}</Link>
+          <a href={new URL("/info", getPublicMcpUrl()).toString()}>{messages.footer.mcp}</a>
+        </div>
       </div>
     </footer>
   );

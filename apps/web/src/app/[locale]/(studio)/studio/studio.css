@@ -5,9 +5,22 @@
 .studio-shell {
   --studio-pad: clamp(1rem, 3vw, 2.5rem);
   --studio-bar: 0rem;
+  --studio-nav: 14rem;
   display: grid;
-  grid-template-columns: 14rem minmax(0, 1fr);
+  grid-template-columns: var(--studio-nav) minmax(0, 1fr);
   min-height: 100vh;
+  /* The navigation column runs the full height of a long page; the sidebar itself sticks to the viewport. */
+  background: linear-gradient(
+    to right,
+    var(--bg-sunken) calc(var(--studio-nav) - 1px),
+    var(--line) calc(var(--studio-nav) - 1px) var(--studio-nav),
+    transparent var(--studio-nav)
+  );
+}
+
+/* The one distance from the head to the first block, and between blocks. */
+.studio-shell {
+  --studio-gap: 1.5rem;
 }
 
 .studio-sidebar {
@@ -47,7 +60,19 @@
   display: grid;
   flex: 1;
   align-content: start;
+  gap: 1rem;
+}
+
+.studio-nav__group {
+  display: grid;
   gap: 0.125rem;
+}
+
+.studio-nav__label {
+  padding: 0 0.625rem 0.125rem;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .studio-nav a {
@@ -146,13 +171,51 @@
   gap: 1rem;
 }
 
+.studio-language a {
+  min-width: 2.25rem;
+}
+
+.studio-topbar__status {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+}
+
+/* The demo pill: once, in the top bar. It is information, so it is neutral, not a warning. */
 .studio-mode {
   padding: 0.125rem 0.5rem;
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
-  color: var(--warning);
-  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--fg-muted);
   font-size: 0.8125rem;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+/* "Agent tools ready": hidden until StudioSiteTools has registered the tools and marks the page. */
+.studio-agent {
+  display: none;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+html[data-studio-agents="ready"] .studio-agent {
+  display: inline-flex;
+}
+
+/* Phones keep the language control, "Open site" and the agent status in the menu; wide screens in the top bar. */
+.studio-sidebar__tools,
+.studio-sidebar__head .studio-mode {
+  display: none;
+}
+
+.studio-sidebar__tools {
+  gap: 0.75rem;
 }
 
 .studio-link {
@@ -174,7 +237,7 @@
 .studio-main {
   display: grid;
   align-content: start;
-  gap: 1.5rem;
+  gap: var(--studio-gap);
   padding-block: 1rem 4rem;
 }
 
@@ -186,7 +249,33 @@
 @media (max-width: 56rem) {
   .studio-shell {
     --studio-bar: 3.5rem;
-    grid-template-columns: minmax(0, 1fr);
+    /* Not a grid here: stretched rows made the sticky bar as tall as a short page. */
+    display: block;
+    background: none;
+  }
+
+  .studio-topbar {
+    display: none;
+  }
+
+  .studio-sidebar__head .studio-mode {
+    display: inline-block;
+  }
+
+  .studio-sidebar__head .studio-menu-button {
+    margin-left: auto;
+  }
+
+  .studio-sidebar__tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0.75rem 0.625rem 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .studio-sidebar__tools .studio-agent {
+    flex-basis: 100%;
   }
 
   .studio-sidebar {
@@ -198,7 +287,21 @@
 
   .studio-sidebar__head {
     min-height: var(--studio-bar);
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 0.75rem;
     padding: 0.5rem var(--studio-pad);
+  }
+
+  /* One row at every phone width: the demo pill gives way first, then the word "Studio". */
+  .studio-sidebar__head .brand {
+    flex: none;
+  }
+
+  .studio-sidebar__head .studio-mode {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .studio-sidebar .studio-menu-button {
@@ -217,6 +320,12 @@
 
   .studio-nav a {
     min-height: 2.75rem;
+  }
+}
+
+@media (max-width: 26rem) {
+  .studio-sidebar__head .brand__label {
+    display: none;
   }
 }
 
@@ -256,12 +365,20 @@
 }
 
 /* Page head: one h1, an optional description, the view's single primary action. */
+/* The title sits at the same height on every page, with or without a description or an action. */
 .studio-head {
   display: flex;
+  min-height: 4rem;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem 1.5rem;
+}
+
+/* The head and the first block are always one gap apart, whatever the block is. */
+.studio-head + .studio-section {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .studio-head h1 {
@@ -277,6 +394,11 @@
   max-width: 44rem;
   margin-top: 0.25rem;
   color: var(--fg-muted);
+}
+
+.studio-head p.studio-head__scope {
+  margin-top: 0.125rem;
+  font-size: 0.875rem;
 }
 
 .studio-head__actions {
@@ -308,6 +430,10 @@
   border-radius: var(--radius-sm);
   background: var(--bg);
   font-size: 0.9375rem;
+}
+
+.studio-note__title {
+  display: block;
 }
 
 .studio-note--success { --note: var(--success); }
@@ -346,6 +472,8 @@
 
 /* Tables: rows of about 3rem with a bottom rule; stacked rows on a phone. */
 .studio-table-wrap {
+  /* Positioned, so the table's visually hidden labels are clipped with it instead of widening the page. */
+  position: relative;
   overflow-x: auto;
   border-top: 1px solid var(--line-strong);
 }
@@ -384,6 +512,76 @@
 
 .studio-table__main {
   min-width: 14rem;
+}
+
+/* Columns that line up across tables (Companies, Models and Products) and numbers that line up inside one. */
+.studio-table--fixed {
+  table-layout: fixed;
+}
+
+.studio-col--name { width: 34%; }
+.studio-col--slug { width: 24%; }
+.studio-col--parent { width: 22%; }
+.studio-col--count { width: 6rem; }
+.studio-col--actions { width: 3.5rem; }
+
+.studio-table th.studio-num,
+.studio-table td.studio-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.studio-table--fixed td {
+  overflow-wrap: anywhere;
+}
+
+/* The article list: a select-all checkbox in the header, a sortable date, a meta line that only phones show. */
+.studio-title-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.studio-check-cell {
+  display: inline-grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  place-items: center;
+  margin-left: -0.625rem;
+  cursor: pointer;
+}
+
+/* The claim chip is inline-flex on a text baseline; in a cell it sits on the cell's middle like the other values. */
+.studio-table td .status {
+  display: flex;
+}
+
+.studio-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.studio-sort:hover {
+  color: var(--fg);
+}
+
+.studio-cell .studio-cell__meta,
+.studio-cell .studio-cell__where {
+  display: none;
+}
+
+/* A tablet keeps the claim and the date as columns; category and author move under the title. */
+@media (min-width: 40.01rem) and (max-width: 63.99rem) {
+  .studio-table--select .studio-wide-only {
+    display: none;
+  }
+
+  .studio-table--select .studio-cell .studio-cell__where {
+    display: block;
+  }
 }
 
 .studio-cell {
@@ -462,6 +660,11 @@ a.studio-cell:hover strong {
     font-size: 0.8125rem;
   }
 
+  /* A value that is empty on desktop (a count left out because it is zero) takes no line here. */
+  .studio-table td:empty {
+    display: none;
+  }
+
   .studio-table td.studio-table__main,
   .studio-table td.studio-table__actions {
     display: block;
@@ -475,6 +678,65 @@ a.studio-cell:hover strong {
 
   .studio-table__main {
     min-width: 0;
+  }
+
+  /* An article row: title, slug and one muted meta line, the checkbox on the left, the view link at the right.
+     About 5rem instead of a stack of labelled values. */
+  .studio-table--articles tr {
+    position: relative;
+  }
+
+  .studio-table--articles td:not(.studio-table__main, .studio-table__actions) {
+    display: none;
+  }
+
+  .studio-table--articles td.studio-table__main {
+    padding: 0 2.75rem 0 0;
+  }
+
+  .studio-table--articles td.studio-table__actions {
+    position: absolute;
+    top: 0.5rem;
+    right: 0;
+    padding: 0;
+  }
+
+  /* The meta line wraps between its parts, each with its dot after it. */
+  .studio-table--articles .studio-cell .studio-cell__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.5rem;
+  }
+
+  .studio-cell__meta span:not(:last-child)::after {
+    margin-left: 0.5rem;
+    content: "·";
+  }
+
+  /* The header row stays for the select-all checkbox. */
+  .studio-table--select thead {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
+
+  .studio-table--select thead {
+    display: block;
+  }
+
+  .studio-table--select thead tr {
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .studio-table--select th:not(:first-child) {
+    display: none;
+  }
+
+  .studio-table--select th {
+    border-bottom: 0;
   }
 }
 
@@ -491,9 +753,15 @@ a.studio-cell:hover strong {
   font-weight: 600;
 }
 
-.studio-field small {
+.studio-field small,
+.studio-field__hint {
   color: var(--fg-muted);
   font-size: 0.8125rem;
+}
+
+.studio-field__optional {
+  color: var(--fg-muted);
+  font-weight: 400;
 }
 
 .studio-field__error,
@@ -506,17 +774,37 @@ a.studio-cell:hover strong {
 .studio-control,
 .studio-field :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"]), select, textarea) {
   width: 100%;
-  min-height: 2.5rem;
   padding: 0.4375rem 0.75rem;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line-control);
   border-radius: var(--radius-sm);
   color: var(--fg);
-  background: var(--bg);
+  background-color: var(--bg);
   font-size: 1rem;
   line-height: 1.4;
 }
 
-.studio-field textarea {
+.studio-control,
+.studio-field :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"]), select) {
+  height: 2.5rem;
+}
+
+/* A select draws its own chevron from two gradients in currentColor, so it follows the text colour in both themes. */
+select.studio-control,
+.studio-field select {
+  padding-right: 2.25rem;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 1.125rem center, right 0.8125rem center;
+  background-repeat: no-repeat;
+  background-size: 0.3125rem 0.3125rem;
+}
+
+.studio-field textarea,
+textarea.studio-control {
+  height: auto;
+  min-height: 5.5rem;
   resize: vertical;
   line-height: 1.5;
 }
@@ -550,7 +838,43 @@ a.studio-cell:hover strong {
   font-size: 0.9375rem;
 }
 
-.studio-check {
+/* A file input as a dashed drop area: the browser's own button sits inside it. */
+.studio-dropzone {
+  display: grid;
+  min-width: 0;
+  gap: 0.25rem;
+  padding: 1rem;
+  border: 1px dashed var(--line-control);
+  border-radius: var(--radius);
+  background: var(--bg);
+  text-align: center;
+  cursor: pointer;
+}
+
+.studio-dropzone:hover,
+.studio-dropzone:focus-within,
+.studio-dropzone[data-over="true"] {
+  border-color: var(--fg);
+  background: var(--bg-sunken);
+}
+
+.studio-dropzone__icon {
+  justify-self: center;
+  color: var(--fg-muted);
+}
+
+.studio-dropzone strong {
+  font-size: 0.9375rem;
+}
+
+.studio-dropzone input[type="file"] {
+  max-width: 100%;
+  justify-self: center;
+  font-size: 0.875rem;
+}
+
+/* Checkbox and radio: one style for the label row (`label.studio-check > input`) and for a bare `input.studio-check`. */
+label.studio-check {
   display: flex;
   min-height: 2.25rem;
   align-items: center;
@@ -558,13 +882,63 @@ a.studio-cell:hover strong {
   font-size: 0.9375rem;
 }
 
-.studio-check input,
-.studio-field input[type="radio"] {
+:is(input.studio-check, .studio-check input, .studio-field input[type="radio"]):is([type="checkbox"], [type="radio"]) {
+  position: relative;
+  display: inline-grid;
   width: 1.125rem;
   height: 1.125rem;
   flex: none;
+  place-content: center;
   margin: 0;
-  accent-color: var(--fg);
+  border: 1px solid var(--line-control);
+  border-radius: 0.1875rem;
+  background: var(--bg);
+  cursor: pointer;
+  appearance: none;
+}
+
+:is(input.studio-check, .studio-check input, .studio-field input[type="radio"])[type="radio"] {
+  border-radius: 50%;
+}
+
+:is(input.studio-check, .studio-check input, .studio-field input[type="radio"]):is([type="checkbox"], [type="radio"]):hover {
+  border-color: var(--fg);
+}
+
+:is(input.studio-check, .studio-check input, .studio-field input[type="radio"]):is(:checked, [type="checkbox"]:indeterminate) {
+  border-color: var(--fg);
+  background: var(--fg);
+}
+
+/* The mark is a mask in the page colour: a check, a dash when indeterminate, a dot for a radio. */
+:is(input.studio-check, .studio-check input, .studio-field input[type="radio"]):is(:checked, [type="checkbox"]:indeterminate)::after {
+  width: 0.75rem;
+  height: 0.75rem;
+  background: var(--bg);
+  content: "";
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 6.5l2.5 2.5 4.5-5.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+:is(input.studio-check, .studio-check input)[type="checkbox"]:indeterminate::after {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M3 6h6'/%3E%3C/svg%3E");
+}
+
+:is(input.studio-check, .studio-check input, .studio-field input[type="radio"])[type="radio"]:checked::after {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  mask: none;
+}
+
+:is(input.studio-check, .studio-check input, .studio-field input[type="radio"]):disabled {
+  border-style: dashed;
+  background: var(--bg-sunken);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+:is(input.studio-check, .studio-check input, .studio-field input[type="radio"]):disabled:is(:checked, [type="checkbox"]:indeterminate) {
+  background: var(--fg-muted);
 }
 
 .studio-check small {
@@ -643,10 +1017,39 @@ fieldset.studio-section > legend {
   width: auto;
 }
 
+/* Five options do not fit beside each other on a phone: the control takes its own row and scrolls sideways. */
+@media (max-width: 40rem) {
+  .studio-toolbar .studio-segmented {
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* The right edge fades out where more options wait; the last one has room to scroll clear of the fade. */
+    padding-right: 2rem;
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+
+  .studio-toolbar .studio-segmented::-webkit-scrollbar {
+    display: none;
+  }
+
+  .studio-toolbar .studio-segmented :is(button, a) {
+    flex: none;
+    padding-inline: 0.625rem;
+  }
+}
+
+/* One height per row: the controls, the buttons and the segmented controls are all 2.5rem. */
+:is(.studio-toolbar, .studio-inline, .studio-invite, .studio-head__actions) .button {
+  min-height: 2.5rem;
+}
+
 .studio-search {
   position: relative;
   display: block;
-  min-width: 12rem;
+  min-width: min(12rem, 100%);
   flex: 1 1 14rem;
 }
 
@@ -669,14 +1072,14 @@ fieldset.studio-section > legend {
   flex-wrap: wrap;
   gap: 0.125rem;
   padding: 0.125rem;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line-control);
   border-radius: var(--radius);
   background: var(--bg);
 }
 
 .studio-segmented :is(button, a) {
   display: inline-flex;
-  min-height: 2rem;
+  min-height: 2.125rem;
   align-items: center;
   justify-content: center;
   gap: 0.375rem;
@@ -751,6 +1154,10 @@ fieldset.studio-section > legend {
   justify-content: space-between;
   gap: 1rem;
   border-bottom: 1px solid var(--line);
+}
+
+.studio-links small {
+  margin-left: auto;
 }
 
 .studio-links a:hover span {
@@ -895,11 +1302,11 @@ fieldset.studio-section > legend {
 /* Below the two-column layout the panel sits after a long form, so Save and Cancel stay in reach
    as a bar fixed to the bottom of the screen. */
 @media (max-width: 63.99rem) {
-  .studio-editor:has(.studio-editor__aside > .studio-buttons) {
+  .studio-editor:has(.studio-editor__aside > .studio-buttons:not(.studio-buttons--flow)) {
     padding-bottom: 4.5rem;
   }
 
-  .studio-editor__aside > .studio-buttons {
+  .studio-editor__aside > .studio-buttons:not(.studio-buttons--flow) {
     position: fixed;
     z-index: 30;
     right: 0;
@@ -911,7 +1318,7 @@ fieldset.studio-section > legend {
     background: var(--bg);
   }
 
-  .studio-editor__aside > .studio-buttons > :first-child {
+  .studio-editor__aside > .studio-buttons:not(.studio-buttons--flow) > :first-child {
     order: 1;
   }
 }
@@ -934,8 +1341,18 @@ fieldset.studio-section > legend {
 /* Media library: a compact grid of thumbnails. */
 .studio-media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem 1rem;
+}
+
+@media (min-width: 40rem) {
+  .studio-media-grid {
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  }
+}
+
+.studio-upload {
+  width: min(100%, 22rem);
 }
 
 .studio-media-grid > li {
@@ -966,17 +1383,40 @@ fieldset.studio-section > legend {
   text-underline-offset: 0.2em;
 }
 
-.studio-media-grid p {
+.studio-media-grid p,
+.studio-media-use {
   color: var(--fg-muted);
   font-size: 0.8125rem;
   overflow-wrap: anywhere;
 }
 
-.studio-media-grid p a {
-  display: inline;
+.studio-media-use a {
+  display: block;
+  padding-block: 0.125rem;
   font-size: inherit;
   font-weight: 500;
   white-space: normal;
+}
+
+/* An empty list in Studio: a short title and one line of what to do, at the scale of the other section titles. */
+.studio-main .empty-state {
+  gap: 0.25rem;
+  padding: 1rem 0;
+}
+
+.studio-main .empty-state h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.studio-main .empty-state p {
+  font-size: 0.9375rem;
+}
+
+.studio-main .empty-state .button {
+  margin-top: 0.5rem;
 }
 
 /* Loading: simple skeleton rules. */
@@ -1012,23 +1452,70 @@ fieldset.studio-section > legend {
   }
 
   .studio-control,
-  .studio-field :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"]), select, textarea) {
-    min-height: 2.75rem;
+  .studio-field :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"]), select) {
+    height: 2.75rem;
   }
 
-  .studio-check,
+  label.studio-check,
   .studio-link,
   .studio-back,
   .studio-nav a,
-  .studio-segmented :is(button, a) {
+  summary,
+  .studio-table a.studio-cell,
+  .studio-sort,
+  .studio-media-use a {
     min-height: 2.75rem;
+  }
+
+  .studio-media-use a {
+    display: flex;
+    align-items: center;
+  }
+
+  .studio-media-grid > li > a {
+    line-height: 2.75rem;
+  }
+
+  .studio-table a.studio-cell {
+    align-content: center;
+  }
+
+  /* A segmented control keeps the height of the fields beside it: the items are the 44px targets, so the
+     outline hangs 1px outside the row (negative margin) instead of adding to it. */
+  .studio-segmented {
+    gap: 0;
+    padding: 0;
+    margin-block: -1px;
+    overflow: hidden;
+  }
+
+  .studio-segmented :is(button, a) {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    border-radius: 0;
+  }
+
+  :is(.studio-toolbar, .studio-inline, .studio-invite, .studio-head__actions) .button {
+    min-height: 2.75rem;
+  }
+
+  .studio-check-cell {
+    width: 2.75rem;
+    height: 2.75rem;
   }
 }
 
 .studio-stack {
   display: grid;
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
+}
+
+/* A long label wraps instead of pushing the page wider at large text sizes. */
+.studio-main .button {
+  white-space: normal;
+  text-align: center;
 }
 
 /* Short forms (entity, category, invitation) stay a readable width. */
@@ -1042,14 +1529,22 @@ fieldset.studio-section > legend {
 }
 
 @media (min-width: 48rem) {
+  /* Each field spans label, control and hint rows of the shared grid, so the button sits on the controls' row. */
   .studio-invite {
     grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1fr) auto;
-    align-items: start;
+    grid-template-rows: auto auto auto;
+    gap: 0 1rem;
   }
 
-  /* The labels sit above the fields; the button lines up with the fields. */
+  .studio-invite > .studio-field {
+    grid-row: 1 / span 3;
+    grid-template-rows: subgrid;
+    gap: 0.375rem 0;
+  }
+
   .studio-invite > .button {
-    margin-top: 1.5rem;
+    grid-row: 2;
+    align-self: start;
   }
 }
 
@@ -1070,6 +1565,11 @@ fieldset.studio-section > legend {
 .studio-composer fieldset {
   padding: 0;
   border: 0;
+}
+
+.studio-composer .studio-segmented {
+  justify-self: start;
+  max-width: 100%;
 }
 
 .studio-composer__meta {

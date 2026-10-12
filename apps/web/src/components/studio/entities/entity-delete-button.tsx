@@ -32,9 +32,7 @@ export function EntityDeleteButton({
         className={compact ? "studio-icon-button studio-icon-button--danger" : "button button--danger"}
         icon={compact ? <Trash2 aria-hidden="true" /> : undefined}
         idleLabel={copy.delete}
-        onClick={(event) => {
-          if (!window.confirm(copy.deleteConfirmation)) event.preventDefault();
-        }}
+        confirm={{ title: `${copy.deleteTitle} “${name}”?` }}
         pendingLabel={copy.deleting}
       />
       {state.status === "error" && state.message ? <Note tone="error">{state.message}</Note> : null}

@@ -24,6 +24,7 @@
 
 .brand {
   display: inline-flex;
+  min-height: 2.75rem;
   align-items: center;
   gap: 0.5rem;
   font-size: 1.25rem;
@@ -61,15 +62,18 @@
   justify-self: start;
 }
 
+/* Latest first, the products, then Products last; a phone moves Products up beside Latest. The row
+   scrolls sideways, so its right edge fades while there is more, and the last link clears the fade. */
 .product-nav {
   display: flex;
   order: 3;
   flex: 0 0 calc(100% + var(--gutter) * 2);
   grid-area: nav;
-  margin-inline: calc(var(--gutter) * -1);
-  padding-inline: calc(var(--gutter) - 0.625rem);
+  margin: -0.3125rem calc(var(--gutter) * -1);
+  padding: 0.3125rem 2rem 0.3125rem calc(var(--gutter) - 0.625rem);
   overflow-x: auto;
   scrollbar-width: none;
+  mask-image: linear-gradient(90deg, #000 calc(100% - 2rem), transparent);
 }
 
 .product-nav::-webkit-scrollbar {
@@ -89,18 +93,24 @@
   transition: box-shadow var(--ease);
 }
 
-.product-nav a:hover {
+.product-nav a:hover,
+.product-nav a[aria-current="page"] {
   box-shadow: inset 0 -0.1875rem 0 var(--accent);
 }
 
+.product-nav__lead {
+  order: -2;
+}
+
 .product-nav__more {
-  color: var(--fg-muted);
+  order: -1;
 }
 
 .site-header__actions {
   display: flex;
   order: 2;
   min-width: 0;
+  margin-left: auto;
   grid-area: actions;
   align-items: center;
   justify-content: flex-end;
@@ -148,7 +158,33 @@
   box-shadow: inset 0 -0.1875rem 0 var(--accent);
 }
 
-@media (min-width: 60rem) {
+/* Phones: one row for the wordmark and the actions. The page already says which language it is in,
+   so only the other language is offered; the row still wraps if the reader's text is very large. */
+@media (max-width: 29.99rem) {
+  .site-header__inner {
+    column-gap: 0.5rem;
+  }
+
+  .site-header .brand {
+    font-size: 1.125rem;
+  }
+
+  .locale-switcher {
+    margin-right: 0;
+  }
+
+  .locale-switcher a[aria-current="page"] {
+    display: none;
+  }
+
+  .site-header__actions .button--small {
+    padding-inline: 0.625rem;
+  }
+}
+
+/* One row needs the wordmark, seven links and the actions side by side, which takes about 68rem; below that
+   the links keep their own scrolling row. */
+@media (min-width: 68rem) {
   .site-header {
     position: sticky;
     z-index: 50;
@@ -166,7 +202,11 @@
 
   .product-nav {
     margin-inline: 0;
-    padding-inline: 0;
+    padding-inline: 0 2rem;
+  }
+
+  .product-nav__more {
+    order: 2;
   }
 
   .site-header__actions {
@@ -178,10 +218,15 @@
   }
 }
 
-/* Touch screens wide enough for it: the two language links become full 44px targets. */
-@media (pointer: coarse) and (min-width: 30rem) {
+/* Touch screens: the two language links and the short words of the product row become full 44px targets. */
+@media (pointer: coarse) {
   .locale-switcher a {
     min-width: 2.75rem;
+  }
+
+  .product-nav a {
+    min-width: 2.75rem;
+    justify-content: center;
   }
 }
 
@@ -229,6 +274,16 @@
   color: var(--fg);
 }
 
+/* A 44px target on a touch screen, centred on the heading's line so the header does not grow. */
+@media (pointer: coarse) {
+  .section-header a {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    margin-block: -0.75rem;
+  }
+}
+
 /* Footer. */
 .site-footer {
   margin-top: 4rem;
@@ -245,6 +300,7 @@
 .site-footer__intro {
   display: grid;
   align-content: start;
+  justify-items: start;
   gap: 0.875rem;
 }
 
@@ -276,6 +332,7 @@
 
 @media (pointer: coarse) {
   .site-footer__nav a {
+    min-width: 2.75rem;
     min-height: 2.75rem;
   }
 }
@@ -285,11 +342,34 @@
   text-decoration: underline;
 }
 
+/* The last line: the copyright, then two quiet links for the people who run the site. */
 .site-footer__legal {
-  padding-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 1.25rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--line);
   color: var(--fg-muted);
   font-size: 0.8125rem;
+}
+
+.site-footer__legal a {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+}
+
+.site-footer__legal a:hover {
+  color: var(--fg);
+  text-decoration: underline;
+}
+
+@media (pointer: coarse) {
+  .site-footer__legal a {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
 }
 
 @media (min-width: 60rem) {

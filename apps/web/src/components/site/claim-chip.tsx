@@ -13,10 +13,18 @@ export function StatusGlyph({ status }: { status: ClaimStatus }) {
   );
 }
 
-/** The status word is always printed: the glyph only reinforces it. */
-export function ClaimChip({ status, label }: { status: ClaimStatus; label: string }) {
+/** The status word is always printed: the glyph only reinforces it. `size` picks the tier: rows keep the default. */
+export function ClaimChip({
+  status,
+  label,
+  size = "row",
+}: {
+  status: ClaimStatus;
+  label: string;
+  size?: "row" | "card" | "lead";
+}) {
   return (
-    <span className="status">
+    <span className={size === "row" ? "status" : `status status--${size}`}>
       <StatusGlyph status={status} />
       {label}
     </span>

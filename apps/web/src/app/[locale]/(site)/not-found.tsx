@@ -15,8 +15,8 @@ export default function NotFound() {
       <h1>{messages.errors.notFoundTitle}</h1>
       <p>{messages.errors.notFoundDescription}</p>
       <div className="notice__actions">
-        <Link className="button button--primary" href={localizedPath("/", locale)}>
-          {messages.errors.backHome}
+        <Link className="button button--primary" href={localizedPath("/latest", locale)}>
+          {messages.errors.latestStories}
         </Link>
       </div>
     </main>

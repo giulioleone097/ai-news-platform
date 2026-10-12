@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Trash2, Upload } from "lucide-react";
-import { Note } from "@/components/studio/note";
+import { Trash2 } from "lucide-react";
+import { MediaUpload } from "@/components/studio/media-upload";
+import { Note, OffNote } from "@/components/studio/note";
 import { PageHead } from "@/components/studio/page-head";
 import { studioSupplementalCopy } from "@/components/studio/studio-copy";
-import { isLocale } from "@/i18n";
+import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { getEditorialMediaReferenceKey } from "@atlasnews/core/editorial/domain/editorial-image";
 import type { Article } from "@atlasnews/core/editorial/domain/article";
@@ -73,10 +74,21 @@ export default async function StudioMediaPage({
   const error = Array.isArray(query.error) ? query.error[0] : query.error;
 
   const writable = repositories.media.writable;
+  const { studio } = getMessages(locale);
 
   return (
     <>
-      <PageHead description={copy.mediaDescription} title={copy.mediaTitle} />
+      <PageHead description={copy.mediaDescription} scope={studio.scope.media} title={studio.media}>
+        {writable ? (
+          <MediaUpload
+            action={uploadMediaAction}
+            copy={{ dropzone: copy.mediaDropzone, help: copy.mediaUploadHelp, label: copy.mediaUploadAction }}
+            locale={locale}
+          />
+        ) : null}
+      </PageHead>
+
+      {writable ? null : <OffNote body={copy.mediaOffBody} next={copy.mediaOffNext} title={copy.mediaOffTitle} />}
 
       {query.uploaded ? (
         <Note tone="success">{copy.mediaUploaded}</Note>
@@ -86,30 +98,8 @@ export default async function StudioMediaPage({
         <Note tone="error">{error === "in-use" ? copy.mediaInUse : copy.mediaError}</Note>
       ) : null}
 
-      <section className="studio-stack" aria-labelledby="media-upload-title">
-        <h2 className="studio-section__title" id="media-upload-title">{copy.mediaUploadTitle}</h2>
-        {writable ? <p className="studio-muted">{copy.mediaUploadHelp}</p> : <Note tone="warning">{copy.mediaReadOnly}</Note>}
-        <form action={uploadMediaAction} className="studio-inline">
-          <input name="locale" type="hidden" value={locale} />
-          <label className="studio-field">
-            <span className="sr-only">{copy.mediaUploadAction}</span>
-            <input
-              accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
-              disabled={!writable}
-              name="asset"
-              required
-              type="file"
-            />
-          </label>
-          <button className="button button--primary" disabled={!writable} type="submit">
-            <Upload aria-hidden="true" />
-            {copy.mediaUploadAction}
-          </button>
-        </form>
-      </section>
-
       {assets.length ? (
-        <ul aria-label={copy.mediaTitle} className="studio-media-grid">
+        <ul aria-label={studio.media} className="studio-media-grid">
           {assets.map((asset) => (
             <li key={asset.url}>
               <div
@@ -120,22 +110,23 @@ export default async function StudioMediaPage({
               />
               <a href={asset.url} rel="noreferrer" target="_blank" title={asset.name}>{asset.name}</a>
               <p>{asset.mimeType} · {formatBytes(asset.size, locale)}</p>
-              <p>
+              <div className="studio-media-use">
                 {asset.articles.length ? (
                   <>
-                    {copy.usedBy}{" "}
-                    {asset.articles.slice(0, 2).map((article, index) => (
-                      <span key={article.id}>
-                        {index ? ", " : null}
-                        <Link href={`/${locale}/studio/articles/${article.id}`}>{article.title}</Link>
-                      </span>
-                    ))}
-                    {asset.articles.length > 2 ? ` +${asset.articles.length - 2}` : null}
+                    <span>{copy.usedBy}</span>
+                    <ul>
+                      {asset.articles.slice(0, 2).map((article) => (
+                        <li key={article.id}>
+                          <Link href={`/${locale}/studio/articles/${article.id}`}>{article.title}</Link>
+                        </li>
+                      ))}
+                    </ul>
+                    {asset.articles.length > 2 ? <span>+{asset.articles.length - 2}</span> : null}
                   </>
                 ) : (
-                  copy.unusedAsset
+                  <span>{copy.unusedAsset}</span>
                 )}
-              </p>
+              </div>
               {asset.path && writable && !asset.articles.length ? (
                 <form action={deleteMediaAction}>
                   <input name="locale" type="hidden" value={locale} />

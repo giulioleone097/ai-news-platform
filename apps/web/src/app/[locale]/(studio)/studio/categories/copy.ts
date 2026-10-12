@@ -27,7 +27,8 @@ export interface CategoryCopy {
   saving: string;
   name: string;
   slug: string;
-  slugPlaceholder: string;
+  slugNewHelp: string;
+  optional: string;
   slugKeepHelp: string;
   description: string;
   positionHelp: string;
@@ -61,7 +62,8 @@ export const categoryCopy: Record<Locale, CategoryCopy> = {
     saving: "Saving…",
     name: "Name",
     slug: "Slug",
-    slugPlaceholder: "Taken from the name",
+    slugNewHelp: "Leave empty to take it from the name. It becomes the URL.",
+    optional: "optional",
     slugKeepHelp: "Leave empty to keep the current slug.",
     description: "Description",
     positionHelp: "Order on the site, lowest first. Leave empty to add it last.",
@@ -93,7 +95,8 @@ export const categoryCopy: Record<Locale, CategoryCopy> = {
     saving: "Salvataggio…",
     name: "Nome",
     slug: "Slug",
-    slugPlaceholder: "Ricavato dal nome",
+    slugNewHelp: "Lascia vuoto per ricavarlo dal nome. Diventa l’URL.",
+    optional: "facoltativo",
     slugKeepHelp: "Lascia vuoto per mantenere lo slug attuale.",
     description: "Descrizione",
     positionHelp: "Ordine nel sito, dal più basso. Lascia vuoto per aggiungerla in fondo.",

@@ -2,6 +2,7 @@
 
 import { BriefcaseBusiness, Check, MessageCircle, ScanText, Send } from "lucide-react";
 import { useActionState, useState } from "react";
+import { socialPageCopy } from "./copy";
 import type { SocialProvider } from "@atlasnews/core/social-publishing/domain/social-publication";
 import { submitSocialPublicationAction } from "./social-actions";
 import { Note } from "@/components/studio/note";
@@ -167,7 +168,7 @@ export function SocialComposer({
             ) : null}
 
             <label className="studio-field">
-              <span>{copy.schedule}</span>
+              <span>{copy.schedule} <span className="studio-field__optional">({copy.optional})</span></span>
               <input
                 aria-describedby="social-schedule-help"
                 aria-invalid={Boolean(error("scheduledFor")) || undefined}
@@ -237,7 +238,7 @@ export function SocialComposer({
 
         {state.status === "queued" && state.readback ? (
           <Note tone="success">
-            {providerLabels[state.readback.provider]} · {state.readback.status} · {state.readback.availableAt}
+            {providerLabels[state.readback.provider]} · {socialPageCopy[copy.locale].statuses[state.readback.status]} · {state.readback.availableAt}
           </Note>
         ) : null}
       </form>

@@ -9,8 +9,8 @@ import { BookmarkButton } from "@/components/site/bookmark-button";
 import { ClaimChip } from "@/components/site/claim-chip";
 import { EditorialCover } from "@/components/site/editorial-cover";
 import { toFeedItem } from "@/components/site/feed-item";
+import { formatShortDate } from "@/components/site/feed-format";
 import { FeedRow } from "@/components/site/feed-row";
-import { NewsletterForm } from "@/components/site/newsletter-form";
 import { SectionHeader } from "@/components/site/section-header";
 import { ShareActions } from "@/components/site/share-actions";
 import { Timeline } from "@/components/site/timeline";
@@ -159,6 +159,16 @@ export default async function ArticlePage({
   }
 
   const headings = extractMarkdownHeadings(article.content);
+  const showContents = headings.length > 3;
+  const contents = (
+    <ul>
+      {headings.map((heading) => (
+        <li className={heading.depth === 3 ? "article-toc__sub" : undefined} key={heading.id}>
+          <a href={`#${heading.id}`}>{heading.text}</a>
+        </li>
+      ))}
+    </ul>
+  );
   const articlePath = localizedPath(`/articles/${article.slug}`, locale);
   const url = new URL(articlePath, getPublicSiteUrl()).toString();
   const [related, translationSlugs, entityDirectory, primaryTimeline] = await Promise.all([
@@ -169,6 +179,7 @@ export default async function ArticlePage({
   ]);
   const primaryEntity = article.entities[0];
   const storySoFar = primaryTimeline && primaryTimeline.timeline.length > 1 ? primaryTimeline.timeline : [];
+  const updatedLater = Boolean(article.publishedAt) && article.updatedAt.slice(0, 10) > (article.publishedAt ?? "").slice(0, 10);
   const otherLocale = locales.find((candidate) => candidate !== locale);
   const translationSlug = otherLocale ? translationSlugs[otherLocale] : undefined;
   const siteUrl = getPublicSiteUrl();
@@ -219,7 +230,7 @@ export default async function ArticlePage({
 
   return (
     <main id="main-content" className="site-shell article-page">
-      <div className={headings.length ? "article-frame" : "article-frame article-frame--single"}>
+      <div className={showContents ? "article-frame" : "article-frame article-frame--single"}>
         <article
           className="article"
           data-article-id={article.id}
@@ -227,23 +238,45 @@ export default async function ArticlePage({
           data-claim-status={article.claimStatus}
         >
           <header className="article-head">
-            <Link
-              className="article-back"
-              href={localizedPath(`/categories/${article.category.slug}`, locale)}
-              prefetch={false}
-            >
-              <ChevronLeft aria-hidden="true" />
-              {article.category.name}
-            </Link>
+            <div className="article-nav">
+              <Link
+                className="article-back"
+                href={localizedPath(`/categories/${article.category.slug}`, locale)}
+                prefetch={false}
+              >
+                <ChevronLeft aria-hidden="true" />
+                {article.category.name}
+              </Link>
+              {otherLocale && translationSlug ? (
+                <a
+                  className="article-language"
+                  href={localizedPath(`/articles/${translationSlug}`, otherLocale)}
+                  hrefLang={otherLocale}
+                  lang={otherLocale}
+                >
+                  {messages.article.languageLink[otherLocale]}
+                </a>
+              ) : null}
+            </div>
             <p className="story-meta">
-              <ClaimChip status={article.claimStatus} label={messages.story.claimStatus[article.claimStatus]} />
+              <Link href={localizedPath(`/status/${article.claimStatus}`, locale)} prefetch={false}>
+                <ClaimChip
+                  size="lead"
+                  status={article.claimStatus}
+                  label={messages.story.claimStatus[article.claimStatus]}
+                />
+              </Link>
               {primaryEntity ? (
                 <Link href={localizedPath(`/entities/${primaryEntity.slug}`, locale)} prefetch={false}>
                   {primaryEntity.name}
                 </Link>
-              ) : (
-                <span>{article.category.name}</span>
-              )}
+              ) : null}
+              {updatedLater ? (
+                <span>
+                  {messages.article.updatedLabel}{" "}
+                  <time dateTime={article.updatedAt}>{formatShortDate(article.updatedAt, locale)}</time>
+                </span>
+              ) : null}
             </p>
             <h1>{article.title}</h1>
             <p className="article-deck">{article.excerpt}</p>
@@ -254,16 +287,6 @@ export default async function ArticlePage({
                   {formatArticleDate(article.publishedAt, locale)}
                 </time>
                 <span>{article.readingMinutes} {messages.article.minuteRead}</span>
-                {otherLocale && translationSlug ? (
-                  <a
-                    className="article-language"
-                    href={localizedPath(`/articles/${translationSlug}`, otherLocale)}
-                    hrefLang={otherLocale}
-                    lang={otherLocale}
-                  >
-                    {messages.article.languageLink[otherLocale]}
-                  </a>
-                ) : null}
               </p>
               <div className="article-actions">
                 <BookmarkButton articleId={article.id} copy={messages.bookmark} />
@@ -292,17 +315,35 @@ export default async function ArticlePage({
             </section>
           ) : null}
 
-          {headings.length ? (
-            <aside className="article-toc" aria-labelledby="toc-title">
-              <h2 id="toc-title">{messages.article.tableOfContents}</h2>
-              <ul>
-                {headings.map((heading) => (
-                  <li className={heading.depth === 3 ? "article-toc__sub" : undefined} key={heading.id}>
-                    <a href={`#${heading.id}`}>{heading.text}</a>
-                  </li>
-                ))}
-              </ul>
-            </aside>
+          {primaryEntity && storySoFar.length ? (
+            <section className="story-so-far" aria-labelledby="story-so-far-title">
+              <div className="story-so-far__head">
+                <h2 id="story-so-far-title">{messages.article.storySoFarTitle}</h2>
+                <Link href={localizedPath(`/entities/${primaryEntity.slug}`, locale)} prefetch={false}>
+                  {messages.article.fullTimeline} {primaryEntity.name}
+                </Link>
+              </div>
+              <Timeline
+                compact
+                items={storySoFar}
+                locale={locale}
+                statusLabels={messages.story.claimStatus}
+                currentSlug={article.slug}
+              />
+            </section>
+          ) : null}
+
+          {showContents ? (
+            <>
+              <details className="article-toc article-toc--fold">
+                <summary>{messages.article.tableOfContents}</summary>
+                {contents}
+              </details>
+              <aside className="article-toc article-toc--side" aria-labelledby="toc-title">
+                <h2 id="toc-title">{messages.article.tableOfContents}</h2>
+                {contents}
+              </aside>
+            </>
           ) : null}
 
           <div className="article-main">
@@ -344,26 +385,6 @@ export default async function ArticlePage({
                 </ul>
               </nav>
             ) : null}
-
-            {primaryEntity && storySoFar.length ? (
-              <section aria-labelledby="story-so-far-title">
-                <SectionHeader id="story-so-far-title" title={messages.article.storySoFarTitle} />
-                <Timeline
-                  items={storySoFar}
-                  locale={locale}
-                  statusLabels={messages.story.claimStatus}
-                  currentSlug={article.slug}
-                  currentLabel={messages.article.thisStory}
-                />
-                <Link
-                  className="article-more"
-                  href={localizedPath(`/entities/${primaryEntity.slug}`, locale)}
-                  prefetch={false}
-                >
-                  {messages.article.fullTimeline} {primaryEntity.name}
-                </Link>
-              </section>
-            ) : null}
           </div>
         </article>
 
@@ -392,12 +413,6 @@ export default async function ArticlePage({
             </section>
           ) : null}
         </div>
-
-        <NewsletterForm
-          locale={locale}
-          copy={messages.newsletter}
-          source={`article-${article.translationKey}-${locale}`}
-        />
       </div>
       <JsonLd data={jsonLd} />
       <JsonLd data={breadcrumbLd} />

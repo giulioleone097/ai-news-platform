@@ -26,14 +26,14 @@ export default function NotFound() {
       <h1>{en.errors.notFoundTitle}</h1>
       <p>{en.errors.notFoundDescription}</p>
       <div className="notice__actions">
-        <Link className="button button--primary" href={localizedPath("/", "en")}>
-          {en.errors.backHome}
+        <Link className="button button--primary" href={localizedPath("/latest", "en")}>
+          {en.errors.latestStories}
         </Link>
       </div>
       <div className="notice__other" lang="it">
         <h2>{it.errors.notFoundTitle}</h2>
         <p>
-          {it.errors.notFoundDescription} <Link href={localizedPath("/", "it")}>{it.errors.backHome}</Link>
+          {it.errors.notFoundDescription} <Link href={localizedPath("/latest", "it")}>{it.errors.latestStories}</Link>
         </p>
       </div>
     </main>

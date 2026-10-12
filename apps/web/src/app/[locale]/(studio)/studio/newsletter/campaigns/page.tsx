@@ -1,9 +1,9 @@
 import { MailPlus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Badge, sentenceCase } from "@/components/studio/badge";
-import { campaignStatusTone } from "@/components/studio/newsletter-campaigns/campaign-status";
-import { Note } from "@/components/studio/note";
+import { Badge } from "@/components/studio/badge";
+import { campaignStatusLabels, campaignStatusTone } from "@/components/studio/newsletter-campaigns/campaign-status";
+import { OffNote } from "@/components/studio/note";
 import { PageHead } from "@/components/studio/page-head";
 import { isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
@@ -15,31 +15,35 @@ export const dynamic = "force-dynamic";
 const copy = {
   en: {
     title: "Campaigns",
-    description: "Compose, schedule and monitor consent-safe email delivery.",
+    description: "Write, schedule and send the briefing to your subscribers.",
     create: "New campaign",
     empty: "No campaigns yet",
     emptyBody: "Create a draft to prepare the next briefing.",
-    recipients: "recipients",
-    delivered: "delivered",
-    failed: "failed",
+    recipients: "Recipients",
+    delivered: "Delivered",
+    failed: "Not delivered",
     subject: "Subject",
     status: "Status",
     updated: "Updated",
-    unavailable: "Campaign delivery is not configured.",
+    offTitle: "Campaigns are off",
+    offBody: "Compose, schedule and send the briefing to confirmed subscribers.",
+    offNext: "An admin turns them on in the Site settings.",
   },
   it: {
     title: "Campagne",
-    description: "Componi, programma e monitora consegne email basate sul consenso.",
+    description: "Scrivi, programma e invia il briefing ai tuoi iscritti.",
     create: "Nuova campagna",
     empty: "Nessuna campagna",
     emptyBody: "Crea una bozza per preparare il prossimo briefing.",
-    recipients: "destinatari",
-    delivered: "consegnate",
-    failed: "fallite",
+    recipients: "Destinatari",
+    delivered: "Consegnate",
+    failed: "Non consegnate",
     subject: "Oggetto",
     status: "Stato",
     updated: "Aggiornata",
-    unavailable: "La consegna campagne non è configurata.",
+    offTitle: "Le campagne sono disattivate",
+    offBody: "Componi, programma e invia il briefing agli iscritti confermati.",
+    offNext: "Un amministratore le attiva nelle Impostazioni del sito.",
   },
 } as const;
 
@@ -62,7 +66,7 @@ export default async function NewsletterCampaignsPage({
     return (
       <>
         <PageHead description={labels.description} title={labels.title} />
-        <Note tone="warning">{labels.unavailable}</Note>
+        <OffNote body={labels.offBody} next={labels.offNext} title={labels.offTitle} />
       </>
     );
   }
@@ -84,9 +88,9 @@ export default async function NewsletterCampaignsPage({
               <tr>
                 <th>{labels.subject}</th>
                 <th>{labels.status}</th>
-                <th>{labels.recipients}</th>
-                <th>{labels.delivered}</th>
-                <th>{labels.failed}</th>
+                <th className="studio-num">{labels.recipients}</th>
+                <th className="studio-num">{labels.delivered}</th>
+                <th className="studio-num">{labels.failed}</th>
                 <th>{labels.updated}</th>
               </tr>
             </thead>
@@ -98,10 +102,10 @@ export default async function NewsletterCampaignsPage({
                       <strong>{campaign.subject}</strong>
                     </Link>
                   </td>
-                  <td data-label={labels.status}><Badge tone={campaignStatusTone(campaign.status)}>{sentenceCase(campaign.status)}</Badge></td>
-                  <td data-label={labels.recipients}>{campaign.recipientCount}</td>
-                  <td data-label={labels.delivered}>{campaign.deliveredCount}</td>
-                  <td data-label={labels.failed}>{campaign.failureCount + campaign.bounceCount}</td>
+                  <td data-label={labels.status}><Badge tone={campaignStatusTone(campaign.status)}>{campaignStatusLabels[locale][campaign.status]}</Badge></td>
+                  <td className="studio-num" data-label={labels.recipients}>{campaign.recipientCount || null}</td>
+                  <td className="studio-num" data-label={labels.delivered}>{campaign.deliveredCount || null}</td>
+                  <td className="studio-num" data-label={labels.failed}>{campaign.failureCount + campaign.bounceCount || null}</td>
                   <td data-label={labels.updated}>
                     <time dateTime={campaign.updatedAt}>{when.format(new Date(campaign.updatedAt))} UTC</time>
                   </td>

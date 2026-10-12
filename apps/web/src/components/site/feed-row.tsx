@@ -23,16 +23,19 @@ export function StoryMeta({
   locale,
   statusLabels,
   stamp,
+  size,
 }: {
   item: FeedItem;
   locale: Locale;
   statusLabels: StatusLabels;
   /** Omit to leave the time out, as the stream rows do: they print it in their own column. */
   stamp?: Stamp;
+  /** The chip tier: rows keep the default, cards and the lead step up. */
+  size?: "card" | "lead";
 }) {
   return (
     <p className="story-meta">
-      <ClaimChip status={item.claimStatus} label={statusLabels[item.claimStatus]} />
+      <ClaimChip status={item.claimStatus} label={statusLabels[item.claimStatus]} size={size} />
       <span>{item.entity?.name ?? item.category.name}</span>
       {stamp ? <Stamped item={item} locale={locale} stamp={stamp} /> : null}
     </p>
