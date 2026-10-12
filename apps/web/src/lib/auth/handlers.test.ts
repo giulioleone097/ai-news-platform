@@ -225,4 +225,9 @@ describe("session summary", () => {
     configure({ ATLASNEWS_CONTENT_MODE: "sites" });
     expect((await read(async () => null)).providers).toEqual(["chatgpt", "google"]);
   });
+
+  it("does not offer ChatGPT on Sites once the owner turned its headers off", async () => {
+    configure({ ATLASNEWS_CONTENT_MODE: "sites", ATLASNEWS_CHATGPT_SIGN_IN: "off" });
+    expect((await read(async () => null)).providers).toEqual(["google"]);
+  });
 });

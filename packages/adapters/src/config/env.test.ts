@@ -11,6 +11,7 @@ import {
   isChatGptSignInEnabled,
   isDemoStudioEnabled,
   isStudioAvailable,
+  offersChatGptSignIn,
 } from "./env";
 
 afterEach(() => {
@@ -32,6 +33,17 @@ describe("ChatGPT sign-in switch", () => {
       vi.stubEnv("ATLASNEWS_CHATGPT_SIGN_IN", value);
       expect(isChatGptSignInEnabled(), value).toBe(false);
     }
+  });
+
+  it("is offered on Sites only, and not once the switch is off", () => {
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "sites");
+    vi.stubEnv("ATLASNEWS_CHATGPT_SIGN_IN", "");
+    expect(offersChatGptSignIn()).toBe(true);
+    vi.stubEnv("ATLASNEWS_CHATGPT_SIGN_IN", "off");
+    expect(offersChatGptSignIn()).toBe(false);
+    vi.stubEnv("ATLASNEWS_CHATGPT_SIGN_IN", "");
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "demo");
+    expect(offersChatGptSignIn()).toBe(false);
   });
 });
 

@@ -15,6 +15,7 @@ import {
   getOAuthSignInEnvironment,
   getPublicSiteUrl,
   getSignInProviders,
+  offersChatGptSignIn,
 } from "@atlasnews/adapters/config/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { authCookieNames, authCookieOptions } from "./cookies";
@@ -176,6 +177,6 @@ export async function describeSession(getUser: () => Promise<SignedInUser | null
   const user = await getUser();
   return respond(NextResponse.json({
     user: user ? { displayName: readerDisplayName(user), provider: user.provider } : null,
-    providers: [...(getContentMode() === "sites" ? ["chatgpt"] : []), ...getSignInProviders()],
+    providers: [...(offersChatGptSignIn() ? ["chatgpt"] : []), ...getSignInProviders()],
   }, { headers: { Vary: "Cookie" } }));
 }

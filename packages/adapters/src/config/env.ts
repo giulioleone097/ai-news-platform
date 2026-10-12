@@ -64,6 +64,11 @@ export function isChatGptSignInEnabled() {
   return !(configured && ["off", "false", "0", "no"].includes(configured));
 }
 
+/** Whether people are offered Sign in with ChatGPT: Sites provides it, and the owner may have turned the headers off. */
+export function offersChatGptSignIn() {
+  return getContentMode() === "sites" && isChatGptSignInEnabled();
+}
+
 /**
  * Whether the server can write records that outlive the process: the Sites D1 binding, or Supabase with
  * the service-role key. Comments, newsletter delivery, the outboxes and MCP Events need it.
