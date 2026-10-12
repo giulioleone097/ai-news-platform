@@ -16,9 +16,9 @@ Sites does not run Next.js itself. It runs a Worker. [`vinext`](https://github.c
 | Command (in `apps/web`) | `pnpm build:next` | `pnpm build` |
 | Tool | `next build` | `vinext build` (Vite 8, `@cloudflare/vite-plugin`) |
 | Output | `apps/web/.next` | `apps/web/dist` |
-| Used for | the performance budget, `next start`, local review | the thing that ships |
+| Used for | `next start`, local review, the performance budget of self-hosting | the thing that ships, and its own performance budget |
 
-`pnpm check` runs both: the plain build and `perf:budget` first, then `build:sites`. The Sites step ends with `next typegen` because `vinext build` overwrites `apps/web/.next/types/routes.d.ts` and `next-env.d.ts`, which would break the next `tsc` run.
+`pnpm check` runs both: the plain build first, then `build:sites`, then `perf:budget`, which measures the JavaScript and CSS of both outputs (it starts the Sites Worker with `wrangler dev --local` to read the HTML it serves). The Sites step ends with `next typegen` because `vinext build` overwrites `apps/web/.next/types/routes.d.ts` and `next-env.d.ts`, which would break the next `tsc` run.
 
 Files that make it work:
 
