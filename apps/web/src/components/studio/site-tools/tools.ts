@@ -1,144 +1,81 @@
-import { editorPageCapabilities, parseEditorPageInput, type PageCapability } from "@atlasnews/contract/page";
-import type { SiteTool, ToolResult } from "@/components/site/site-tools/tools";
-import type { ConfirmRequest } from "./confirm-dialog";
+import { parseStudioInput, type ArticleFormSnapshot, type StudioToolInput, type StudioToolName } from "@atlasnews/contract/page";
+import { guardTool, ToolFailure, type SiteTool, type ToolResult } from "@/components/site/site-tools/tools";
+import type { OpenArticleForm } from "./article-form-bridge";
 
-/** What the editor tools need from the browser; the real one is `start.ts`, tests pass a fake. */
-export interface EditorToolsEnvironment {
-  fetch: typeof fetch;
-  /** Asks the person in the page. Resolves `true` only when they approve this request. */
-  confirm(request: ConfirmRequest, signal?: AbortSignal): Promise<boolean>;
-  /** Makes the visible Studio view show what a write just changed. */
-  refresh(): void;
+/** How long a page that has just opened is given to show its form: 60 looks of 50 ms. */
+const formWaitLooks = 60;
+
+/** What the Studio tools need from the browser; the real one is `start.ts`, tests pass a fake. */
+export interface StudioToolsEnvironment {
+  /** Moves the visible page and resolves `true` once the address bar shows `path`. */
+  navigate(path: string): Promise<boolean>;
+  /** The article form on screen now, or null on any other page. */
+  articleForm(): OpenArticleForm | null;
+  /** The path in the address bar. */
+  path(): string;
+  wait(ms: number): Promise<unknown>;
 }
 
-type Answer = { ok: true; result: ToolResult } | { ok: false; status: number; error: string };
-
-const declined = "The person declined this action in the page. Nothing was changed.";
-
-/** The agent-facing message for each status the route answers; 0, 400 and 409 carry the server's own text. */
-function describeFailure(name: string, answer: Extract<Answer, { ok: false }>) {
-  switch (answer.status) {
-    case 0:
-    case 400:
-    case 409:
-      return answer.error;
-    case 401:
-      return "The editor is not signed in to the Studio (401). Ask the person to sign in again, then retry. Nothing was changed.";
-    case 403:
-      return `The signed-in account may not use ${name} (403): ${answer.error} Nothing was changed.`;
-    case 404:
-      return `The Studio does not know the tool ${name} (404).`;
-    case 503:
-      return "The Studio storage is not configured on this server (503). Nothing was changed.";
-    default:
-      return `The Studio could not run ${name} (${answer.status}).`;
-  }
-}
-
-const shown = (value: unknown) => {
-  const text = typeof value === "string" ? value : JSON.stringify(value);
-  const line = text.replace(/\s+/g, " ").trim();
-  return line.length > 120 ? `${line.slice(0, 117)}...` : line;
-};
-
-/** A name the person can recognise in a list of objects: the first of these keys that holds text. */
-const identifiers = ["title", "name", "slug", "translationKey", "path", "id"];
-
-function identify(value: unknown) {
-  if (value === null || typeof value !== "object") return shown(value);
-  const record = value as Record<string, unknown>;
-  const key = identifiers.find((candidate) => typeof record[candidate] === "string");
-  return key ? shown(record[key]) : "...";
-}
-
-/** One short line per argument, so the dialog says what will be affected without dumping a whole article. */
-export function describeAffected(input: Record<string, unknown>): string[] {
-  const lines: string[] = [];
-  for (const [key, value] of Object.entries(input)) {
-    if (value === undefined || value === null) continue;
-    if (Array.isArray(value)) {
-      const names = value.slice(0, 5).map(identify).join(", ");
-      lines.push(`${key}: ${value.length} (${names}${value.length > 5 ? ", ..." : ""})`);
-    } else if (typeof value === "object") {
-      lines.push(`${key}: ${identify(value)}`);
-    } else {
-      lines.push(`${key}: ${shown(value)}`);
-    }
-  }
-  return lines;
+/** Whether the form on screen is the editor of this article (`slug`) or a new article of the locale. */
+function isEditorOf(form: ArticleFormSnapshot, locale: string, slug?: string) {
+  return slug ? form.article?.slug === slug && form.article.locale === locale : form.article === null && form.locale === locale;
 }
 
 /**
- * One handler per editor capability. Each one checks the arguments with the catalogue's parser,
- * runs the capability through `POST /api/capabilities/{name}` and answers with the result or
- * `{ error }`; it never throws at the host.
- *
- * A person confirms, never the agent: the first call always sends `confirmed: false`. Only when the
- * server answers 409 does the page ask the person in a dialog, and only their approval makes the
- * second call with `confirmed: true`. That flag is a local in this function, not an argument.
+ * One handler per Studio page tool. They work on the editor open in the page and never call the server: the
+ * person reads the form and presses Save, which runs the catalogue's capabilities with their checks.
  */
-export function createEditorTools(
-  env: EditorToolsEnvironment,
-  capabilities: readonly PageCapability[] = editorPageCapabilities,
-): Record<string, SiteTool> {
-  async function post(name: string, input: Record<string, unknown>, confirmed: boolean, signal?: AbortSignal): Promise<Answer> {
-    let response: Response;
-    try {
-      response = await env.fetch(`/api/capabilities/${encodeURIComponent(name)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ input, confirmed }),
-        signal,
-      });
-    } catch {
-      if (signal?.aborted) throw new Error("aborted");
-      return { ok: false, status: 0, error: "The Studio could not be reached. Nothing was changed." };
-    }
-    const body = (await response.json().catch(() => null)) as { ok?: boolean; result?: ToolResult; error?: string } | null;
-    if (response.ok && body?.ok === true && body.result) return { ok: true, result: body.result };
-    return {
-      ok: false,
-      status: response.status,
-      error: typeof body?.error === "string" ? body.error : "The Studio gave no explanation.",
-    };
+export function createStudioTools(env: StudioToolsEnvironment): Record<StudioToolName, SiteTool> {
+  function openForm() {
+    const form = env.articleForm();
+    if (!form) throw new ToolFailure("No article form is open. Open one with open_article_editor first.");
+    return form;
   }
 
-  function tool(capability: PageCapability): SiteTool {
-    const { name } = capability;
-    return async (raw, signal) => {
-      const parsed = parseEditorPageInput(name, raw);
-      if (!parsed.ok) return { error: parsed.error };
-      try {
-        let answer = await post(name, parsed.input, false, signal);
-        if (!answer.ok && answer.status === 409) {
-          const approved = await env.confirm(
-            {
-              tool: capability.title,
-              question: answer.error,
-              affected: describeAffected(parsed.input),
-              destructive: capability.annotations.destructiveHint,
-            },
-            signal,
+  const run = {
+    async open_article_editor({ locale, slug }: StudioToolInput<"open_article_editor">, signal?: AbortSignal) {
+      const current = env.articleForm()?.read();
+      if (current) {
+        if (isEditorOf(current, locale, slug)) return { opened: true, path: env.path(), article: current.article };
+        // Going to another editor would throw away what the person typed.
+        if (current.unsaved) {
+          throw new ToolFailure(
+            "The article form on screen has unsaved changes. Ask the person to save or discard them before opening another article. Nothing was changed.",
           );
-          if (signal?.aborted) return { error: `${name} was cancelled.` };
-          if (!approved) return { error: declined };
-          answer = await post(name, parsed.input, true, signal);
         }
-        if (!answer.ok) return { error: describeFailure(name, answer) };
-        if (!capability.annotations.readOnlyHint) {
-          try {
-            env.refresh();
-          } catch {
-            // The change is saved; a failed refresh must not turn that into an error.
-          }
-        }
-        return answer.result;
-      } catch {
-        return { error: signal?.aborted ? `${name} was cancelled.` : `${name} failed unexpectedly.` };
       }
-    };
+
+      const path = `/${locale}/studio/articles/${slug ?? "new"}`;
+      if (!(await env.navigate(path))) throw new ToolFailure(`The page did not finish opening ${path}.`);
+      // The form of the page we left can still be registered for a moment: wait for the one that was asked for.
+      for (let look = 0; look < formWaitLooks; look++) {
+        if (signal?.aborted) throw new Error("aborted");
+        const snapshot = env.articleForm()?.read();
+        if (snapshot && isEditorOf(snapshot, locale, slug)) return { opened: true, path: env.path(), article: snapshot.article };
+        await env.wait(50);
+      }
+      throw new ToolFailure(slug ? `No article "${slug}" in locale ${locale}, or its editor did not open.` : "The article editor did not open.");
+    },
+
+    async read_article_form() {
+      return openForm().read();
+    },
+
+    async fill_article_form(patch: StudioToolInput<"fill_article_form">) {
+      return openForm().fill(patch);
+    },
+  } satisfies {
+    [N in StudioToolName]: (input: StudioToolInput<N>, signal?: AbortSignal) => Promise<ToolResult>;
+  };
+
+  function guard<N extends StudioToolName>(name: N): SiteTool {
+    const handler = run[name] as (input: StudioToolInput<N>, signal?: AbortSignal) => Promise<ToolResult>;
+    return guardTool(name, (raw) => parseStudioInput(name, raw), handler);
   }
 
-  return Object.fromEntries(capabilities.map((capability) => [capability.name, tool(capability)]));
+  return {
+    open_article_editor: guard("open_article_editor"),
+    read_article_form: guard("read_article_form"),
+    fill_article_form: guard("fill_article_form"),
+  };
 }

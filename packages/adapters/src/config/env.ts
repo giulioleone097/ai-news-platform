@@ -56,7 +56,7 @@ export function getContentMode(): ContentMode {
 /**
  * Whether the `oai-authenticated-*` headers of ChatGPT Sites identify people (`sites` mode only; the
  * callers check the mode). On unless `ATLASNEWS_CHATGPT_SIGN_IN` is `off`: the owner's switch to ignore
- * them everywhere (Studio, `/api/capabilities/*`, `/mcp`) should the platform not replace the copies a
+ * them everywhere (Studio, `/mcp`) should the platform not replace the copies a
  * client sends. `readSitesIdentity` is the one reader.
  */
 export function isChatGptSignInEnabled() {

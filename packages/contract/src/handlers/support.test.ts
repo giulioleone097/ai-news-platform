@@ -65,7 +65,7 @@ describe("contact inbox capabilities", () => {
     expect(hasScopes(reader, find("admin_update_contact_message").scopes)).toBe(false);
     expect(hasScopes(reader, find("admin_delete_contact_message").scopes)).toBe(false);
     for (const name of ["admin_list_contact_messages", "admin_update_contact_message", "admin_delete_contact_message"]) {
-      expect(find(name).surfaces).toEqual(["mcp", "page"]);
+      expect(find(name).surfaces).toEqual(["mcp", "studio"]);
     }
   });
 

@@ -6,8 +6,8 @@ import * as z from "zod/v4";
 
 import { hasScopes, scopesForRole } from "./capability";
 import { capabilities, mcpCapabilities } from "./catalogue";
-import { editorPageCapabilities, pageCapabilities } from "./page";
-import { pageSpecs } from "./specs/page";
+import { pageCapabilities, studioPageCapabilities } from "./page";
+import { pageSpecs, studioPageSpecs } from "./specs/page";
 
 const source = dirname(fileURLToPath(import.meta.url));
 const reserved = /\b(best|official)\b/i;
@@ -235,7 +235,7 @@ describe("capability catalogue", () => {
     const admin = { kind: "editor", subject: "admin", scopes: scopesForRole("admin") } as const;
     for (const capability of team) {
       expect(capability.scopes, capability.name).toEqual(["newsroom.admin"]);
-      expect(capability.surfaces, capability.name).toEqual(["mcp", "page"]);
+      expect(capability.surfaces, capability.name).toEqual(["mcp", "studio"]);
       expect(hasScopes(editor, capability.scopes), capability.name).toBe(false);
       expect(hasScopes(admin, capability.scopes), capability.name).toBe(true);
     }
@@ -332,46 +332,50 @@ describe("@atlasnews/contract/page", () => {
     expect(pageSpecs.every((spec) => spec.surfaces.includes("page"))).toBe(true);
   });
 
-  it("offers the content tools of the catalogue to a signed-in editor's page, with their scopes and confirmations", () => {
-    const names = editorPageCapabilities.map((capability) => capability.name);
-    const reader = new Set(pageCapabilities.map((capability) => capability.name));
-    const content = mcpCapabilities.filter((capability) => capability.surfaces.includes("page") && !reader.has(capability.name));
-    expect([...names].sort()).toEqual(content.map((capability) => capability.name).sort());
-    expect(names).toEqual(expect.arrayContaining([
-      "admin_create_article", "admin_update_articles", "admin_publish_articles", "admin_create_category", "admin_delete_entities",
-      "admin_get_entity", "admin_upload_media_assets", "list_entities",
-    ]));
-    // What an editor does in the Studio is on the page; the workers (outbox processing, delivery, erasure) are MCP-only.
-    expect(names).toEqual(expect.arrayContaining([
-      "admin_list_comments", "admin_moderate_comment", "admin_list_comment_audit", "admin_list_contact_messages",
-      "admin_delete_contact_message", "admin_list_distribution", "admin_update_distribution",
-      "admin_list_newsletter_subscriptions", "admin_update_newsletter_subscription", "admin_newsletter_request_subscription",
-      "admin_newsletter_save_campaign_draft", "admin_newsletter_send_campaign", "admin_social_preview", "admin_social_enqueue",
-      "admin_social_list", "admin_social_cancel", "admin_social_retry", "admin_get_media", "admin_get_comment", "admin_moderate_comments",
-      "admin_get_contact_message", "admin_update_contact_messages", "admin_delete_contact_messages",
-      "admin_get_newsletter_subscription", "admin_newsletter_update_campaign_draft", "admin_newsletter_delete_campaign_draft",
-      "admin_social_update", "admin_social_cancel_jobs",
-    ]));
+  it("offers the open page only its own tools: no WebMCP tool shares a name with an MCP tool", () => {
+    const mcpNames = new Set(mcpCapabilities.map((capability) => capability.name));
+    const pageNames = [...pageCapabilities, ...studioPageCapabilities].map((capability) => capability.name);
+    expect(new Set(pageNames).size).toBe(pageNames.length);
+    // The page's `search_articles` is the one tool that takes the MCP tool's name: same text and input, a result of the open page.
+    expect(pageNames.filter((name) => mcpNames.has(name))).toEqual(["search_articles"]);
+    expect(pageNames).toEqual(expect.arrayContaining(["open_article_editor", "read_article_form", "fill_article_form"]));
+  });
+
+  it("keeps data and operations off the page: only page specs carry the page surface, and none has a handler", () => {
+    expect(capabilities.filter((capability) => capability.surfaces.includes("page")).map((capability) => capability.name)).toEqual([]);
+    for (const spec of [...pageSpecs, ...studioPageSpecs]) {
+      expect(spec.surfaces, spec.name).toEqual(["page"]);
+      expect(spec.scopes, spec.name).toEqual([]);
+      expect(spec.confirmation, spec.name).toBeUndefined();
+      expect(Object.keys(spec.annotations).sort(), spec.name).toEqual(["destructiveHint", "idempotentHint", "openWorldHint", "readOnlyHint"]);
+      expect(spec.annotations.destructiveHint, spec.name).toBe(false);
+      expect(spec.annotations.openWorldHint, spec.name).toBe(false);
+    }
+    // What the Studio's Server Actions run is the MCP catalogue; the workers are MCP-only.
     for (const worker of [
       "admin_comment_process_notifications", "admin_newsletter_process_outbox", "admin_newsletter_erase_subscription",
       "admin_social_process_outbox", "list_comments",
-    ]) {
-      expect(names, worker).not.toContain(worker);
-      expect(capabilities.find((capability) => capability.name === worker)?.surfaces, worker).toEqual(["mcp"]);
-    }
-    for (const capability of editorPageCapabilities) {
-      const source = mcpCapabilities.find((item) => item.name === capability.name)!;
-      expect(capability.description).toBe(source.description);
-      expect(capability.annotations).toEqual(source.annotations);
-      expect(capability.scopes).toEqual(source.scopes);
-      expect(capability.confirms).toBe(source.confirmation !== undefined);
-      expect(capability.inputSchema).toMatchObject({ type: "object" });
-    }
-    expect(editorPageCapabilities.find((capability) => capability.name === "admin_delete_articles")).toMatchObject({
-      scopes: ["newsroom.publish"], confirms: true,
-    });
-    expect(editorPageCapabilities.find((capability) => capability.name === "list_entities")).toMatchObject({ scopes: [], confirms: false });
-    expect(JSON.parse(JSON.stringify(editorPageCapabilities))).toEqual(editorPageCapabilities);
+    ]) expect(capabilities.find((capability) => capability.name === worker)?.surfaces, worker).toEqual(["mcp"]);
+  });
+
+  it("publishes the Studio tools as plain data with the schemas of their specs", () => {
+    expect(studioPageCapabilities.map((capability) => capability.name)).toEqual([
+      "open_article_editor", "read_article_form", "fill_article_form",
+    ]);
+    expect(JSON.parse(JSON.stringify(studioPageCapabilities))).toEqual(studioPageCapabilities);
+    const fill = studioPageCapabilities.find((capability) => capability.name === "fill_article_form")!;
+    expect(Object.keys(fill.inputSchema.properties as object).sort()).toEqual([
+      "categorySlug", "claimStatus", "content", "coverAlt", "coverImage", "distribution", "entities", "excerpt",
+      "featured", "keyPoints", "scheduledFor", "slug", "sources", "status", "title", "translationOf",
+    ]);
+    // Every field is optional: the tool sets a subset. It cannot publish and has no way to confirm or save.
+    expect(fill.inputSchema.required).toBeUndefined();
+    const properties = fill.inputSchema.properties as Record<string, { enum?: string[] }>;
+    expect(properties.status.enum).toEqual(["draft", "review", "scheduled"]);
+    expect(Object.keys(properties).filter((name) => /confirm|approve|save/i.test(name))).toEqual([]);
+    expect(fill.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false, openWorldHint: false });
+    const read = studioPageCapabilities.find((capability) => capability.name === "read_article_form")!;
+    expect(read.annotations.readOnlyHint).toBe(true);
   });
 
   it("gives the page search the MCP tool's name, text and input, with an output of its own", () => {

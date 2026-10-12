@@ -2,15 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import type { Locale } from "@atlasnews/core/locale";
 import { findModelContext } from "@/components/site/site-tools/detect";
 
 /**
- * Offers the Studio's content tools to an AI agent in the editor's browser (WebMCP,
- * `docs/SITE_TOOLS.md`). It renders nothing and loads nothing unless the browser has
+ * Offers the Studio's page tools (open the article editor, read the form, fill a draft) to an AI agent in the
+ * editor's browser (WebMCP, `docs/SITE_TOOLS.md`). It renders nothing and loads nothing unless the browser has
  * `document.modelContext`; leaving the Studio unregisters the tools.
  */
-export function StudioSiteTools({ locale, isAdmin }: { locale: Locale; isAdmin: boolean }) {
+export function StudioSiteTools() {
   const router = useRouter();
 
   useEffect(() => {
@@ -22,7 +21,7 @@ export function StudioSiteTools({ locale, isAdmin }: { locale: Locale; isAdmin: 
     import("./start")
       .then(({ startStudioSiteTools }) => {
         if (cancelled) return;
-        dispose = startStudioSiteTools(context, { locale, isAdmin, refresh: () => router.refresh() });
+        dispose = startStudioSiteTools(context, (path) => router.push(path));
         // The shell's "Agent tools ready" status reads this; it stays hidden until the tools are registered.
         document.documentElement.dataset.studioAgents = "ready";
       })
@@ -32,7 +31,7 @@ export function StudioSiteTools({ locale, isAdmin }: { locale: Locale; isAdmin: 
       dispose?.();
       delete document.documentElement.dataset.studioAgents;
     };
-  }, [router, locale, isAdmin]);
+  }, [router]);
 
   return null;
 }

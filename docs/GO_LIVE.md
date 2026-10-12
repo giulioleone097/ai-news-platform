@@ -20,7 +20,7 @@ See [SITES.md](SITES.md#what-the-owner-does-in-chatgpt). Deploy `apps/web` with 
 
 ### Before the site is public: the identity probe
 
-The Studio, `/api/capabilities/*` and the admin tools on `/mcp` trust the `oai-authenticated-*` headers that ChatGPT Sites adds, which is safe only if the platform replaces any copy a client sends. That is not verified ([SITES.md](SITES.md#not-verified-without-a-real-deployment)). Before the audience is public, send forged headers to the live Site. All three requests are read-only. `<admin email>` is an address in `ATLASNEWS_ADMIN_EMAILS`, because that is the identity an attacker would forge.
+The Studio and the admin tools on `/mcp` trust the `oai-authenticated-*` headers that ChatGPT Sites adds, which is safe only if the platform replaces any copy a client sends. That is not verified ([SITES.md](SITES.md#not-verified-without-a-real-deployment)). Before the audience is public, send forged headers to the live Site. All three requests are read-only. `<admin email>` is an address in `ATLASNEWS_ADMIN_EMAILS`, because that is the identity an attacker would forge.
 
 ```sh
 SITE=https://<site>
@@ -49,7 +49,7 @@ See [MCP.md](MCP.md), [OPENAI_EXTENSIONS.md](OPENAI_EXTENSIONS.md) and [SITE_TOO
 
 - ChatGPT: ask `@Sites` for the Site's MCP connection and to suggest the plugin; confirm the tools and the `article.published` event; run an editor tool.
 - Claude: add a custom connector at `https://<site>/mcp`; confirm the read tools; try an editor tool.
-- ChatGPT's built-in browser: open the site and the Studio and confirm the site tools are listed; publish from the Studio tools and confirm the dialog asks you.
+- ChatGPT's built-in browser: open the site and the Studio and confirm the site tools are listed (five on the reader site, three in the Studio) and that the Studio ones fill the open article form without saving it.
 
 ## 4. Plugin submission
 

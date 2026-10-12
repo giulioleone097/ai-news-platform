@@ -34,8 +34,8 @@ import {
 /**
  * Runs one catalogue capability (`@atlasnews/contract`) for the editor who is signed in to the
  * Studio. This is the only way web code reaches the content capabilities: the Studio screens call
- * it from Server Actions, and `POST /api/capabilities/{name}` calls it for the page's site tools,
- * so the Studio, WebMCP and the MCP endpoint all run the same handlers.
+ * it from Server Actions, so the Studio and the MCP endpoint run the same handlers. A browser agent
+ * (WebMCP) has no route to it: its tools only work on the open page.
  */
 export type CapabilityRunResult =
   | { ok: true; result: Record<string, unknown> }
@@ -62,9 +62,9 @@ export interface CapabilityRunOptions {
 
 type Refusal = Extract<CapabilityRunResult, { ok: false }>;
 
-/** Only capabilities offered to the page run here; the rest of the catalogue (public reads, workers) is MCP-only. */
-const pageCapabilities = new Map(
-  capabilities.filter((capability) => capability.surfaces.includes("page")).map((capability) => [capability.name, capability]),
+/** Only capabilities with the `studio` surface run here; the rest of the catalogue (public reads, workers) is MCP-only. */
+const studioCapabilities = new Map(
+  capabilities.filter((capability) => capability.surfaces.includes("studio")).map((capability) => [capability.name, capability]),
 );
 
 /** Studio screens that list content, refreshed after a write next to the public pages. */
@@ -85,11 +85,11 @@ function refuse(
 /** Failures that mean a backend is not set up, not that the request was wrong: answered 503 like any unconfigured backend. */
 const unavailableCodes: readonly CapabilityErrorCode[] = ["social.notConfigured"];
 
-/** Stands in for the ports that only MCP capabilities use (public comments, the notification worker); no page capability reaches them. */
+/** Stands in for the ports that only MCP capabilities use (public comments, the notification worker); no Studio capability reaches them. */
 const notOnThePage = () => Promise.reject(new CapabilityFailure("This capability is not available here."));
 
 /**
- * The ports of a page capability. Writes go through the editor's own session (RLS applies; in
+ * The ports of a Studio capability. Writes go through the editor's own session (RLS applies; in
  * demo mode the in-memory repository), reads of published content through the public repositories.
  * Comments, the newsletter and the social outbox are built as the Studio's own actions build them,
  * and fail like any unconfigured backend (a rejected port, so the caller gets the 503 message).
@@ -151,7 +151,7 @@ type EditorAccess = { ok: true; editor: EditorIdentity; principal: Principal; ca
 
 /**
  * Who may run `name`, as every caller sees it: 401 with nobody signed in, 403 for a signed-in account
- * without an editor profile or without a scope the capability needs, 404 for a name the page does not offer.
+ * without an editor profile or without a scope the capability needs, 404 for a name the Studio does not run.
  * `runEditorCapability` starts here. So does a Studio write that cannot be a capability call (the media
  * upload takes the file itself, not base64), so it is refused for the same reasons and not by a copy of the rule.
  */
@@ -171,7 +171,7 @@ export async function authorizeEditorCapability(
     scopes: scopesForRole(editor.role),
     authorId: editor.author.id,
   };
-  const capability = pageCapabilities.get(name);
+  const capability = studioCapabilities.get(name);
   if (!capability) return refuse(options, 404, `Unknown capability ${name}.`, "unknownAction");
   if (!hasScopes(principal, capability.scopes)) {
     return refuse(options, 403, `This account lacks the ${capability.scopes.join(", ")} permission that ${name} needs.`, "noPermission");

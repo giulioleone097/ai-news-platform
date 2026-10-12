@@ -22,7 +22,7 @@ const memberResult = z.object({ member: memberSchema });
 const roles =
   "An editor writes, publishes and moderates; an admin can also manage the team. The newsroom always keeps at least one active admin.";
 
-const base = { surfaces: ["mcp", "page"], scopes: ["newsroom.admin"], unavailableMessage: editorialUnavailable } as const;
+const base = { surfaces: ["mcp", "studio"], scopes: ["newsroom.admin"], unavailableMessage: editorialUnavailable } as const;
 
 export const adminListEditors = defineSpec({
   ...base,

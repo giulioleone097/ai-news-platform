@@ -113,7 +113,7 @@ Runtime:
 | --- | --- | --- |
 | `ATLASNEWS_ADMIN_EMAILS` | yes | the ChatGPT account(s) that become admins at first sign-in |
 | `ATLASNEWS_EDITOR_EMAILS` | optional | accounts that become editors at first sign-in |
-| `ATLASNEWS_CHATGPT_SIGN_IN` | optional | `off` makes the app ignore the `oai-authenticated-*` headers everywhere (Studio, `/api/capabilities/*`, `/mcp`); default on. Turn it off if the probe in [GO_LIVE.md](GO_LIVE.md#before-the-site-is-public-the-identity-probe) fails |
+| `ATLASNEWS_CHATGPT_SIGN_IN` | optional | `off` makes the app ignore the `oai-authenticated-*` headers everywhere (Studio, `/mcp`); default on. Turn it off if the probe in [GO_LIVE.md](GO_LIVE.md#before-the-site-is-public-the-identity-probe) fails |
 | `ATLASNEWS_SESSION_SECRET` | for Google and GitHub sign-in | signs the sign-in cookies, at least 32 characters (`openssl rand -hex 32`) |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional | turn on Google sign-in (with the session secret) |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | optional | turn on GitHub sign-in (with the session secret) |

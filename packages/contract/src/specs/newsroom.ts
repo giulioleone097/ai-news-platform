@@ -53,7 +53,7 @@ export const adminListDistribution = defineSpec({
   output: z.object({ items: z.array(publicationSchema) }),
   annotations: readOnly,
   scopes: ["newsroom.read"],
-  surfaces: ["mcp", "page"],
+  surfaces: ["mcp", "studio"],
   unavailableMessage: editorialUnavailable,
 });
 
@@ -72,7 +72,7 @@ export const adminUpdateDistribution = defineSpec({
   output: z.object({ publication: publicationSchema }),
   annotations: write,
   scopes: ["newsroom.write"],
-  surfaces: ["mcp", "page"],
+  surfaces: ["mcp", "studio"],
   unavailableMessage: editorialUnavailable,
 });
 
@@ -99,7 +99,7 @@ export const adminListNewsletterSubscriptions = defineSpec({
   }),
   annotations: readOnly,
   scopes: ["newsroom.read"],
-  surfaces: ["mcp", "page"],
+  surfaces: ["mcp", "studio"],
   unavailableMessage: editorialUnavailable,
 });
 
@@ -114,7 +114,7 @@ export const adminGetNewsletterSubscription = defineSpec({
   output: z.object({ subscription: subscriptionSchema, contentTrust: contentTrustSchema }),
   annotations: readOnly,
   scopes: ["newsroom.read"],
-  surfaces: ["mcp", "page"],
+  surfaces: ["mcp", "studio"],
   unavailableMessage: editorialUnavailable,
 });
 
@@ -127,7 +127,7 @@ export const adminUpdateNewsletterSubscription = defineSpec({
   output: z.object({ id: z.string(), status: z.literal("unsubscribed") }),
   annotations: write,
   scopes: ["newsroom.write"],
-  surfaces: ["mcp", "page"],
+  surfaces: ["mcp", "studio"],
   unavailableMessage: editorialUnavailable,
 });
 

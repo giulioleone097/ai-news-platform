@@ -2,10 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useEffect, useState, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import type { Locale, Messages } from "@/i18n";
-import { toUtcDateTimeInput } from "@/lib/editorial-datetime";
-import type { Article, Category, ClaimStatus } from "@atlasnews/core/editorial/domain/article";
+import { parseUtcDateTimeInput, toUtcDateTimeInput } from "@/lib/editorial-datetime";
+import type { ArticleFormFill, ArticleFormPatch, ArticleFormSnapshot } from "@atlasnews/contract/page";
+import type { Article, Category, ClaimStatus, SocialChannel } from "@atlasnews/core/editorial/domain/article";
 import type { EntitySummary } from "@atlasnews/core/editorial/domain/entity";
 import {
   articleLimits,
@@ -15,15 +17,16 @@ import {
   socialChannels,
 } from "@atlasnews/core/editorial/domain/article";
 import { saveArticleAction } from "@/app/[locale]/(studio)/studio/actions";
-import { StoryFields } from "@/app/[locale]/(studio)/studio/articles/story-fields";
+import { StoryFields, type StoryFieldsHandle } from "@/app/[locale]/(studio)/studio/articles/story-fields";
 import { StatusGlyph } from "@/components/site/claim-chip";
 import { idleStudioActionState } from "./action-state";
 import "./article-form.css";
 import { DeleteArticleButton } from "./delete-article-button";
-import { MarkdownEditor } from "./markdown-editor";
+import { MarkdownEditor, type MarkdownEditorHandle } from "./markdown-editor";
 import { MediaPicker } from "./media-picker";
 import { Note } from "./note";
 import { PageHead } from "./page-head";
+import { checkFill, registerOpenArticleForm } from "./site-tools/article-form-bridge";
 import { studioSupplementalCopy } from "./studio-copy";
 import { StudioSubmitButton } from "./studio-submit-button";
 import { counterpartLocale, type TranslationChoices } from "./translation-choices";
@@ -73,13 +76,22 @@ export function ArticleForm({
   const [categorySlug, setCategorySlug] = useState(
     article?.category.slug ?? categories[articleLocale][0]?.slug ?? "",
   );
+  const [title, setTitle] = useState(article?.title ?? "");
+  const [slug, setSlug] = useState(article?.slug ?? "");
+  const [excerpt, setExcerpt] = useState(article?.excerpt ?? "");
   const [status, setStatus] = useState(article?.status ?? "draft");
+  const [scheduledFor, setScheduledFor] = useState(toUtcDateTimeInput(article?.scheduledFor ?? null));
   // A new article has no cover: the repository stores the default picture when none is given.
   const [coverImage, setCoverImage] = useState(article?.coverImage ?? "");
   const [coverAlt, setCoverAlt] = useState(article?.coverAlt ?? "");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [claimStatus, setClaimStatus] = useState<ClaimStatus | "">(article?.claimStatus ?? "");
   const [translationOf, setTranslationOf] = useState(translations.selected);
+  const content = useRef<MarkdownEditorHandle>(null);
+  const story = useRef<StoryFieldsHandle>(null);
+  // The checkboxes keep the browser's own state, as they always did; the page tools reach them through these.
+  const featured = useRef<HTMLInputElement>(null);
+  const channels = useRef(new Map<SocialChannel, HTMLInputElement>());
   const wide = useSyncExternalStore(subscribeToWide, isWide, () => false);
   const copy = studioSupplementalCopy[locale];
   const optional = <span className="studio-field__optional"> ({copy.optional})</span>;
@@ -107,8 +119,82 @@ export function ArticleForm({
   }, [saved]);
   const hasCover = /^(\/|https?:\/\/)/.test(coverImage);
 
+  // The Studio's page tools (docs/SITE_TOOLS.md) read and fill the form through this reader and writer while it is mounted.
+  const fieldsOnScreen = (): ArticleFormSnapshot["fields"] => ({
+    title,
+    slug,
+    excerpt,
+    content: content.current?.read() ?? "",
+    categorySlug,
+    status,
+    scheduledFor: status === "scheduled" ? parseUtcDateTimeInput(scheduledFor) : null,
+    translationOf: translationOf || null,
+    claimStatus: claimStatus || null,
+    featured: Boolean(featured.current?.checked),
+    coverImage: coverImage || null,
+    coverAlt,
+    distribution: socialChannels.filter((channel) => channels.current.get(channel)?.checked),
+    keyPoints: [],
+    sources: [],
+    entities: [],
+    ...story.current?.read(),
+  });
+  // What the form held when it was shown or last saved, to tell whether the person has unsaved changes.
+  const shownFields = useRef("");
+  const rememberShownFields = useEffectEvent(() => {
+    shownFields.current = JSON.stringify(fieldsOnScreen());
+  });
+  useEffect(() => rememberShownFields(), [article?.id, article?.updatedAt]);
+  useEffect(() =>
+    registerOpenArticleForm({
+      read: () => {
+        const fields = fieldsOnScreen();
+        return {
+          locale: articleLocale,
+          article: article ? { id: article.id, slug: article.slug, locale: article.locale, status: article.status } : null,
+          unsaved: JSON.stringify(fields) !== shownFields.current,
+          fields,
+          errors: state.fieldErrors ?? {},
+          ...(state.status === "error" && state.message ? { message: state.message } : {}),
+        };
+      },
+      fill: (patch: ArticleFormPatch): ArticleFormFill => {
+        const { accepted, filled, rejected } = checkFill(patch, {
+          categories: categories[articleLocale].map((category) => category.slug),
+          translations: translationChoices.map((choice) => choice.slug),
+          entities: entities.map((entity) => entity.slug),
+        });
+        // Synchronous, so that a read right after the fill sees the new values.
+        flushSync(() => {
+          if (accepted.title !== undefined) setTitle(accepted.title);
+          if (accepted.slug !== undefined) setSlug(accepted.slug);
+          if (accepted.excerpt !== undefined) setExcerpt(accepted.excerpt);
+          if (accepted.content !== undefined) content.current?.write(accepted.content);
+          if (accepted.categorySlug !== undefined) setCategorySlug(accepted.categorySlug);
+          if (accepted.status !== undefined) setStatus(accepted.status);
+          if (accepted.scheduledFor !== undefined) setScheduledFor(toUtcDateTimeInput(accepted.scheduledFor));
+          if (accepted.translationOf !== undefined) setTranslationOf(accepted.translationOf ?? "");
+          if (accepted.claimStatus !== undefined) setClaimStatus(accepted.claimStatus);
+          if (accepted.featured !== undefined && featured.current) featured.current.checked = accepted.featured;
+          if (accepted.coverImage !== undefined) {
+            setCoverImage(accepted.coverImage ?? "");
+            if (accepted.coverImage === null) setCoverAlt("");
+          }
+          if (accepted.coverAlt !== undefined) setCoverAlt(accepted.coverAlt);
+          for (const [channel, box] of channels.current) {
+            if (accepted.distribution) box.checked = accepted.distribution.includes(channel);
+          }
+          story.current?.fill(accepted);
+        });
+        return { filled, rejected, saved: false };
+      },
+    }),
+  );
+
   return (
-    <form className="studio-editor" action={formAction} noValidate>
+    // React resets a form after its action, even when the action refused it. The reset would put the fields back
+    // to their first values, and the person (or an agent) would lose what was filled in: a refused save changes nothing.
+    <form className="studio-editor" action={formAction} noValidate onReset={(event) => event.preventDefault()}>
       {articleId ? <input name="id" type="hidden" value={articleId} /> : null}
 
       <PageHead
@@ -136,11 +222,12 @@ export function ArticleForm({
             <span>{messages.studio.titleLabel}</span>
             <input
               {...fieldAccessibility("title", "article-title-help")}
-              defaultValue={article?.title}
               maxLength={articleLimits.title.max}
               minLength={articleLimits.title.min}
               name="title"
+              onChange={(event) => setTitle(event.target.value)}
               required
+              value={title}
             />
             <small className="studio-field__hint" id="article-title-help">{withRange(copy.titleHelp, articleLimits.title)}</small>
             {fieldError("title")}
@@ -150,10 +237,11 @@ export function ArticleForm({
             <span>{messages.studio.slugLabel}{optional}</span>
             <input
               {...fieldAccessibility("slug", "article-slug-help")}
-              defaultValue={article?.slug}
               maxLength={articleLimits.slug.max}
               name="slug"
+              onChange={(event) => setSlug(event.target.value)}
               pattern={slugPattern.source.slice(1, -1)}
+              value={slug}
             />
             <small className="studio-field__hint" id="article-slug-help">{copy.slugHelp}</small>
             {fieldError("slug")}
@@ -163,12 +251,13 @@ export function ArticleForm({
             <span>{messages.studio.excerptLabel}</span>
             <textarea
               {...fieldAccessibility("excerpt", "article-excerpt-help")}
-              defaultValue={article?.excerpt}
               maxLength={articleLimits.excerpt.max}
               minLength={articleLimits.excerpt.min}
               name="excerpt"
+              onChange={(event) => setExcerpt(event.target.value)}
               required
               rows={3}
+              value={excerpt}
             />
             <small className="studio-field__hint" id="article-excerpt-help">{withRange(copy.excerptHelp, articleLimits.excerpt)}</small>
             {fieldError("excerpt")}
@@ -207,10 +296,11 @@ export function ArticleForm({
                 <span>{messages.studio.publishAtLabel} (UTC)</span>
                 <input
                   {...fieldAccessibility("scheduledFor")}
-                  defaultValue={toUtcDateTimeInput(article?.scheduledFor ?? null)}
                   name="scheduledFor"
+                  onChange={(event) => setScheduledFor(event.target.value)}
                   required
                   type="datetime-local"
+                  value={scheduledFor}
                 />
                 {fieldError("scheduledFor")}
               </label>
@@ -332,7 +422,7 @@ export function ArticleForm({
             <summary>{copy.moreOptions}</summary>
             <div className="article-editor__extras-body">
               <label className="studio-check">
-                <input defaultChecked={article?.featured} name="featured" type="checkbox" />
+                <input defaultChecked={article?.featured} name="featured" ref={featured} type="checkbox" />
                 {copy.featuredLabel}
               </label>
 
@@ -346,6 +436,10 @@ export function ArticleForm({
                         {...fieldAccessibility("distribution")}
                         defaultChecked={article?.distribution.includes(channel)}
                         name="distribution"
+                        ref={(box) => {
+                          if (box) channels.current.set(channel, box);
+                          else channels.current.delete(channel);
+                        }}
                         type="checkbox"
                         value={channel}
                       />
@@ -375,6 +469,7 @@ export function ArticleForm({
               help={copy.contentHelp}
               invalid={fieldHasError("content")}
               label={messages.studio.bodyLabel}
+              ref={content}
             />
           </section>
 
@@ -460,6 +555,7 @@ export function ArticleForm({
             errors={state.fieldErrors}
             messages={messages}
             optional={copy.optional}
+            ref={story}
           />
         </div>
       </div>

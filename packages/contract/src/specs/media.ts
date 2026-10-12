@@ -30,7 +30,7 @@ const immutable =
 const uploadRule = "Each image is base64, up to 160 KiB; use AtlasNews Studio for larger files.";
 const deleteRule = "An asset that an article uses as its cover cannot be deleted.";
 
-const base = { surfaces: ["mcp", "page"], unavailableMessage: editorialUnavailable } as const;
+const base = { surfaces: ["mcp", "studio"], unavailableMessage: editorialUnavailable } as const;
 
 export const adminListMedia = defineSpec({
   ...base,
