@@ -31,14 +31,14 @@ export function StudioShell({
   // Shown once the page has registered the Studio's tools with the browser's agent (see StudioSiteTools).
   const agentStatus = (
     <span className="studio-agent" title={studio.agentToolsHint}>
-      <Bot aria-hidden="true" size={14} />
+      <Bot aria-hidden="true" />
       {studio.agentTools}
     </span>
   );
   const openSite = (
     <Link className="studio-link" href={`/${locale}`} rel="noreferrer" target="_blank">
       {studio.openSite}
-      <ExternalLink aria-hidden="true" size={14} />
+      <ExternalLink aria-hidden="true" />
     </Link>
   );
 

@@ -95,7 +95,7 @@ export default async function StudioDashboardPage({
               <Link href={row.href} key={row.href}>
                 <span>{plural(locale, row.pair, row.value as number)}</span>
                 {row.detail ? <small className="studio-muted">{row.detail}</small> : null}
-                <ArrowRight aria-hidden="true" size={16} />
+                <ArrowRight aria-hidden="true" />
               </Link>
             ))}
           </div>
@@ -109,7 +109,7 @@ export default async function StudioDashboardPage({
           <h2 className="studio-section__title" id="recent-articles-title">{studio.recentArticles}</h2>
           <Link className="studio-link" href={`${base}/articles`}>
             {messages.common.viewAll}
-            <ArrowRight aria-hidden="true" size={14} />
+            <ArrowRight aria-hidden="true" />
           </Link>
         </div>
         <ArticleList articles={articles} limit={6} locale={locale} messages={messages} now={now} />

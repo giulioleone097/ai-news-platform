@@ -43,7 +43,7 @@ export function EmbedFrame({ href, labels }: { href: string; labels: MarkdownLab
         />
       ) : (
         <button className="markdown-embed__load" onClick={() => setLoaded(true)} type="button">
-          <Icon aria-hidden="true" size={22} />
+          <Icon aria-hidden="true" />
           <span>{copy.load}</span>
           <small>{embed.provider === "x" ? `@${embed.user} · x.com` : "youtube.com"}</small>
         </button>

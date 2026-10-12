@@ -89,7 +89,7 @@ export default async function StudioArticlesPage({
         <form className="studio-toolbar" method="get">
           <label className="studio-search">
             <span className="sr-only">{studio.searchTitles}</span>
-            <Search aria-hidden="true" size={16} />
+            <Search aria-hidden="true" />
             <input className="studio-control" defaultValue={query} name="q" placeholder={studio.searchTitles} type="search" />
           </label>
           <nav aria-label={studio.filterByStatus} className="studio-segmented">

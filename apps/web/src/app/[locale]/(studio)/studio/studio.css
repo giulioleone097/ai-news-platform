@@ -9,6 +9,7 @@
   display: grid;
   grid-template-columns: var(--studio-nav) minmax(0, 1fr);
   min-height: 100vh;
+  min-height: 100dvh;
   /* The navigation column runs the full height of a long page; the sidebar itself sticks to the viewport. */
   background: linear-gradient(
     to right,
@@ -28,6 +29,7 @@
   top: 0;
   display: flex;
   height: 100vh;
+  height: 100dvh;
   flex-direction: column;
   border-right: 1px solid var(--line);
   background: var(--bg-sunken);
@@ -101,6 +103,23 @@
   height: 1.125rem;
   flex: none;
   stroke-width: 1.75;
+}
+
+/* Icons beside small text. They carry no size prop, which would write a px width and height. */
+.studio-agent svg,
+.studio-link svg,
+.studio-sort svg,
+.studio-badge svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: none;
+}
+
+.studio-back svg,
+.studio-links a > svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
 }
 
 .studio-user {
@@ -859,6 +878,8 @@ textarea.studio-control {
 }
 
 .studio-dropzone__icon {
+  width: 1.25rem;
+  height: 1.25rem;
   justify-self: center;
   color: var(--fg-muted);
 }
@@ -1057,6 +1078,8 @@ fieldset.studio-section > legend {
   position: absolute;
   top: 50%;
   left: 0.75rem;
+  width: 1rem;
+  height: 1rem;
   color: var(--fg-muted);
   transform: translateY(-50%);
 }

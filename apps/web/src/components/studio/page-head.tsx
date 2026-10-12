@@ -25,7 +25,7 @@ export function PageHead({
       <div>
         {back ? (
           <Link className="studio-back" href={back.href}>
-            <ChevronLeft aria-hidden="true" size={16} />
+            <ChevronLeft aria-hidden="true" />
             {back.label}
           </Link>
         ) : null}
