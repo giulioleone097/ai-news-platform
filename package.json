@@ -33,18 +33,18 @@
     "supabase:start": "supabase start",
     "supabase:reset": "supabase db reset --local",
     "supabase:status": "supabase status",
-    "check": "pnpm run design:lint && pnpm run design:tokens:check && pnpm run plugin:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run perf:budget && pnpm run build:sites"
+    "check": "export NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-http://localhost:3000} && pnpm run design:lint && pnpm run design:tokens:check && pnpm run plugin:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run perf:budget && pnpm run build:sites"
   },
   "devDependencies": {
     "@google/design.md": "0.4.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9",
-    "eslint-config-next": "16.3.0",
-    "supabase": "2.113.0",
+    "eslint-config-next": "16.4.0",
+    "supabase": "2.120.0",
     "typescript": "^5",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

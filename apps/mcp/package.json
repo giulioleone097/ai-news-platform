@@ -14,8 +14,8 @@
     "@atlasnews/adapters": "workspace:*",
     "@atlasnews/contract": "workspace:*",
     "@atlasnews/core": "workspace:*",
-    "@modelcontextprotocol/server": "2.0.0",
-    "jose": "^6.2.8",
+    "@modelcontextprotocol/server": "2.3.1",
+    "jose": "^6.2.12",
     "tsx": "^4.23.15",
     "zod": "^4.4.3"
   }

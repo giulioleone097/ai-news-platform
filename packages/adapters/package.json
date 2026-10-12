@@ -8,13 +8,13 @@
   },
   "dependencies": {
     "@atlasnews/core": "workspace:*",
-    "@supabase/supabase-js": "^2.112.2",
+    "@supabase/supabase-js": "^2.117.3",
     "zod": "^4.4.3"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "miniflare": "4.20260515.0"
+    "miniflare": "5.20261006.1-alpha"
   }
 }

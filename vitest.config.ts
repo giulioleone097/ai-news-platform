@@ -10,6 +10,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // The D1 adapter tests start a real workerd (Miniflare) for each test; a cold start alone takes
+    // seconds on a busy machine, so the default 5 s fails them without anything being wrong.
+    testTimeout: 15_000,
     include: ["{apps,packages}/*/src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
