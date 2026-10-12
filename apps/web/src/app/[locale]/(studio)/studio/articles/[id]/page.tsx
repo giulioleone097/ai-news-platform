@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArticleForm } from "@/components/studio/article-form";
+import { translationChoices } from "@/components/studio/translation-choices";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { getStudioEditorialRepositories } from "@/server/composition";
@@ -19,10 +20,12 @@ export default async function EditArticlePage({
 
   await requireEditor(locale);
   const repositories = await getStudioEditorialRepositories();
-  const [article, currentCategories, entities] = await Promise.all([
+  const [article, currentCategories, entities, english, italian] = await Promise.all([
     repositories.articles.findById(id, locale),
     repositories.articles.listCategories(locale),
     repositories.entities.listEntities(locale),
+    repositories.articles.listForStudio("en"),
+    repositories.articles.listForStudio("it"),
   ]);
   if (!article) notFound();
 
@@ -37,6 +40,7 @@ export default async function EditArticlePage({
       locale={locale}
       messages={getMessages(locale)}
       saved={Boolean(query.saved)}
+      translations={translationChoices({ en: english, it: italian }, article)}
     />
   );
 }
