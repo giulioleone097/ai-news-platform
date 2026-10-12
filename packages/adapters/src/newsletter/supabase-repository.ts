@@ -15,7 +15,7 @@ import type {
   NewsletterCampaignPage,
   NewsletterDeliveryRepository,
 } from "@atlasnews/core/newsletter/domain/ports";
-import { throwIfError } from "../supabase/errors";
+import { isUuid, throwIfError } from "../supabase/errors";
 
 const campaignColumns = [
   "id",
@@ -161,6 +161,7 @@ export class SupabaseNewsletterDeliveryRepository implements NewsletterDeliveryR
   }
 
   async getCampaign(id: string) {
+    if (!isUuid(id)) return null;
     const { data, error } = await this.client
       .from("newsletter_campaigns")
       .select(campaignColumns)
@@ -171,6 +172,7 @@ export class SupabaseNewsletterDeliveryRepository implements NewsletterDeliveryR
   }
 
   async listRecipients(campaignId: string, limit = 100): Promise<NewsletterCampaignRecipient[]> {
+    if (!isUuid(campaignId)) return [];
     const { data, error } = await this.client
       .from("newsletter_campaign_recipients")
       .select("id, email, delivery_status, provider_message_id, sent_at, delivered_at, bounced_at, complained_at, opened_at, clicked_at, last_error")
@@ -229,6 +231,7 @@ export class SupabaseNewsletterDeliveryRepository implements NewsletterDeliveryR
   }
 
   async deleteDraft(id: string) {
+    if (!isUuid(id)) return false;
     const { data, error } = await this.client
       .from("newsletter_campaigns")
       .delete()
@@ -420,6 +423,7 @@ export class SupabaseNewsletterDeliveryRepository implements NewsletterDeliveryR
   }
 
   async getSubscriptionEmail(subscriptionId: string) {
+    if (!isUuid(subscriptionId)) return null;
     const { data, error } = await this.client
       .from("newsletter_subscriptions")
       .select("email")

@@ -99,6 +99,16 @@ describe("SupabaseContactMessageRepository batches", () => {
     expect(query.in).toHaveBeenLastCalledWith("id", ids);
   });
 
+  it("treats an id that is not a uuid as no message, without asking the database", async () => {
+    const from = vi.fn();
+    const repository = new SupabaseContactMessageRepository({ from } as unknown as SupabaseClient);
+
+    expect(await repository.findMany(["42", "not-a-uuid"])).toEqual([]);
+    expect(await repository.setStatus("42", "handled")).toBe(false);
+    expect(await repository.delete("42")).toBe(false);
+    expect(from).not.toHaveBeenCalled();
+  });
+
   it("fails loudly when a statement errors", async () => {
     const query = {
       select: vi.fn().mockReturnThis(),

@@ -48,7 +48,7 @@ import {
   type NewsletterStatus,
 } from "@atlasnews/core/editorial/domain/editorial-operations";
 import { locales, type Locale } from "@atlasnews/core/locale";
-import { throwIfError } from "../supabase/errors";
+import { isUuid, throwIfError } from "../supabase/errors";
 
 const categorySchema = z.object({
   id: z.string(),
@@ -440,6 +440,7 @@ export class SupabaseEditorialRepository
   }
 
   async findById(id: string, locale: Locale) {
+    if (!isUuid(id)) return null;
     const { data, error } = await this.client
       .from("articles")
       .select(this.articleSelect)
@@ -848,6 +849,7 @@ export class SupabaseEditorialRepository
   }
 
   async findSubscription(id: string) {
+    if (!isUuid(id)) return null;
     const { data, error } = await this.client
       .from("newsletter_subscriptions")
       .select(subscriptionColumns)

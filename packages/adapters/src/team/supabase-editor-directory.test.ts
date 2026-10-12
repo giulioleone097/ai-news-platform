@@ -124,16 +124,20 @@ describe("SupabaseEditorDirectory", () => {
   });
 
   it("changes a role and removes access without deleting the Auth user", async () => {
+    const editorId = "6f1c2c1e-6a2b-4f7e-9d3e-1a2b3c4d5e6f";
     const { client, tables, users, calls } = fakeSupabase({
-      users: [{ id: "u2", email: "ed@example.com", ...confirmed }],
+      users: [{ id: editorId, email: "ed@example.com", ...confirmed }],
       authors: [{ id: "a2", name: "Ed" }],
-      profiles: [{ id: "u2", role: "editor", author_id: "a2" }],
+      profiles: [{ id: editorId, role: "editor", author_id: "a2" }],
     });
     const directory = new SupabaseEditorDirectory(client);
-    expect(await directory.setRole("u2", "admin")).toMatchObject({ id: "u2", role: "admin", email: "ed@example.com" });
-    expect(await directory.setRole("missing", "admin")).toBeNull();
-    expect(await directory.remove("u2")).toBe(true);
+    // An id that is not a uuid belongs to nobody; the database is not asked.
+    expect(await directory.setRole("u2", "admin")).toBeNull();
     expect(await directory.remove("u2")).toBe(false);
+    expect(await directory.setRole(editorId, "admin")).toMatchObject({ id: editorId, role: "admin", email: "ed@example.com" });
+    expect(await directory.setRole("7f1c2c1e-6a2b-4f7e-9d3e-1a2b3c4d5e6f", "admin")).toBeNull();
+    expect(await directory.remove(editorId)).toBe(true);
+    expect(await directory.remove(editorId)).toBe(false);
     expect(tables.profiles).toEqual([]);
     expect(users).toHaveLength(1);
     expect(calls.deleteUser).toEqual([]);

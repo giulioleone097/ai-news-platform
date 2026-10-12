@@ -10,6 +10,7 @@ import {
   type SocialProvider,
   type SocialPublishPayload,
 } from "@atlasnews/core/social-publishing/domain/social-publication";
+import { isUuid } from "../supabase/errors";
 
 function persistenceError(): SocialPublishingError {
   return new SocialPublishingError("Social outbox persistence failed.", "persistence_error");
@@ -129,6 +130,7 @@ export class SupabaseSocialOutboxRepository implements SocialOutboxRepository {
   }
 
   async getById(id: string) {
+    if (!isUuid(id)) return null;
     const { data, error } = await this.client
       .from("social_outbox")
       .select("*")

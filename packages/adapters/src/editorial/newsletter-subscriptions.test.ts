@@ -59,6 +59,15 @@ describe("SupabaseEditorialRepository newsletter subscriptions", () => {
     expect(calls).toContainEqual(["eq", "status", "suppressed"]);
   });
 
+  it("finds no subscriber and no article for an id that is not a uuid, without asking the database", async () => {
+    const { calls, client } = fakeClient({ data: null, error: { message: "invalid input syntax for type uuid" } });
+    const repository = new SupabaseEditorialRepository(client, { audience: "editorial" });
+
+    expect(await repository.findSubscription("not-a-uuid")).toBeNull();
+    expect(await repository.findById("not-a-uuid", "en")).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
   it("refuses direct reactivation and unsubscribes through the database function", async () => {
     const { calls, client } = fakeClient({ data: true, error: null });
     const repository = new SupabaseEditorialRepository(client, { audience: "editorial" });
