@@ -71,7 +71,7 @@ describe("MCP endpoint", () => {
       ...mcpCapabilities.map((capability) => capability.name),
       ...appToolNames,
     ]);
-    expect(tools).toHaveLength(79);
+    expect(tools).toHaveLength(90);
     for (const tool of tools) {
       expect(Object.keys(tool.annotations).sort(), tool.name).toEqual([
         "destructiveHint", "idempotentHint", "openWorldHint", "readOnlyHint",
@@ -383,7 +383,7 @@ describe("MCP endpoint", () => {
     expect(payload.internationalization.defaultLocale).toBe("en");
     const all = [...payload.capabilities.tools.anonymous, ...payload.capabilities.tools.scoped];
     expect(all).toEqual(expect.arrayContaining(["search", "fetch", "admin_publish_article", ...appToolNames]));
-    expect(all).toHaveLength(79);
+    expect(all).toHaveLength(90);
     expect(payload.capabilities.tools.anonymous).toEqual(expect.arrayContaining(["list_articles", "search"]));
     expect(payload.capabilities.tools.scoped).not.toContain("list_articles");
 

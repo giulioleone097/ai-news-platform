@@ -103,15 +103,24 @@ describe("newsroom tools through the catalogue", () => {
     const subscription = subscriptions.structuredContent.items.find(
       (item: { email: string }) => item.email === "reader@example.com",
     ) as { id: string };
+    const read = await call("admin_get_newsletter_subscription", { id: subscription.id });
+    expect(read.structuredContent.subscription).toMatchObject({ id: subscription.id, email: "reader@example.com", status: "active" });
+    expect(read.structuredContent.contentTrust.untrustedFields).toEqual(["subscription.email"]);
     const unsubscribed = await call("admin_update_newsletter_subscription", {
       id: subscription.id,
       status: "unsubscribed",
     });
     expect(unsubscribed.structuredContent.status).toBe("unsubscribed");
+    const unknown = await call("admin_get_newsletter_subscription", { id: "no-such-subscriber" });
+    expect(unknown.isError).toBe(true);
+    expect(unknown.content[0].text).toBe("Newsletter subscription not found.");
 
     const media = await call("admin_list_media", {});
     expect(media.structuredContent.writable).toBe(false);
     expect(media.structuredContent.items).toHaveLength(1);
+    const missing = await call("admin_get_media", { path: "no-such-image.png" });
+    expect(missing.isError).toBe(true);
+    expect(missing.content[0].text).toBe("Media asset not found.");
     expect(onMutation).not.toHaveBeenCalled();
   });
 
