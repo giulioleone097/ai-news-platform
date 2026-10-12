@@ -1,7 +1,8 @@
 /**
  * The words of the error, not-found and loading boundaries. Those files are client components, so they read
  * this module and never a whole catalogue (both would otherwise ship in the JavaScript of every page).
- * `en.ts` and `it.ts` take these same strings for `common`, `errors` and `studio`, so each is written once.
+ * `en.ts` and `it.ts` reuse the strings they also show on server-rendered pages (`errors.notFound*`,
+ * `errors.backHome`, `errors.latestStories`, `studio.dashboard`), so each is written once.
  */
 const en = {
   retry: "Try again",

@@ -54,7 +54,7 @@ export async function SiteFooter({ locale }: { locale: Locale }) {
           </div>
         </nav>
         <div className="site-footer__legal">
-          <small>{messages.footer.copyright}</small>
+          <small>{messages.footer.copyright.replace("{year}", String(new Date().getUTCFullYear()))}</small>
           <Link href={localizedPath("/studio", locale)} prefetch={false}>{messages.footer.studio}</Link>
           <a href={new URL("/info", getPublicMcpUrl()).toString()}>{messages.footer.mcp}</a>
         </div>
