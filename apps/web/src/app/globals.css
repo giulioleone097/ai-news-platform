@@ -14,7 +14,7 @@
   --line-control: var(--atlasnews-color-control);
   --accent: var(--atlasnews-color-marker);
   --accent-hover: var(--atlasnews-color-marker-deep);
-  /* Text on the marker and on cover plates is ink in both themes. */
+  /* Text on the marker and on the topic tints is ink in both themes. */
   --on-accent: var(--atlasnews-color-ink);
   --success: var(--atlasnews-color-success);
   --warning: var(--atlasnews-color-warning);
@@ -105,6 +105,11 @@ a {
   color: inherit;
   text-decoration: none;
   touch-action: manipulation;
+}
+
+/* The browser's own small is 83% of its parent, which drops a 13px line to under 11px. */
+small {
+  font-size: 0.8125rem;
 }
 
 img,
@@ -286,7 +291,7 @@ h4 {
 }
 
 /* The status chip: a glyph, then the word. The glyph is four bars that fill as a claim firms up, or
-   three lines of text for an analysis; it is sized in em, so a cover plate can draw it large. */
+   three lines of text for an analysis; it is sized in em, so it follows the chip's size. */
 .status {
   display: inline-flex;
   align-items: center;

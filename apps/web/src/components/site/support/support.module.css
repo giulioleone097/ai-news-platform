@@ -50,6 +50,7 @@
 .section a,
 .note a,
 .related a {
+  padding-block: 0.25rem;
   text-decoration: underline;
   text-decoration-color: var(--line-strong);
   text-underline-offset: 0.2em;

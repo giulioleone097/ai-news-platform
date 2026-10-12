@@ -1,13 +1,12 @@
-/* An article is one column: head, picture, key points, the story so far, body, then what follows the body.
-   From 68rem a sticky table of contents sits beside it, inside a 60rem frame that the picture shares. Reading
-   type and the markdown elements live in components/markdown/markdown.css. */
+/* An article is one 35rem column: head, byline, key points, the story so far, body, sources and what follows
+   share its left and right edges. The picture may run wider, to the frame. From 68rem a sticky table of
+   contents sits beside the column, inside a frame that the picture, the contents and the frame end on together.
+   Reading type and the markdown elements live in components/markdown/markdown.css. */
 
 .article-page {
   padding-bottom: 1rem;
 }
 
-/* The frame is the text column; with a table of contents it grows by the width of that column, and the
-   picture, the contents and the frame end on the same edge. */
 .article-frame {
   width: min(100%, 42rem);
   margin-inline: auto;
@@ -15,20 +14,13 @@
 
 @media (min-width: 68rem) {
   .article-frame:not(.article-frame--single) {
-    width: min(100%, 60rem);
+    width: min(100%, 53rem);
   }
 }
 
 .article {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-@media (min-width: 68rem) {
-  .article-frame:not(.article-frame--single) .article {
-    grid-template-columns: minmax(0, 1fr) 15rem;
-    column-gap: 3rem;
-  }
+  grid-template-columns: minmax(0, 35rem) minmax(0, 1fr);
 }
 
 .article > * {
@@ -403,7 +395,7 @@
     grid-row: 3 / span 3;
     display: block;
     align-self: start;
-    margin-bottom: 0;
+    margin: 0 0 0 3rem;
     border-top: 0;
   }
 
@@ -416,6 +408,12 @@
     min-height: 2.25rem;
     padding-block: 0.375rem;
     border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (pointer: coarse) {
+  .article-toc a {
+    min-height: 2.75rem;
   }
 }
 
@@ -497,7 +495,7 @@
 /* Tail: comments and more reading stay in the text column. Its headings, like Sources above, are furniture:
    smaller than the headings inside the body. */
 .article-tail {
-  max-width: 42rem;
+  max-width: 35rem;
 }
 
 .article-main .section-header h2,

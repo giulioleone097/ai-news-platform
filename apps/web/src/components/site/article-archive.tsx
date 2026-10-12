@@ -11,7 +11,7 @@ import { TopicRail } from "./topic-rail";
 
 /**
  * Latest, a topic and search share one page: heading, search field and topic filter, then the
- * stream, with the most covered products in a side column that starts level with the heading.
+ * stream, with the most covered products in a side column that starts level with the stream.
  * `searchPage` makes the field the point of the page and lets the topic filter keep the query.
  */
 export function ArticleArchive({
@@ -90,26 +90,25 @@ export function ArticleArchive({
             </Link>
           ))}
         </nav>
+
+        {keepQuery && articles.length ? (
+          <p className="archive__count" role="status">
+            {articles.length}{nextCursor ? "+" : ""} {articles.length === 1 && !nextCursor ? messages.search.resultOne : messages.search.resultMany}
+          </p>
+        ) : null}
       </div>
 
       <section className="feed" aria-label={title}>
         {articles.length ? (
-          <>
-            {keepQuery ? (
-              <p className="archive__count" role="status">
-                {articles.length}{nextCursor ? "+" : ""} {articles.length === 1 && !nextCursor ? messages.search.resultOne : messages.search.resultMany}
-              </p>
-            ) : null}
-            <InfiniteArticleList
-              initialItems={articles.map(toFeedItem)}
-              initialNextCursor={encodeArticleCursor(nextCursor)}
-              locale={locale}
-              filters={{ category: activeCategory, query: query || undefined }}
-              copy={messages.latest}
-              feedCopy={messages.feed}
-              statusLabels={messages.story.claimStatus}
-            />
-          </>
+          <InfiniteArticleList
+            initialItems={articles.map(toFeedItem)}
+            initialNextCursor={encodeArticleCursor(nextCursor)}
+            locale={locale}
+            filters={{ category: activeCategory, query: query || undefined }}
+            copy={messages.latest}
+            feedCopy={messages.feed}
+            statusLabels={messages.story.claimStatus}
+          />
         ) : (
           <>
             {idle ? null : (

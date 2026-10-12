@@ -242,7 +242,7 @@ Reading measure for article body is 60 to 72 characters: the body is 35rem wide.
 
 ## Layout
 
-The public shell is 80rem wide (90rem on very wide screens) with gutters from 1.25rem on phones to 2.5rem on desktop. The header is one row: wordmark, Latest, the five products readers follow and Products, then search, language and Subscribe. The current section is marked. On a phone the sections scroll sideways on a second row that fades at its edge. Subscribe jumps to the newsletter band, which closes every reader page above the footer.
+The public shell is 80rem wide (90rem on very wide screens) with gutters from 1.25rem on phones to 2.5rem on desktop. The header is one row: wordmark, Latest, the five products readers follow and Products, then search, language and Subscribe. The current section is marked. Where that row does not fit, on tablets and phones, the sections scroll sideways on a second row that fades at its edge. Subscribe jumps to the newsletter band, which closes every reader page above the footer.
 
 The home page reads in three steps of decreasing size. First the lead story with its picture. Then three stories as cards: a card shows a picture only when the story has its own and the page has not shown it yet; otherwise it is a text card. Then a band that explains the status meter, and every other story as a dated stream of compact rows beside the most covered products, each with its latest status and date. The topics close the page.
 

@@ -14,6 +14,7 @@
 }
 
 .page-head__meta a {
+  padding-block: 0.1875rem;
   color: var(--fg);
   text-decoration: underline;
   text-decoration-color: var(--line-strong);
@@ -48,8 +49,9 @@
   stroke-width: 1.75;
 }
 
-/* Latest, a topic, search and a status: heading, tools and stream in one column, and the side
-   column beside all three, level with the heading. On a phone the side column follows the stream. */
+/* Latest, a topic, search and a status: heading and tools in the main column, then the stream with the
+   side column beside it, so the first rule of each (the first day, "Most covered") is one line. On a
+   phone the side column follows the stream. */
 .archive {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -66,7 +68,6 @@
 @media (min-width: 60rem) {
   .archive {
     grid-template-columns: minmax(0, 1fr) 20rem;
-    grid-template-rows: auto auto 1fr;
     column-gap: 4rem;
     align-items: start;
   }
@@ -77,11 +78,11 @@
     grid-column: 1;
   }
 
-  /* Its top margin is the heading's top padding, so the first rule of the column and the title share a line. */
+  /* Its top margin is the stream's top padding, so the first rule of the column and of the stream share a line. */
   .archive > .feed-aside {
     grid-column: 2;
-    grid-row: 1 / span 3;
-    margin-top: 2.5rem;
+    grid-row: 3;
+    margin-top: 1.5rem;
   }
 }
 
@@ -123,15 +124,20 @@
 }
 
 .archive__count {
-  padding-bottom: 0.75rem;
   color: var(--fg-muted);
   font-size: 0.9375rem;
   font-weight: 500;
 }
 
-/* An empty search or a search with no result leads into the topics. */
+/* An empty search or a search with no result leads into the topics. The column is narrower than the page,
+   so the tiles wrap instead of sharing one row. */
 .archive .topic-section {
   margin-top: 2.5rem;
+}
+
+.archive .topic-rail {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
 }
 
 /* Products index: groups of dense rows, two or three columns on wide screens. */
