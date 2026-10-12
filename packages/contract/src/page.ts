@@ -3,12 +3,14 @@ import * as z from "zod/v4";
 import type { Annotations, Scope } from "./capability";
 import { articleSpecs } from "./specs/articles";
 import { categorySpecs } from "./specs/categories";
+import { commentSpecs } from "./specs/comments";
 import { entitySpecs } from "./specs/entities";
 import { mediaSpecs } from "./specs/media";
+import { newsletterSpecs } from "./specs/newsletter";
 import { newsroomSpecs } from "./specs/newsroom";
-import { operationsSpecs } from "./specs/operations";
 import { filterFeed, openArticle, pageSpecs, readOpenArticle, saveArticle } from "./specs/page";
 import { searchArticles } from "./specs/search-articles";
+import { socialSpecs } from "./specs/social";
 import { supportSpecs } from "./specs/support";
 import { teamSpecs } from "./specs/team";
 
@@ -59,7 +61,8 @@ export const pageCapabilities: readonly PageCapability[] = pageSpecs.map(describ
  * defined once. The page runs them against the server, which checks the editor's scopes.
  */
 export const editorPageSpecs = [
-  ...articleSpecs, ...categorySpecs, ...entitySpecs, ...mediaSpecs, ...newsroomSpecs, ...operationsSpecs, ...supportSpecs, ...teamSpecs,
+  ...articleSpecs, ...categorySpecs, ...entitySpecs, ...mediaSpecs, ...newsroomSpecs, ...commentSpecs, ...newsletterSpecs,
+  ...socialSpecs, ...supportSpecs, ...teamSpecs,
 ].filter((spec) => (spec.surfaces as readonly string[]).includes("page"));
 export const editorPageCapabilities: readonly PageCapability[] = editorPageSpecs.map(describe);
 

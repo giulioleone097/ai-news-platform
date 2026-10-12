@@ -4,11 +4,20 @@ import { mediaBatchLimit } from "@atlasnews/core/editorial/domain/errors";
 
 import { destructive, readOnly, write } from "../annotations";
 import { defineSpec } from "../capability";
-import { editorialUnavailable, mediaBatchNote, record } from "./editorial";
+import { editorialUnavailable, mediaBatchNote } from "./editorial";
 import { batchOutput } from "./shared";
 
 const mediaTypeSchema = z.enum(["image/avif", "image/gif", "image/jpeg", "image/png", "image/webp"]);
 const mediaPathSchema = z.string().trim().min(1).max(256).regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/);
+
+const assetSchema = z.object({
+  path: z.string().describe("The asset's id: pass it to admin_get_media and admin_delete_media."),
+  url: z.string(),
+  name: z.string(),
+  mimeType: z.string(),
+  size: z.number().int().nonnegative().describe("Bytes."),
+  createdAt: z.string(),
+});
 
 const uploadItem = z.object({
   name: z.string().trim().min(1).max(160),
@@ -29,7 +38,18 @@ export const adminListMedia = defineSpec({
   title: "List newsroom media",
   description: `List the assets in the configured editorial media store. ${immutable}`,
   input: z.object({}),
-  output: z.object({ writable: z.boolean(), items: z.array(record) }),
+  output: z.object({ writable: z.boolean(), items: z.array(assetSchema) }),
+  annotations: readOnly,
+  scopes: ["newsroom.read"],
+});
+
+export const adminGetMedia = defineSpec({
+  ...base,
+  name: "admin_get_media",
+  title: "Get newsroom media",
+  description: "Get one asset of the media store by its path: its URL, type, size and upload time.",
+  input: z.object({ path: mediaPathSchema }),
+  output: z.object({ asset: assetSchema }),
   annotations: readOnly,
   scopes: ["newsroom.read"],
 });
@@ -40,7 +60,7 @@ export const adminUploadMedia = defineSpec({
   title: "Upload newsroom media",
   description: `Upload one image. ${uploadRule}`,
   input: uploadItem,
-  output: z.object({ asset: record }),
+  output: z.object({ asset: assetSchema }),
   annotations: write,
   scopes: ["newsroom.write"],
 });
@@ -84,6 +104,7 @@ export const adminDeleteMediaAssets = defineSpec({
 
 export const mediaSpecs = [
   adminListMedia,
+  adminGetMedia,
   adminUploadMedia,
   adminDeleteMedia,
   adminUploadMediaAssets,

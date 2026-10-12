@@ -1,6 +1,7 @@
-import { implement } from "../capability";
+import { CapabilityFailure, implement } from "../capability";
 import { markUntrusted } from "../untrusted";
 import {
+  adminGetNewsletterSubscription,
   adminListDistribution,
   adminListNewsletterSubscriptions,
   adminUpdateDistribution,
@@ -23,6 +24,12 @@ export const newsroomCapabilities = [
   implement(adminListNewsletterSubscriptions, async (ports, input) => {
     const page = await (await ports.editorial()).listSubscriptions(input);
     return markUntrusted({ ...page, items: page.items.map((item) => ({ ...item })) }, ["items[].email"]);
+  }),
+
+  implement(adminGetNewsletterSubscription, async (ports, { id }) => {
+    const subscription = await (await ports.editorial()).findSubscription(id);
+    if (!subscription) throw new CapabilityFailure("Newsletter subscription not found.");
+    return markUntrusted({ subscription: { ...subscription } }, ["subscription.email"]);
   }),
 
   implement(adminUpdateNewsletterSubscription, async (ports, { id, status }) => {
