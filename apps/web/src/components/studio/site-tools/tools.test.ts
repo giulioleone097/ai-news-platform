@@ -1,284 +1,280 @@
 import { describe, expect, it, vi } from "vitest";
-import { editorPageCapabilities } from "@atlasnews/contract/page";
-import { createConfirmPresenter, type ConfirmRequest } from "./confirm-dialog";
-import { FakeDocument } from "./fake-document";
-import { createEditorTools, describeAffected, type EditorToolsEnvironment } from "./tools";
+import { studioPageSpecs, type ArticleFormPatch, type ArticleFormSnapshot } from "@atlasnews/contract/page";
+import { checkFill, type OpenArticleForm } from "./article-form-bridge";
+import { createStudioTools, type StudioToolsEnvironment } from "./tools";
 
-interface Sent {
-  url: string;
-  body: { input: Record<string, unknown>; confirmed: boolean };
-  init: RequestInit;
-}
+const emptyFields: ArticleFormSnapshot["fields"] = {
+  title: "",
+  slug: "",
+  excerpt: "",
+  content: "",
+  categorySlug: "models",
+  status: "draft",
+  scheduledFor: null,
+  translationOf: null,
+  claimStatus: null,
+  featured: false,
+  coverImage: null,
+  coverAlt: "",
+  distribution: [],
+  keyPoints: [],
+  sources: [],
+  entities: [],
+};
 
-const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status });
-const ok = (result: Record<string, unknown> = { done: true }) => json(200, { ok: true, result });
-const refused = (status: number, error: string) => json(status, { ok: false, status, error });
+const storedArticle = { id: "id-gpt-launch", slug: "gpt-launch", locale: "it", status: "published" } as const;
 
-/** A fake route: `answer` sees each request in order. */
-function setup(answer: (sent: Sent, index: number) => Response | Promise<Response>, confirm?: EditorToolsEnvironment["confirm"]) {
-  const sent: Sent[] = [];
-  const asked: ConfirmRequest[] = [];
-  const refresh = vi.fn();
-  const env: EditorToolsEnvironment = {
-    fetch: async (input, init) => {
-      const entry = { url: String(input), body: JSON.parse(String(init?.body)), init: init! };
-      sent.push(entry);
-      return answer(entry, sent.length - 1);
+/** An article form that follows the rules the real one has: `fill` takes what `checkFill` accepts and `unsaved` tells a changed form. */
+function fakeForm(options: { locale?: "en" | "it"; article?: ArticleFormSnapshot["article"]; fields?: Partial<ArticleFormSnapshot["fields"]> } = {}) {
+  const shown = { ...emptyFields, ...options.fields };
+  let fields = { ...shown };
+  const form: OpenArticleForm = {
+    read: () => ({
+      locale: options.locale ?? "en",
+      article: options.article ?? null,
+      unsaved: JSON.stringify(fields) !== JSON.stringify(shown),
+      fields,
+      errors: { title: ["Use at least 8 characters."] },
+    }),
+    fill: (patch: ArticleFormPatch) => {
+      const { accepted, filled, rejected } = checkFill(patch, { categories: ["models", "research"], translations: ["gpt-lancio"], entities: ["openai"] });
+      fields = { ...fields, ...(accepted as Partial<ArticleFormSnapshot["fields"]>) };
+      return { filled, rejected, saved: false };
     },
-    confirm: confirm ?? ((request) => (asked.push(request), Promise.resolve(true))),
-    refresh,
   };
-  return { tools: createEditorTools(env), sent, asked, refresh };
+  return form;
 }
 
-const deleteEntity = { slug: "openai" };
-
-describe("editor tools: input", () => {
-  it("has a handler for every capability and nothing else", () => {
-    const { tools } = setup(() => ok());
-    expect(Object.keys(tools)).toEqual(editorPageCapabilities.map((capability) => capability.name));
-  });
-
-  it("never sends invalid input to the server", async () => {
-    const { tools, sent } = setup(() => ok());
-    await expect(tools.admin_delete_entity({ slug: "Not A Slug" })).resolves.toMatchObject({
-      error: expect.stringContaining("Invalid arguments for admin_delete_entity"),
-    });
-    await expect(tools.admin_delete_entity({})).resolves.toHaveProperty("error");
-    await expect(tools.admin_delete_entity("slug")).resolves.toHaveProperty("error");
-    await expect(tools.admin_create_articles({ items: [] })).resolves.toHaveProperty("error");
-    expect(sent).toHaveLength(0);
-  });
-
-  it("posts the parsed input to /api/capabilities/{name} as same-origin JSON", async () => {
-    const { tools, sent } = setup(() => ok({ items: [] }));
-    await expect(tools.admin_list_articles({ locale: "en" })).resolves.toEqual({ items: [] });
-    expect(sent).toHaveLength(1);
-    expect(sent[0].url).toBe("/api/capabilities/admin_list_articles");
-    expect(sent[0].init).toMatchObject({ method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" } });
-    expect(sent[0].body).toEqual({ input: expect.any(Object), confirmed: false });
-  });
-});
-
-describe("editor tools: server statuses", () => {
-  const cases: [number, RegExp][] = [
-    [400, /^The slug is taken\.$/],
-    [401, /not signed in.*sign in again/i],
-    [403, /may not use admin_update_entity.*Nothing was changed/],
-    [404, /does not know the tool admin_update_entity/],
-    [503, /storage is not configured/i],
-    [500, /could not run admin_update_entity \(500\)/],
-  ];
-  it.each(cases)("maps %i to a clear error result", async (status, pattern) => {
-    const { tools, refresh } = setup(() => refused(status, status === 400 ? "The slug is taken." : "No scope."));
-    const result = await tools.admin_update_entity({ slug: "openai", name: "OpenAI" });
-    expect(Object.keys(result)).toEqual(["error"]);
-    expect(result.error).toMatch(pattern);
-    expect(refresh).not.toHaveBeenCalled();
-  });
-
-  it("answers an error, never a throw, when the network, the JSON or the shape is wrong", async () => {
-    const offline = createEditorTools({ fetch: () => Promise.reject(new TypeError("offline")), confirm: async () => true, refresh: vi.fn() });
-    await expect(offline.admin_list_media({})).resolves.toMatchObject({ error: expect.stringContaining("could not be reached") });
-
-    const html = setup(() => new Response("<html>", { status: 502 }));
-    await expect(html.tools.admin_list_media({})).resolves.toMatchObject({ error: expect.stringContaining("(502)") });
-
-    const odd = setup(() => json(200, { ok: true }));
-    await expect(odd.tools.admin_list_media({})).resolves.toHaveProperty("error");
-  });
-
-  it("reports a cancelled call as cancelled", async () => {
-    const controller = new AbortController();
-    const { tools } = setup(() => {
-      controller.abort();
-      return Promise.reject(new DOMException("aborted", "AbortError"));
-    });
-    await expect(tools.admin_list_media({}, controller.signal)).resolves.toEqual({ error: "admin_list_media was cancelled." });
-  });
-});
-
-describe("editor tools: refreshing the view", () => {
-  it("refreshes after a successful write, and only then", async () => {
-    const { tools, refresh } = setup(() => ok());
-    await tools.admin_list_articles({ locale: "en" });
-    await tools.admin_get_entity({ slug: "openai" });
-    expect(refresh).not.toHaveBeenCalled();
-
-    await tools.admin_update_entity({ slug: "openai", name: "OpenAI" });
-    expect(refresh).toHaveBeenCalledTimes(1);
-  });
-
-  it("keeps a successful result when the refresh itself fails", async () => {
-    const env: EditorToolsEnvironment = {
-      fetch: async () => ok({ slug: "openai" }),
-      confirm: async () => true,
-      refresh: () => {
-        throw new Error("router gone");
-      },
-    };
-    await expect(createEditorTools(env).admin_update_entity({ slug: "openai", name: "OpenAI" })).resolves.toEqual({ slug: "openai" });
-  });
-});
-
-describe("editor tools: confirmation by the person", () => {
-  /** Server that asks first and does the work once `confirmed` is true. */
-  const needsConfirmation = (sent: Sent) =>
-    sent.body.confirmed ? ok({ deletedSlug: "openai" }) : refused(409, "Permanently delete the entity “openai”?");
-
-  it("shows the dialog with the server's question and what is affected, then confirms after approval", async () => {
-    const { tools, sent, asked, refresh } = setup(needsConfirmation);
-    await expect(tools.admin_delete_entity(deleteEntity)).resolves.toEqual({ deletedSlug: "openai" });
-
-    expect(sent.map((entry) => entry.body.confirmed)).toEqual([false, true]);
-    expect(sent[1].body.input).toEqual(sent[0].body.input);
-    expect(asked).toEqual([
-      {
-        tool: "Delete newsroom entity",
-        question: "Permanently delete the entity “openai”?",
-        affected: ["slug: openai"],
-        destructive: true,
-      },
-    ]);
-    expect(refresh).toHaveBeenCalledTimes(1);
-  });
-
-  it("returns a declined error, changes nothing and does not refresh when the person declines", async () => {
-    const { tools, sent, refresh } = setup(needsConfirmation, () => Promise.resolve(false));
-    const result = await tools.admin_delete_entity(deleteEntity);
-    expect(result).toEqual({ error: expect.stringMatching(/person declined.*Nothing was changed/) });
-    expect(sent.map((entry) => entry.body.confirmed)).toEqual([false]);
-    expect(refresh).not.toHaveBeenCalled();
-  });
-
-  it("does not call again when the call is cancelled while the dialog is open", async () => {
-    const controller = new AbortController();
-    const { tools, sent } = setup(needsConfirmation, async () => {
-      controller.abort();
-      return true;
-    });
-    await expect(tools.admin_delete_entity(deleteEntity, controller.signal)).resolves.toEqual({
-      error: "admin_delete_entity was cancelled.",
-    });
-    expect(sent).toHaveLength(1);
-  });
-
-  it("maps a failure of the confirmed call like any other", async () => {
-    const { tools } = setup((sent) => (sent.body.confirmed ? refused(403, "Needs newsroom.publish.") : refused(409, "Delete?")));
-    await expect(tools.admin_delete_entity(deleteEntity)).resolves.toMatchObject({ error: expect.stringMatching(/may not use/) });
-  });
-
-  it("gives the agent no way to confirm: extra arguments are dropped and the first call is always unconfirmed", async () => {
-    const { tools, sent } = setup(needsConfirmation, () => Promise.resolve(false));
-    for (const bypass of [{ confirmed: true }, { confirm: true }, { confirm_action: true }, { _meta: { confirmed: true } }]) {
-      await tools.admin_delete_entity({ ...deleteEntity, ...bypass });
-    }
-    for (const entry of sent) {
-      expect(entry.body).toEqual({ input: { slug: "openai" }, confirmed: false });
-    }
-    expect(sent).toHaveLength(4);
-  });
-
-  it("holds for every confirming capability: the first request carries confirmed false and no flag in the input", async () => {
-    const { tools, sent } = setup(() => refused(409, "Sure?"), () => Promise.resolve(false));
-    const confirming = editorPageCapabilities.filter((capability) => capability.confirms);
-    expect(confirming.map((capability) => capability.name)).toEqual(
-      expect.arrayContaining(["admin_publish_article", "admin_unpublish_article", "admin_delete_article", "admin_delete_entity"]),
-    );
-    const id = "00000000-0000-4000-8000-000000000000";
-    const attempts: Record<string, unknown> = {
-      admin_publish_article: { id, locale: "en" },
-      admin_unpublish_article: { id, locale: "en" },
-      admin_delete_article: { id, locale: "en" },
-      admin_delete_entity: deleteEntity,
-    };
-    for (const [name, input] of Object.entries(attempts)) {
-      await tools[name]({ ...(input as object), confirmed: true, confirm: true });
-    }
-    expect(sent.map((entry) => entry.body.confirmed)).toEqual([false, false, false, false]);
-    for (const entry of sent) expect(Object.keys(entry.body.input).filter((key) => /confirm/i.test(key))).toEqual([]);
-  });
-
-  it("handles two simultaneous confirming calls one at a time, each approved for its own action", async () => {
-    const doc = new FakeDocument();
-    const presenter = createConfirmPresenter(doc as unknown as Document, "en");
-    const sent: Sent[] = [];
-    const tools = createEditorTools({
-      fetch: async (input, init) => {
-        const entry = { url: String(input), body: JSON.parse(String(init?.body)), init: init! };
-        sent.push(entry);
-        const slug = (entry.body.input as { slug: string }).slug;
-        return entry.body.confirmed ? ok({ deletedSlug: slug }) : refused(409, `Delete ${slug}?`);
-      },
-      confirm: presenter.confirm,
-      refresh: vi.fn(),
-    });
-    const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
-    const buttons = (label: string) => doc.modals[0].all().find((node) => node.tag === "button" && node.textContent === label)!;
-
-    const a = tools.admin_delete_entity({ slug: "alpha" });
-    const b = tools.admin_delete_entity({ slug: "beta" });
-    await tick();
-    expect(doc.dialogs()).toHaveLength(1);
-    expect(doc.modals[0].text()).toContain("Delete alpha?");
-    expect(sent.filter((entry) => entry.body.confirmed)).toHaveLength(0);
-
-    buttons("Approve").click();
-    await expect(a).resolves.toEqual({ deletedSlug: "alpha" });
-    await tick();
-    expect(doc.dialogs()).toHaveLength(1);
-    expect(doc.modals[0].text()).toContain("Delete beta?");
-    expect(sent.filter((entry) => entry.body.confirmed).map((entry) => entry.body.input)).toEqual([{ slug: "alpha" }]);
-
-    buttons("Decline").click();
-    await expect(b).resolves.toMatchObject({ error: expect.stringContaining("declined") });
-    expect(sent.filter((entry) => entry.body.confirmed)).toHaveLength(1);
-  });
-});
-
-describe("what the dialog says is affected", () => {
-  it("lists scalars, short lists and batches without dumping content", () => {
-    expect(
-      describeAffected({
-        id: "a1",
-        locale: "en",
-        skipped: undefined,
-        items: [{ title: "One" }, { slug: "two" }, { id: "3" }, {}, "five", "six"],
-        long: "x".repeat(300),
-      }),
-    ).toEqual([
-      "id: a1",
-      "locale: en",
-      "items: 6 (One, two, 3, ..., five, ...)",
-      `long: ${"x".repeat(117)}...`,
-    ]);
-  });
-});
-
-describe("the catalogue's schemas give the agent no way to confirm", () => {
-  const properties = (schema: unknown, found: string[] = []): string[] => {
-    if (Array.isArray(schema)) schema.forEach((entry) => properties(entry, found));
-    else if (schema && typeof schema === "object") {
-      for (const [key, value] of Object.entries(schema)) {
-        if (key === "properties" && value && typeof value === "object") found.push(...Object.keys(value));
-        properties(value, found);
+/**
+ * A fake Studio: `navigate` records the path and shows the form that `pages` has for it (none for an
+ * unknown address, as a not-found page has no form). A form appears `late` looks after the page opened.
+ */
+function setup(options: { form?: OpenArticleForm | null; pages?: Record<string, OpenArticleForm | null>; navigates?: boolean; late?: number } = {}) {
+  const state = { form: options.form ?? null, path: "/en/studio", pending: null as OpenArticleForm | null, looks: 0 };
+  const visited: string[] = [];
+  const waits: number[] = [];
+  const env: StudioToolsEnvironment = {
+    navigate: async (path) => {
+      visited.push(path);
+      if (options.navigates === false) return false;
+      state.path = path;
+      state.pending = options.pages?.[path] ?? null;
+      if (!options.late) {
+        state.form = state.pending;
+        state.pending = null;
       }
-    }
-    return found;
+      return true;
+    },
+    articleForm: () => state.form,
+    path: () => state.path,
+    wait: async (ms) => {
+      waits.push(ms);
+      if (state.pending && ++state.looks >= (options.late ?? 0)) {
+        state.form = state.pending;
+        state.pending = null;
+      }
+    },
   };
+  return { tools: createStudioTools(env), visited, waits, state };
+}
 
-  it("declares no property named confirm* anywhere, and closes no unknown key into the call", () => {
-    for (const capability of editorPageCapabilities) {
-      expect(properties(capability.inputSchema).filter((name) => /confirm|approve|consent/i.test(name)), capability.name).toEqual([]);
-      expect(capability.inputSchema.additionalProperties, capability.name).not.toBe(true);
-      expect(JSON.stringify(capability.inputSchema), capability.name).not.toMatch(/"additionalProperties":\s*\{/);
-    }
+describe("open_article_editor", () => {
+  it("opens a blank form for a new article in a locale", async () => {
+    const blank = fakeForm({ locale: "it" });
+    const { tools, visited } = setup({ pages: { "/it/studio/articles/new": blank } });
+    await expect(tools.open_article_editor({ locale: "it" })).resolves.toEqual({ opened: true, path: "/it/studio/articles/new", article: null });
+    expect(visited).toEqual(["/it/studio/articles/new"]);
   });
 
-  it("matches the MCP endpoint: its confirm argument is added by the MCP adapter, not by the catalogue", () => {
-    expect(editorPageCapabilities.filter((capability) => capability.confirms).length).toBeGreaterThan(8);
-    for (const capability of editorPageCapabilities) {
-      expect(Object.keys((capability.inputSchema.properties ?? {}) as object)).not.toContain("confirm");
+  it("opens an article by its locale and slug and says which one it is", async () => {
+    const { tools, visited } = setup({ pages: { "/it/studio/articles/gpt-launch": fakeForm({ locale: "it", article: storedArticle }) } });
+    await expect(tools.open_article_editor({ locale: "it", slug: "gpt-launch" })).resolves.toEqual({
+      opened: true,
+      path: "/it/studio/articles/gpt-launch",
+      article: storedArticle,
+    });
+    expect(visited).toEqual(["/it/studio/articles/gpt-launch"]);
+  });
+
+  it("does not leave the editor that is already open for the same article, nor reload a blank one", async () => {
+    const open = setup({ form: fakeForm({ locale: "it", article: storedArticle }) });
+    await expect(open.tools.open_article_editor({ locale: "it", slug: "gpt-launch" })).resolves.toMatchObject({ opened: true, article: storedArticle });
+    const blank = setup({ form: fakeForm({ locale: "en" }) });
+    await expect(blank.tools.open_article_editor({ locale: "en" })).resolves.toMatchObject({ opened: true, article: null });
+    expect(open.visited).toEqual([]);
+    expect(blank.visited).toEqual([]);
+  });
+
+  it("will not leave a form that has unsaved changes for another article, and says what to ask", async () => {
+    const typed = fakeForm({ locale: "en" });
+    typed.fill({ title: "A headline in progress" });
+    const { tools, visited } = setup({ form: typed, pages: { "/en/studio/articles/other": fakeForm({ article: { ...storedArticle, slug: "other", locale: "en" } }) } });
+    await expect(tools.open_article_editor({ locale: "en", slug: "other" })).resolves.toEqual({
+      error: expect.stringMatching(/unsaved changes.*save or discard.*Nothing was changed/),
+    });
+    expect(visited).toEqual([]);
+    // The same request for the form that holds the unsaved work is not a way out of it either: it is that form.
+    await expect(tools.open_article_editor({ locale: "en" })).resolves.toMatchObject({ opened: true, article: null });
+  });
+
+  it("moves on from a form that has nothing unsaved, and waits for the editor that was asked for, not the one it left", async () => {
+    const old = fakeForm({ locale: "en" });
+    const { tools, visited, waits } = setup({
+      form: old,
+      late: 3,
+      pages: { "/en/studio/articles/other": fakeForm({ article: { ...storedArticle, slug: "other", locale: "en" } }) },
+    });
+    await expect(tools.open_article_editor({ locale: "en", slug: "other" })).resolves.toMatchObject({
+      opened: true,
+      path: "/en/studio/articles/other",
+      article: { slug: "other" },
+    });
+    expect(visited).toEqual(["/en/studio/articles/other"]);
+    expect(waits).toEqual([50, 50, 50]);
+  });
+
+  it("reports an article that does not exist after a short wait, and a page that did not open", async () => {
+    const missing = setup({ pages: {} });
+    await expect(missing.tools.open_article_editor({ locale: "en", slug: "gone" })).resolves.toEqual({
+      error: 'No article "gone" in locale en, or its editor did not open.',
+    });
+    expect(missing.waits).toHaveLength(60);
+
+    const stuck = setup({ navigates: false });
+    await expect(stuck.tools.open_article_editor({ locale: "en" })).resolves.toEqual({
+      error: "The page did not finish opening /en/studio/articles/new.",
+    });
+  });
+
+  it("checks its arguments before it moves the page", async () => {
+    const { tools, visited } = setup();
+    await expect(tools.open_article_editor({ slug: "Not A Slug" })).resolves.toEqual({
+      error: expect.stringContaining("Invalid arguments for open_article_editor"),
+    });
+    await expect(tools.open_article_editor({ locale: "fr" })).resolves.toHaveProperty("error");
+    await expect(tools.open_article_editor({ slug: "../../api/health" })).resolves.toHaveProperty("error");
+    expect(visited).toEqual([]);
+  });
+
+  it("answers a cancelled call as cancelled", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const { tools } = setup({ pages: {} });
+    await expect(tools.open_article_editor({ locale: "en", slug: "gone" }, controller.signal)).resolves.toEqual({
+      error: "open_article_editor was cancelled.",
+    });
+  });
+});
+
+describe("read_article_form", () => {
+  it("returns the form on screen: its fields, the translation link, the status and the errors shown", async () => {
+    const form = fakeForm({
+      locale: "it",
+      article: storedArticle,
+      fields: { title: "Il lancio", translationOf: "gpt-launch", status: "review", claimStatus: "rollout" },
+    });
+    const { tools } = setup({ form });
+    await expect(tools.read_article_form({})).resolves.toMatchObject({
+      locale: "it",
+      article: storedArticle,
+      unsaved: false,
+      fields: { title: "Il lancio", translationOf: "gpt-launch", status: "review", claimStatus: "rollout" },
+      errors: { title: ["Use at least 8 characters."] },
+    });
+  });
+
+  it("says so when no form is open, and does not mistake a stale closure for a form", async () => {
+    const { tools } = setup();
+    await expect(tools.read_article_form({})).resolves.toEqual({ error: "No article form is open. Open one with open_article_editor first." });
+  });
+});
+
+describe("fill_article_form", () => {
+  it("sets the fields it is given, leaves the others, and states that nothing was saved", async () => {
+    const form = fakeForm({ fields: { title: "Kept title as typed" } });
+    const { tools } = setup({ form });
+    const result = await tools.fill_article_form({
+      excerpt: "A short summary of the story for the list.",
+      categorySlug: "research",
+      status: "review",
+      keyPoints: ["One", "Two", "Three"],
+    });
+    expect(result).toEqual({ filled: ["excerpt", "categorySlug", "status", "keyPoints"], rejected: [], saved: false });
+    expect(form.read().fields).toMatchObject({
+      title: "Kept title as typed",
+      excerpt: "A short summary of the story for the list.",
+      categorySlug: "research",
+      status: "review",
+    });
+    expect(form.read().unsaved).toBe(true);
+  });
+
+  it("fills what the form offers and reports the rest with the reason", async () => {
+    const form = fakeForm();
+    const { tools } = setup({ form });
+    await expect(tools.fill_article_form({ title: "A usable title", categorySlug: "cooking", translationOf: "nowhere" })).resolves.toMatchObject({
+      filled: ["title"],
+      rejected: [
+        { field: "categorySlug", reason: expect.stringContaining("Categories: models, research") },
+        { field: "translationOf", reason: expect.stringContaining("not offered") },
+      ],
+      saved: false,
+    });
+    expect(form.read().fields).toMatchObject({ title: "A usable title", categorySlug: "models" });
+  });
+
+  it("never publishes and never confirms: the arguments are checked first and unknown ones are dropped", async () => {
+    const form = fakeForm();
+    const fill = vi.spyOn(form, "fill");
+    const { tools } = setup({ form });
+    await expect(tools.fill_article_form({ status: "published" })).resolves.toEqual({ error: expect.stringMatching(/fill_article_form.*status/) });
+    await expect(tools.fill_article_form({ title: "x".repeat(200) })).resolves.toHaveProperty("error");
+    expect(fill).not.toHaveBeenCalled();
+    await tools.fill_article_form({ title: "A usable title", confirmed: true, save: true });
+    expect(fill).toHaveBeenCalledWith({ title: "A usable title" });
+  });
+
+  it("says so when no form is open", async () => {
+    const { tools } = setup();
+    await expect(tools.fill_article_form({ title: "A usable title" })).resolves.toEqual({
+      error: "No article form is open. Open one with open_article_editor first.",
+    });
+  });
+});
+
+describe("failures", () => {
+  it("never throws: an unexpected error becomes a result", async () => {
+    const broken: OpenArticleForm = {
+      read: () => {
+        throw new Error("secret internals");
+      },
+      fill: () => {
+        throw new Error("secret internals");
+      },
+    };
+    const { tools } = setup({ form: broken });
+    await expect(tools.read_article_form({})).resolves.toEqual({ error: "read_article_form failed unexpectedly." });
+    await expect(tools.fill_article_form({ title: "A usable title" })).resolves.toEqual({ error: "fill_article_form failed unexpectedly." });
+  });
+});
+
+describe("the catalogue's outputs", () => {
+  it("are what the handlers return", async () => {
+    const { tools } = setup({
+      pages: { "/it/studio/articles/gpt-launch": fakeForm({ locale: "it", article: storedArticle, fields: { claimStatus: "test", translationOf: "x" } }) },
+    });
+    const results = {
+      open_article_editor: await tools.open_article_editor({ locale: "it", slug: "gpt-launch" }),
+      read_article_form: await tools.read_article_form({}),
+      fill_article_form: await tools.fill_article_form({ title: "A usable title", categorySlug: "cooking" }),
+    };
+    expect(Object.keys(results)).toEqual(studioPageSpecs.map((spec) => spec.name));
+    for (const [name, result] of Object.entries(results)) {
+      const spec = studioPageSpecs.find((candidate) => candidate.name === name)!;
+      expect(() => spec.output.parse(result), name).not.toThrow();
     }
+    const blank = setup({ pages: { "/en/studio/articles/new": fakeForm() } });
+    // A new article has no stored article behind it.
+    expect(studioPageSpecs[0].output.parse(await blank.tools.open_article_editor({ locale: "en" }))).toMatchObject({ article: null });
   });
 });

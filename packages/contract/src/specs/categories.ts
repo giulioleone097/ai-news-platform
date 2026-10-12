@@ -58,7 +58,7 @@ const patchSemantics =
   `${patchNote} Only the locales you list change. Clearing: description "" empties it; name, slug and position cannot be cleared, only replaced.`;
 const deleteRule = "A category that articles still use cannot be deleted; move its articles first.";
 
-const base = { surfaces: ["mcp", "page"], unavailableMessage: editorialUnavailable } as const;
+const base = { surfaces: ["mcp", "studio"], unavailableMessage: editorialUnavailable } as const;
 
 const categoryListItem = z.object({
   id: z.string(),

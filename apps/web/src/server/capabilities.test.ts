@@ -52,7 +52,7 @@ describe("runEditorCapability statuses", () => {
     expect(mocks.repository).not.toHaveBeenCalled();
   });
 
-  it("answers 404 for an unknown capability and for one that is not offered to the page", async () => {
+  it("answers 404 for an unknown capability and for one that the Studio does not run", async () => {
     expect(await runEditorCapability("no_such_capability", {})).toMatchObject({ ok: false, status: 404 });
     expect(await runEditorCapability("admin_comment_process_notifications", {})).toMatchObject({ ok: false, status: 404 });
     expect(await runEditorCapability("admin_social_process_outbox", {}, { confirmed: true })).toMatchObject({ ok: false, status: 404 });

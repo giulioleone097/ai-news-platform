@@ -22,7 +22,7 @@ const messageSchema = z.object({
   createdAt: z.string(),
 });
 
-const base = { surfaces: ["mcp", "page"], unavailableMessage: unavailable } as const;
+const base = { surfaces: ["mcp", "studio"], unavailableMessage: unavailable } as const;
 
 export const adminListContactMessages = defineSpec({
   ...base,

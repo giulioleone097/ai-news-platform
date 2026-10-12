@@ -155,7 +155,7 @@ const cannotPublish =
 const batchCannotPublish =
   " This tool cannot publish or unpublish: use admin_publish_articles and admin_unpublish_articles.";
 
-const base = { surfaces: ["mcp", "page"], unavailableMessage: editorialUnavailable } as const;
+const base = { surfaces: ["mcp", "studio"], unavailableMessage: editorialUnavailable } as const;
 
 export const adminListArticles = defineSpec({
   ...base,

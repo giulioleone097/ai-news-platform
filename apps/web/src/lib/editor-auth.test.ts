@@ -58,7 +58,7 @@ describe("identity headers in sites mode", () => {
     expect(await getSignedInUser()).toBeNull();
     expect(await getEditorIdentity()).toBeNull();
     expect(await isSignedIn()).toBe(false);
-    // `/api/capabilities/*` and the Studio's Server Actions answer 401, not 403: nobody is signed in.
+    // The Studio's Server Actions answer 401, not 403: nobody is signed in.
     expect(await runEditorCapability("list_entities", { locale: "en" })).toMatchObject({ ok: false, status: 401 });
   });
 });

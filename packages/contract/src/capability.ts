@@ -28,8 +28,13 @@ export function scopesForRole(role: string | undefined): readonly Scope[] {
   return role === "editor" ? editorScopes : [];
 }
 
-/** Where a capability is offered: the MCP endpoint, and/or tools of the open web page. */
-export type Surface = "mcp" | "page";
+/**
+ * Where a capability is offered. `mcp` is the MCP endpoint, which carries every data and operation tool.
+ * `studio` is the web app's own Server Actions (`runEditorCapability`), never a browser agent.
+ * `page` is a tool of the open web page (WebMCP) that runs in the browser and has no handler here: only
+ * page specs carry it, so no WebMCP tool shares a name with an MCP tool.
+ */
+export type Surface = "mcp" | "studio" | "page";
 
 /** All four MCP tool hints, always explicit so no host has to guess a default. */
 export interface Annotations {

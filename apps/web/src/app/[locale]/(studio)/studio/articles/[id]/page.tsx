@@ -20,13 +20,15 @@ export default async function EditArticlePage({
 
   await requireEditor(locale);
   const repositories = await getStudioEditorialRepositories();
-  const [article, currentCategories, entities, english, italian] = await Promise.all([
+  const [byId, currentCategories, entities, english, italian] = await Promise.all([
     repositories.articles.findById(id, locale),
     repositories.articles.listCategories(locale),
     repositories.entities.listEntities(locale),
     repositories.articles.listForStudio("en"),
     repositories.articles.listForStudio("it"),
   ]);
+  // The address also takes the slug of the article: that is how the Studio's page tools open one they know by slug.
+  const article = byId ?? (await repositories.articles.findBySlug(id, locale));
   if (!article) notFound();
 
   return (

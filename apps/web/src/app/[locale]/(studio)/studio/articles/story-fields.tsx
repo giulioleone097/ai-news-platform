@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { type Ref, useImperativeHandle, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import type { ArticleFormPatch, ArticleFormSnapshot } from "@atlasnews/contract/page";
 import type { Messages } from "@/i18n";
 import {
   storyLimits,
@@ -17,6 +18,14 @@ interface SourceRow {
   supports: string;
 }
 
+/** What the page tools of the Studio (`docs/SITE_TOOLS.md`) use to read and set these fields. */
+export interface StoryFieldsHandle {
+  /** The fields as Save would post them: blank key points and blank source rows are left out. */
+  read(): Pick<ArticleFormSnapshot["fields"], "keyPoints" | "sources" | "entities">;
+  /** Replaces each list that `patch` names. The entities must be ones the form offers: the caller checks. */
+  fill(patch: Pick<ArticleFormPatch, "keyPoints" | "sources" | "entities">): void;
+}
+
 /** The story fields of the article form: key points, sources and linked entities. */
 export function StoryFields({
   article,
@@ -24,6 +33,7 @@ export function StoryFields({
   errors,
   messages,
   optional,
+  ref,
 }: {
   article?: Article;
   entities: EntitySummary[];
@@ -31,6 +41,7 @@ export function StoryFields({
   messages: Messages;
   /** The word that marks these three lists as optional. */
   optional: string;
+  ref?: Ref<StoryFieldsHandle>;
 }) {
   const copy = messages.studio;
   const addButton = useRef<HTMLButtonElement>(null);
@@ -48,6 +59,31 @@ export function StoryFields({
   const [primary, setPrimary] = useState(
     article?.entities.find((entity) => entity.isPrimary)?.slug ?? article?.entities[0]?.slug ?? "",
   );
+
+  useImperativeHandle(ref, () => ({
+    read: () => ({
+      keyPoints: keyPoints.map((point) => point.trim()).filter(Boolean),
+      sources: sources
+        .map(({ title, url, supports }) => ({ title: title.trim(), url: url.trim(), supports: supports.trim() }))
+        .filter((source) => source.title || source.url || source.supports),
+      entities: selected.map((slug) => ({ slug, isPrimary: slug === primary })),
+    }),
+    fill: (patch) => {
+      if (patch.keyPoints) {
+        const points = patch.keyPoints;
+        setKeyPoints(Array.from({ length: storyLimits.keyPoints.count }, (_, index) => points[index] ?? ""));
+      }
+      if (patch.sources) {
+        setSources(patch.sources.map((source, index) => ({ ...source, key: nextKey + index })));
+        setNextKey(nextKey + patch.sources.length);
+      }
+      if (patch.entities) {
+        const slugs = [...new Set(patch.entities.map((entity) => entity.slug))];
+        setSelected(slugs);
+        setPrimary(patch.entities.find((entity) => entity.isPrimary)?.slug ?? slugs[0] ?? "");
+      }
+    },
+  }));
 
   const toggleEntity = (slug: string, checked: boolean) => {
     const next = checked ? [...selected, slug] : selected.filter((item) => item !== slug);

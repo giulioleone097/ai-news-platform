@@ -1,19 +1,23 @@
 import * as z from "zod/v4";
 
-import type { Annotations, Scope } from "./capability";
-import { articleSpecs } from "./specs/articles";
-import { categorySpecs } from "./specs/categories";
-import { commentSpecs } from "./specs/comments";
-import { entitySpecs } from "./specs/entities";
-import { mediaSpecs } from "./specs/media";
-import { newsletterSpecs } from "./specs/newsletter";
-import { newsroomSpecs } from "./specs/newsroom";
-import { filterFeed, openArticle, pageSpecs, readOpenArticle, saveArticle, searchArticlesOnPage } from "./specs/page";
-import { socialSpecs } from "./specs/social";
-import { supportSpecs } from "./specs/support";
-import { teamSpecs } from "./specs/team";
+import type { Annotations } from "./capability";
+import {
+  fillArticleForm,
+  filterFeed,
+  openArticle,
+  openArticleEditor,
+  pageSpecs,
+  readArticleForm,
+  readOpenArticle,
+  saveArticle,
+  searchArticlesOnPage,
+  studioPageSpecs,
+} from "./specs/page";
 
-/** A capability of the open page as plain data: safe to serialise and to import in a client bundle. */
+/**
+ * A tool of the open page as plain data: safe to serialise and to import in a client bundle. A page tool needs
+ * no scope and asks nobody: it changes what the page shows, never stored data (that is an MCP tool).
+ */
 export interface PageCapability {
   readonly name: string;
   readonly title: string;
@@ -21,10 +25,6 @@ export interface PageCapability {
   /** JSON Schema (2020-12) of the arguments. */
   readonly inputSchema: Record<string, unknown>;
   readonly annotations: Annotations;
-  /** Empty for the reader tools. The editor tools need these, as on the MCP endpoint. */
-  readonly scopes: readonly Scope[];
-  /** True when the tool must ask the person before it runs (publishing, deleting). */
-  readonly confirms: boolean;
 }
 
 function describe(spec: {
@@ -33,8 +33,6 @@ function describe(spec: {
   description: string;
   input: z.ZodObject;
   annotations: Annotations;
-  scopes: readonly Scope[];
-  confirmation?: unknown;
 }): PageCapability {
   return {
     name: spec.name,
@@ -42,8 +40,6 @@ function describe(spec: {
     description: spec.description,
     inputSchema: z.toJSONSchema(spec.input, { io: "input" }) as Record<string, unknown>,
     annotations: spec.annotations,
-    scopes: spec.scopes,
-    confirms: spec.confirmation !== undefined,
   };
 }
 
@@ -53,17 +49,9 @@ export { pageSpecs };
 /** The reader tools of the page: they work for anyone and run in the browser. */
 export const pageCapabilities: readonly PageCapability[] = pageSpecs.map(describe);
 
-/**
- * The tools for a signed-in editor's page: what the Studio lets an editor do (articles, categories,
- * entities, media, comment moderation, inbox, distribution, newsletter, social) and the admin-only team.
- * They are the same specs as the MCP endpoint, so name, text, schema, hints, scopes and confirmation are
- * defined once. The page runs them against the server, which checks the editor's scopes.
- */
-export const editorPageSpecs = [
-  ...articleSpecs, ...categorySpecs, ...entitySpecs, ...mediaSpecs, ...newsroomSpecs, ...commentSpecs, ...newsletterSpecs,
-  ...socialSpecs, ...supportSpecs, ...teamSpecs,
-].filter((spec) => (spec.surfaces as readonly string[]).includes("page"));
-export const editorPageCapabilities: readonly PageCapability[] = editorPageSpecs.map(describe);
+/** The Studio tools of the page: they work on the editor that is open and run in the browser (`docs/SITE_TOOLS.md`). */
+export const studioPageCapabilities: readonly PageCapability[] = studioPageSpecs.map(describe);
+export { studioPageSpecs };
 
 const inputs = {
   search_articles: searchArticlesOnPage.input,
@@ -73,8 +61,21 @@ const inputs = {
   save_article: saveArticle.input,
 } as const;
 
+const studioInputs = {
+  open_article_editor: openArticleEditor.input,
+  read_article_form: readArticleForm.input,
+  fill_article_form: fillArticleForm.input,
+} as const;
+
 export type PageToolName = keyof typeof inputs;
 export type PageToolInput<N extends PageToolName> = z.output<(typeof inputs)[N]>;
+export type StudioToolName = keyof typeof studioInputs;
+export type StudioToolInput<N extends StudioToolName> = z.output<(typeof studioInputs)[N]>;
+
+/** What `read_article_form` returns, and what `fill_article_form` takes and answers: the article form registers a reader and a writer of these. */
+export type ArticleFormSnapshot = z.output<typeof readArticleForm.output>;
+export type ArticleFormPatch = StudioToolInput<"fill_article_form">;
+export type ArticleFormFill = z.output<typeof fillArticleForm.output>;
 
 type ParseResult<T> = { ok: true; input: T } | { ok: false; error: string };
 
@@ -90,9 +91,7 @@ export function parsePageInput<N extends PageToolName>(name: N, raw: unknown): P
   return parse(name, inputs[name] as unknown as z.ZodType<PageToolInput<N>>, raw);
 }
 
-/** The same check for an editor tool by name; an unknown name is an invalid call. */
-export function parseEditorPageInput(name: string, raw: unknown): ParseResult<Record<string, unknown>> {
-  const spec = editorPageSpecs.find((candidate) => candidate.name === name);
-  if (!spec) return { ok: false, error: `Unknown editor tool ${name}.` };
-  return parse(name, spec.input as unknown as z.ZodType<Record<string, unknown>>, raw);
+/** Checks the arguments of a Studio page tool against the schema that `studioPageCapabilities` publishes. */
+export function parseStudioInput<N extends StudioToolName>(name: N, raw: unknown): ParseResult<StudioToolInput<N>> {
+  return parse(name, studioInputs[name] as unknown as z.ZodType<StudioToolInput<N>>, raw);
 }

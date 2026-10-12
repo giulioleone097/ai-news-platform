@@ -255,7 +255,7 @@ describe("social capabilities", () => {
 
   it("offers the edit and the batch cancel on the page, behind newsroom.write and a confirmation", () => {
     for (const name of ["admin_social_update", "admin_social_cancel_jobs"]) {
-      expect(find(name).surfaces, name).toEqual(["mcp", "page"]);
+      expect(find(name).surfaces, name).toEqual(["mcp", "studio"]);
       expect(find(name).scopes, name).toEqual(["newsroom.write"]);
       expect(find(name).confirmation, name).toBeDefined();
     }

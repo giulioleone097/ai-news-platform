@@ -24,7 +24,9 @@ import {
   type DragEvent,
   type KeyboardEvent,
   type ReactNode,
+  type Ref,
   useDeferredValue,
+  useImperativeHandle,
   useLayoutEffect,
   useRef,
   useState,
@@ -98,6 +100,12 @@ export type ImageInsertCopy = MediaPickerCopy & {
   uploadConfiguration: string;
   dismiss: string;
 };
+
+/** What the page tools of the Studio (`docs/SITE_TOOLS.md`) use to read and set the text in the editor. */
+export interface MarkdownEditorHandle {
+  read(): string;
+  write(text: string): void;
+}
 
 type UploadFailure = "type" | "size" | "configuration" | "upload";
 type UploadOutcome = Awaited<ReturnType<typeof uploadEditorMediaAction>>;
@@ -181,6 +189,7 @@ export function MarkdownEditor({
   help,
   invalid = false,
   label,
+  ref,
 }: {
   copy: MarkdownEditorCopy;
   defaultValue?: string;
@@ -189,6 +198,7 @@ export function MarkdownEditor({
   help: string;
   invalid?: boolean;
   label: string;
+  ref?: Ref<MarkdownEditorHandle>;
 }) {
   const params = useParams<{ locale?: string }>();
   const locale = isLocale(params.locale) ? params.locale : "en";
@@ -232,6 +242,8 @@ export function MarkdownEditor({
     if (selection) pendingSelectionRef.current = selection;
     setContent(next);
   }
+
+  useImperativeHandle(ref, () => ({ read: () => contentRef.current, write: (text) => commit(text) }));
 
   function changeMode(nextMode: EditorMode) {
     rememberSelection();

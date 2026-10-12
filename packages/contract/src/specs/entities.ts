@@ -52,7 +52,7 @@ const patchSemantics =
 const deleteRule =
   "An entity that stories link, or that is the company of other entities, cannot be deleted; unlink or move them first.";
 
-const base = { surfaces: ["mcp", "page"], unavailableMessage: editorialUnavailable } as const;
+const base = { surfaces: ["mcp", "studio"], unavailableMessage: editorialUnavailable } as const;
 
 /** Public: the entities are already shown on the site. */
 export const listEntities = defineSpec({
@@ -66,7 +66,7 @@ export const listEntities = defineSpec({
   }),
   annotations: readOnly,
   scopes: [],
-  surfaces: ["mcp", "page"],
+  surfaces: ["mcp", "studio"],
 });
 
 export const adminGetEntity = defineSpec({

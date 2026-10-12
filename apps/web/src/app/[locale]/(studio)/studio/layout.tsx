@@ -37,7 +37,7 @@ export default async function StudioLayout({
       signOutPath={user ? signOutPath(user.provider, `/${locale}`) : undefined}
     >
       {children}
-      <StudioSiteTools isAdmin={editor.role === "admin"} locale={locale} />
+      <StudioSiteTools />
     </StudioShell>
   );
 }
