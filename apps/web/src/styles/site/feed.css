@@ -243,6 +243,7 @@
     position: sticky;
     top: 5.5rem;
     max-height: calc(100vh - 7rem);
+    max-height: calc(100dvh - 7rem);
     margin-inline: -0.375rem;
     padding-inline: 0.375rem;
     overflow: auto;

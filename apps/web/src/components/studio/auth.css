@@ -78,6 +78,12 @@
   font-weight: 500;
 }
 
+.auth-back svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+
 .auth-foot {
   display: flex;
   flex-wrap: wrap;

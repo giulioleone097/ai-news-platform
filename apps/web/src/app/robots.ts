@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
 
+// The Studio and its sign-in, the API (comment, newsletter and capability endpoints) and the OAuth pages.
 const privatePaths = [
   "/en/studio",
   "/it/studio",
@@ -8,6 +9,8 @@ const privatePaths = [
   "/it/login",
   "/en/auth",
   "/it/auth",
+  "/api/",
+  "/oauth/",
 ];
 
 // Crawlers that train models or answer questions for people; each may read the public site.

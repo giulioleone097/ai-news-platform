@@ -103,7 +103,7 @@ export default async function StudioNewsletterPage({
           <form className="studio-toolbar" method="get">
             <label className="studio-search">
               <span className="sr-only">{copy.subscriberSearch}</span>
-              <Search aria-hidden="true" size={16} />
+              <Search aria-hidden="true" />
               <input className="studio-control" defaultValue={query} name="q" placeholder={copy.subscriberSearch} type="search" />
             </label>
             <select aria-label={messages.studio.statusLabel} className="studio-control" defaultValue={status ?? ""} name="status">

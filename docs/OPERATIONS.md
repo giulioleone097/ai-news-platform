@@ -64,7 +64,7 @@ Measure a cold navigation and a warm navigation for `/en`, `/it`, one category, 
 - Search and feed queries use locale/status/category indexes and cursor pagination.
 - Latest, category, and search archives render six rows in the initial HTML, then prefetch compact list rows through `/api/articles` as the sentinel approaches the viewport. A visible load-more control remains as an accessible fallback.
 - Article HTML remains static; the comment client and its first API request are split into a separate chunk and activated only near the viewport.
-- `pnpm perf:budget` parses prerendered route HTML and rejects public JavaScript, CSS, or hero-source regressions after every production build.
+- `pnpm perf:budget` reads the HTML of the public routes from both builds (prerendered by `next build`, served by the Sites Worker for `build:sites`) and rejects public JavaScript, CSS, or hero-source regressions. Run it after both builds, or pass `next` or `sites` to check one.
 - React/Next view transitions are bounded to 180 ms, pass pointer events through, and disable animation under reduced-motion preferences.
 
 Never mark a regression acceptable because the second navigation is fast; cold-path behavior is part of the release gate.

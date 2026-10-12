@@ -7,7 +7,7 @@ AtlasNews is English-first and explicitly localized. English is the default cont
 - Supported locales: `en`, `it`.
 - Default locale: `en`.
 - Every human-facing route is prefixed: `/en/...` or `/it/...`.
-- `/` and other unprefixed site routes redirect with HTTP 308 to the equivalent English path.
+- `/` and other unprefixed site routes redirect with a temporary HTTP 307 to the equivalent path in the language the browser prefers (`Accept-Language`, `Vary: Accept-Language`), English when it prefers neither.
 - `/api/*` and static assets are never locale-prefixed.
 - Unsupported locale segments do not silently select a different language.
 

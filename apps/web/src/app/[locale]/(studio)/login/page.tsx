@@ -160,7 +160,7 @@ export default async function LoginPage({
 
         <div className="auth-foot">
           <Link className="auth-back" href={`/${locale}`}>
-            <ArrowLeft aria-hidden="true" size={16} />
+            <ArrowLeft aria-hidden="true" />
             {messages.auth.backToSite}
           </Link>
           <nav aria-label={messages.studio.language} className="auth-language">

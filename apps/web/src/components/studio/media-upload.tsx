@@ -16,7 +16,7 @@ export function MediaUpload({
     <form action={action} className="studio-upload">
       <input name="locale" type="hidden" value={locale} />
       <label className="studio-dropzone">
-        <Upload aria-hidden="true" className="studio-dropzone__icon" size={20} />
+        <Upload aria-hidden="true" className="studio-dropzone__icon" />
         <strong>{copy.dropzone}</strong>
         <span className="studio-muted">{copy.help}</span>
         <input

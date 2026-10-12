@@ -224,7 +224,7 @@ export function SocialComposer({
         {state.status === "preview" && state.preview ? (
           <aside className="studio-composer__preview" aria-live="polite">
             <p className="studio-badge" data-tone="success">
-              <Check aria-hidden="true" size={14} /> {copy.validated}
+              <Check aria-hidden="true" /> {copy.validated}
             </p>
             <h3>{copy.previewTitle}</h3>
             <p className="studio-text">{state.preview.text}</p>

@@ -57,7 +57,7 @@ export function getAlternates(pathname: string, currentLocale: Locale = defaultL
   const canonical = localizedPath(pathname, currentLocale);
   const languages = Object.fromEntries([
     ...locales.map((locale) => [locale, localizedPath(pathname, locale)] as const),
-    ["x-default", canonical] as const,
+    ["x-default", localizedPath(pathname, defaultLocale)] as const,
   ]) as Record<Locale | "x-default", string>;
 
   return { canonical, languages };

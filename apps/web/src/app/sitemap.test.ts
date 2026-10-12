@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  searchPublishedArticles: vi.fn(),
+  getPublishedStories: vi.fn(),
   getPublicCategories: vi.fn(),
   getCoveredEntities: vi.fn(),
 }));
 
 vi.mock("@atlasnews/adapters/config/env", () => ({ getPublicSiteUrl: () => "https://news.example.com" }));
-vi.mock("@/lib/editorial-queries", () => ({
-  searchPublishedArticles: mocks.searchPublishedArticles,
-  getPublicCategories: mocks.getPublicCategories,
+vi.mock("@/lib/editorial-queries", () => ({ getPublicCategories: mocks.getPublicCategories }));
+vi.mock("@/lib/feeds/data", () => ({
+  getCoveredEntities: mocks.getCoveredEntities,
+  getPublishedStories: mocks.getPublishedStories,
 }));
-vi.mock("@/lib/feeds/data", () => ({ getCoveredEntities: mocks.getCoveredEntities }));
 
 import { claimStatuses } from "@atlasnews/core/editorial/domain/article";
 import sitemap from "./sitemap";
@@ -20,7 +20,7 @@ const base = "https://news.example.com";
 
 describe("sitemap", () => {
   beforeEach(() => {
-    mocks.searchPublishedArticles.mockReset().mockResolvedValue({ items: [], nextCursor: null });
+    mocks.getPublishedStories.mockReset().mockResolvedValue([]);
     mocks.getPublicCategories.mockReset().mockResolvedValue([]);
     mocks.getCoveredEntities.mockReset().mockResolvedValue([{ slug: "openai" }]);
   });
@@ -46,6 +46,36 @@ describe("sitemap", () => {
       });
       expect(byUrl.get(`${base}/it/status/${status}`)).toBeDefined();
     }
+  });
+
+  it("lists every published story, however many, and links each to its translation", async () => {
+    // More than a repository page (50): the older ones used to drop out of the sitemap and its hreflang links.
+    const story = (locale: "en" | "it", index: number) => ({
+      translationKey: `story-${index}`,
+      slug: `${locale}-slug-${index}`,
+      updatedAt: "2026-10-01T00:00:00.000Z",
+      featured: false,
+    });
+    const indexes = Array.from({ length: 120 }, (_, index) => index);
+    mocks.getPublishedStories.mockImplementation(async (locale: "en" | "it") =>
+      indexes
+        // The Italian side has no translation of the last story.
+        .filter((index) => locale === "en" || index < 119)
+        .map((index) => story(locale, index)),
+    );
+
+    const byUrl = new Map((await sitemap()).map((entry) => [entry.url, entry]));
+
+    expect([...byUrl.keys()].filter((url) => url.includes("/articles/"))).toHaveLength(239);
+    expect(byUrl.get(`${base}/it/articles/it-slug-100`)?.alternates?.languages).toEqual({
+      en: `${base}/en/articles/en-slug-100`,
+      it: `${base}/it/articles/it-slug-100`,
+      "x-default": `${base}/en/articles/en-slug-100`,
+    });
+    // Without a translation the other language points at the story's own slug, as before.
+    expect(byUrl.get(`${base}/en/articles/en-slug-119`)?.alternates?.languages?.it).toBe(
+      `${base}/it/articles/en-slug-119`,
+    );
   });
 
   it("keeps the entity pages next to the new index entries", async () => {

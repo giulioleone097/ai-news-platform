@@ -147,7 +147,7 @@ export function ArticleList({
                 {sort ? (
                   <Link className="studio-sort" href={sort.href}>
                     {messages.studio.lastUpdatedLabel}
-                    <SortArrow aria-hidden="true" size={14} />
+                    <SortArrow aria-hidden="true" />
                   </Link>
                 ) : (
                   messages.studio.lastUpdatedLabel

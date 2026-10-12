@@ -365,6 +365,11 @@
   border-color: var(--fg);
 }
 
+.markdown-embed__load svg {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
 .markdown-embed__load span {
   font-weight: 700;
 }

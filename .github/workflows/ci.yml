@@ -55,8 +55,9 @@ jobs:
       - name: Build production bundle
         run: pnpm run build
 
-      - name: Enforce performance budgets
-        run: pnpm run perf:budget
-
       - name: Build ChatGPT Sites artifact
         run: pnpm run build:sites
+
+      # Measures both builds, so it runs after the Sites build; it starts the Worker with wrangler to do so.
+      - name: Enforce performance budgets
+        run: pnpm run perf:budget

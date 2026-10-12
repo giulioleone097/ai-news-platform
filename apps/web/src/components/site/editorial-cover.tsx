@@ -27,8 +27,9 @@ export function EditorialCover({ src, alt, sizes, quality }: EditorialCoverProps
 
   return (
     <picture>
+      {/* The phone breakpoint of the site CSS, in rem like the stylesheets. */}
       <source
-        media="(max-width: 600px)"
+        media="(max-width: 40rem)"
         type="image/webp"
         srcSet="/media/neura-agents-hero-672.webp"
       />

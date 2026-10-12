@@ -27,7 +27,7 @@ function Panel({ copy, children }: { copy: ConsentCopy; children: React.ReactNod
         <StudioBrand href="/" label="Studio" name="AtlasNews" />
         {children}
         <Link className="auth-back" href="/">
-          <ArrowLeft aria-hidden="true" size={16} />
+          <ArrowLeft aria-hidden="true" />
           {copy.backToSite}
         </Link>
       </section>

@@ -3,23 +3,24 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import "@/styles/site/notice.css";
-import { defaultLocale, getMessages, isLocale, localizedPath } from "@/i18n";
+import { boundaryMessages } from "@/i18n/messages/boundary";
+import { localizedPath, normalizeLocale } from "@atlasnews/core/locale";
 
 export default function SiteError({ reset }: { error: Error; reset: () => void }) {
   const params = useParams<{ locale?: string }>();
-  const locale = isLocale(params.locale) ? params.locale : defaultLocale;
-  const messages = getMessages(locale);
+  const locale = normalizeLocale(params.locale);
+  const messages = boundaryMessages[locale];
 
   return (
     <main id="main-content" className="notice">
-      <h1>{messages.errors.genericTitle}</h1>
-      <p>{messages.errors.genericDescription}</p>
+      <h1>{messages.genericTitle}</h1>
+      <p>{messages.genericDescription}</p>
       <div className="notice__actions">
         <button className="button button--primary" type="button" onClick={reset}>
-          {messages.common.retry}
+          {messages.retry}
         </button>
         <Link className="button" href={localizedPath("/", locale)}>
-          {messages.errors.backHome}
+          {messages.backHome}
         </Link>
       </div>
     </main>

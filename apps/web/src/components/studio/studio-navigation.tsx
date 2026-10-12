@@ -69,7 +69,7 @@ export function StudioNavigation({
             const isCurrent = exact ? pathname === href : pathname.startsWith(href);
             return (
               <Link aria-current={isCurrent ? "page" : undefined} href={href} key={href}>
-                <Icon aria-hidden="true" size={18} />
+                <Icon aria-hidden="true" />
                 <span>{label}</span>
               </Link>
             );

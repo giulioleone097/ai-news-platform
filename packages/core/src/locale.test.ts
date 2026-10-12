@@ -64,4 +64,9 @@ describe("localized URLs", () => {
     });
     expect(getAlternates("/articles/agenti", "it").canonical).toBe("/it/articles/agenti");
   });
+
+  test("points x-default at the default locale from every language", () => {
+    expect(getAlternates("/articles/agenti", "it").languages["x-default"]).toBe("/en/articles/agenti");
+    expect(getAlternates("/articles/agents", "en").languages["x-default"]).toBe("/en/articles/agents");
+  });
 });
