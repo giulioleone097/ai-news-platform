@@ -2,11 +2,8 @@ import type { MetadataRoute } from "next";
 import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
 import { claimStatuses, type ClaimStatus } from "@atlasnews/core/editorial/domain/article";
 import { locales, localizedPath } from "@/i18n";
-import {
-  getPublicCategories,
-  searchPublishedArticles,
-} from "@/lib/editorial-queries";
-import { getCoveredEntities } from "@/lib/feeds/data";
+import { getPublicCategories } from "@/lib/editorial-queries";
+import { getCoveredEntities, getPublishedStories } from "@/lib/feeds/data";
 
 /** Pages with no data behind them: help and the two policies. */
 const infoPages = ["/support", "/privacy", "/terms"] as const;
@@ -15,12 +12,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getPublicSiteUrl();
   const localizedData = await Promise.all(
     locales.map(async (locale) => {
-      const [page, categories, entities] = await Promise.all([
-        searchPublishedArticles({ locale, limit: 100 }),
+      const [articles, categories, entities] = await Promise.all([
+        getPublishedStories(locale),
         getPublicCategories(locale),
         getCoveredEntities(locale),
       ]);
-      return { locale, articles: page.items, categories, entities };
+      const slugByTranslation = new Map(articles.map((article) => [article.translationKey, article.slug]));
+      return { locale, articles, slugByTranslation, categories, entities };
     }),
   );
 
@@ -107,15 +105,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })),
       ...articles.map((article) => {
         const languages = withDefault(Object.fromEntries(
-          localizedData.map((localized) => {
-            const peer = localized.articles.find(
-              (item) => item.translationKey === article.translationKey,
-            );
-            return [
+          localizedData.map((localized) => [
+            localized.locale,
+            absolute(localizedPath(
+              `/articles/${localized.slugByTranslation.get(article.translationKey) ?? article.slug}`,
               localized.locale,
-              absolute(localizedPath(`/articles/${peer?.slug ?? article.slug}`, localized.locale)),
-            ];
-          }),
+            )),
+          ]),
         ));
         return {
           url: absolute(localizedPath(`/articles/${article.slug}`, locale)),

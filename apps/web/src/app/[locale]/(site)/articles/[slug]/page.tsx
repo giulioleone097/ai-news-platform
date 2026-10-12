@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { ChevronLeft, ExternalLink } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import "@/styles/site/article.css";
@@ -32,6 +33,7 @@ import {
 } from "@/lib/editorial-queries";
 import type { Article } from "@atlasnews/core/editorial/domain/article";
 import { agentAlternateTypes } from "@/lib/alternates";
+import { findTranslationSlug } from "@/lib/feeds/data";
 import { JsonLd } from "@/components/site/json-ld";
 
 export const revalidate = 300;
@@ -39,28 +41,27 @@ export const revalidate = 300;
 export async function generateStaticParams() {
   const groups = await Promise.all(
     locales.map(async (locale) => {
-      const page = await searchPublishedArticles({ locale, limit: 100 });
+      // The newest page; older stories render on their first visit.
+      const page = await searchPublishedArticles({ locale, limit: 50 });
       return page.items.map((article) => ({ locale, slug: article.slug }));
     }),
   );
   return groups.flat();
 }
 
-/** The slug of this story in each language where a published translation exists. */
-async function getTranslationSlugs(article: Article) {
+/** The slug of this story in each language where a published translation exists. Once per render, for the metadata and the page. */
+const getTranslationSlugs = cache(async (locale: Locale, slug: string, translationKey: string) => {
   const entries = await Promise.all(
-    locales.map(async (locale) => {
-      if (locale === article.locale) return [locale, article.slug] as const;
-      const page = await searchPublishedArticles({ locale, limit: 100 });
-      const peer = page.items.find((item) => item.translationKey === article.translationKey);
-      return [locale, peer?.slug] as const;
-    }),
+    locales.map(async (candidate) => [
+      candidate,
+      candidate === locale ? slug : await findTranslationSlug(translationKey, candidate),
+    ] as const),
   );
   return Object.fromEntries(entries) as Record<Locale, string | undefined>;
-}
+});
 
 async function getArticleAlternates(article: Article, currentLocale: Locale) {
-  const slugs = await getTranslationSlugs(article);
+  const slugs = await getTranslationSlugs(article.locale, article.slug, article.translationKey);
   const entries = locales.map(
     (locale) => [locale, localizedPath(`/articles/${slugs[locale] ?? article.slug}`, locale)] as const,
   );
@@ -149,11 +150,8 @@ export default async function ArticlePage({
     );
     const source = sourceArticles.find(Boolean);
     if (source) {
-      const localizedArticles = await searchPublishedArticles({ locale, limit: 100 });
-      const peer = localizedArticles.items.find(
-        (item) => item.translationKey === source.translationKey,
-      );
-      if (peer) redirect(localizedPath(`/articles/${peer.slug}`, locale));
+      const peerSlug = await findTranslationSlug(source.translationKey, locale);
+      if (peerSlug) redirect(localizedPath(`/articles/${peerSlug}`, locale));
     }
     notFound();
   }
@@ -173,7 +171,7 @@ export default async function ArticlePage({
   const url = new URL(articlePath, getPublicSiteUrl()).toString();
   const [related, translationSlugs, entityDirectory, primaryTimeline] = await Promise.all([
     getRelatedStories(article, locale),
-    getTranslationSlugs(article),
+    getTranslationSlugs(article.locale, article.slug, article.translationKey),
     getCachedEntities(locale),
     article.entities[0] ? getCachedEntityPage(article.entities[0].slug, locale) : null,
   ]);
