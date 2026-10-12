@@ -31,12 +31,19 @@ async function startSupabaseDouble(publicKey: JWK) {
     request.on("end", () => {
       if (url.pathname === "/auth/v1/.well-known/jwks.json") return json({ keys: [publicKey] });
       if (url.pathname === "/rest/v1/profiles") return json([{ author_id: editorAuthorId, role: "editor" }]);
-      if (url.pathname === "/rest/v1/categories") return json(wantsObject ? { id: "category-1" } : [{ id: "category-1" }]);
+      if (url.pathname === "/rest/v1/categories") {
+        // The command service lists the locale's categories to name a missing one; the save path asks for one id.
+        return json(wantsObject
+          ? { id: "category-1" }
+          : [{ id: "category-1", translation_key: "research", locale: "en", slug: "research", name: "Research", description: null }]);
+      }
       if (url.pathname === "/rest/v1/rpc/save_article_with_distribution") {
         savedBy.push(JSON.parse(chunks).p_author_id);
         return json(savedArticleId);
       }
       if (url.pathname === "/rest/v1/articles") {
+        // The slug the article asks for is free; only the article just written is found, by its id.
+        if (!url.searchParams.has("id")) return json([]);
         return json({
           id: savedArticleId, translation_key: "key-1", locale: "en", slug: "written-by-an-editor",
           title: "Written by an editor", excerpt: "x", content: "x", cover_image: "/c.webp", cover_alt: "c",

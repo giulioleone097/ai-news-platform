@@ -4,7 +4,7 @@ import {
   PROTOCOL_VERSION_META_KEY,
 } from "@modelcontextprotocol/server";
 
-import { MemoryEditorialRepository } from "@atlasnews/adapters/editorial/memory-editorial-repository";
+import { createMemoryEditorialRepository } from "@atlasnews/adapters/editorial/memory-editorial-repository";
 import { MemoryEditorDirectory } from "@atlasnews/adapters/team/memory-editor-directory";
 import { siteLinks, type CapabilityPorts } from "@atlasnews/contract";
 import type { EditorialCacheInvalidator } from "@atlasnews/core/editorial/application/cache-port";
@@ -18,7 +18,7 @@ export const testApiKey = "test-only-admin-key-with-at-least-32-characters";
 
 /** Ports over the in-memory repository; operational services are not configured, as in demo mode. */
 export function memoryPorts(
-  repository = new MemoryEditorialRepository(),
+  repository = createMemoryEditorialRepository(),
   invalidateCache: EditorialCacheInvalidator = () => undefined,
   team: EditorDirectory = new MemoryEditorDirectory(),
 ): CapabilityPorts {

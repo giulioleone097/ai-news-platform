@@ -46,6 +46,11 @@ export function hasSupabaseEnvironment() {
     && requiredSupabaseKeys.every((key) => Boolean(process.env[key]?.trim()));
 }
 
+/** The Supabase project whose public bucket may host editorial images: the one reader that hands core its image policy. */
+export function getEditorialImageStorageUrl() {
+  return process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || undefined;
+}
+
 export function getContentMode(): ContentMode {
   const configured = process.env.ATLASNEWS_CONTENT_MODE?.trim().toLowerCase();
   if (contentModes.includes(configured as ContentMode)) return configured as ContentMode;
@@ -62,6 +67,11 @@ export function getContentMode(): ContentMode {
 export function isChatGptSignInEnabled() {
   const configured = process.env.ATLASNEWS_CHATGPT_SIGN_IN?.trim().toLowerCase();
   return !(configured && ["off", "false", "0", "no"].includes(configured));
+}
+
+/** Whether people are offered Sign in with ChatGPT: Sites provides it, and the owner may have turned the headers off. */
+export function offersChatGptSignIn() {
+  return getContentMode() === "sites" && isChatGptSignInEnabled();
 }
 
 /**

@@ -16,6 +16,7 @@ import {
 } from "../domain/article";
 import type { ArticleRepository } from "../domain/article-repository";
 import type { EntityRepository } from "../domain/entity";
+import { isAllowedEditorialImageSource } from "../domain/editorial-image";
 import {
   assertBatchSize,
   batchLimit,
@@ -117,14 +118,17 @@ const counterpart = (locale: Locale) => locales.find((candidate) => candidate !=
  * `translationOf` (on `create` and `patch`) links a story to its translation by the slug of the article
  * in the other language: agents and editors know slugs, not translation keys.
  *
- * The `*Many` methods are all-or-nothing: they check every item first (references, slugs, state),
- * report every invalid item by index, and write nothing unless all are valid. `entities` is needed
- * by `createMany` and `patchMany` to check the entity links.
+ * `create`, `patch` and the `*Many` methods check the category, the slug and the entity links first, so a
+ * missing one is a rule error the caller can read and not a failure of the store. The `*Many` methods are
+ * all-or-nothing: they check every item (references, slugs, state), report every invalid item by index,
+ * and write nothing unless all are valid.
  */
 export class ArticleCommandService {
   constructor(
     private readonly repository: ArticleRepository,
-    private readonly entities?: Pick<EntityRepository, "findEntityBySlug">,
+    private readonly entities: Pick<EntityRepository, "findEntityBySlug">,
+    /** The Supabase project URL whose public bucket may host covers; without one only bundled and site media pass. */
+    private readonly imageStorageUrl?: string,
   ) {}
 
   /** Saves the draft with whatever status it carries, published included. */
@@ -134,11 +138,15 @@ export class ArticleCommandService {
   }
 
   async create(input: ArticleCreate) {
-    return this.repository.save(await this.planCreate(input));
+    const draft = await this.planCreate(input);
+    await this.checkReferences(draft);
+    return this.repository.save(draft);
   }
 
   async patch(current: Article, changes: ArticlePatch) {
-    return this.repository.save(await this.planPatch(current, changes));
+    const draft = await this.planPatch(current, changes);
+    await this.checkReferences(draft, current);
+    return this.repository.save(draft);
   }
 
   async publish(article: Article) {
@@ -183,7 +191,7 @@ export class ArticleCommandService {
         const current = await this.repository.findById(id, locale);
         if (!current) throw new EditorialRuleError(`Article ${id} not found in ${locale}.`, "article.notFound");
         const draft = await this.planPatch(current, changes);
-        await this.checkReferences(draft);
+        await this.checkReferences(draft, current);
         return { previousSlug: current.slug, draft };
       },
       ({ id }) => id,
@@ -279,15 +287,24 @@ export class ArticleCommandService {
     return target.translationKey;
   }
 
-  /** The category, the entity links and the slug must be usable, so the write cannot fail on them halfway. */
-  private async checkReferences(draft: ArticleDraftInput) {
+  /**
+   * The cover, the category, the entity links and the slug must be usable, so the write cannot fail on them halfway.
+   * A cover the article already had is not checked again: an edit of something else must not fail on an old image.
+   */
+  private async checkReferences(draft: ArticleDraftInput, current?: Article) {
+    if (draft.coverImage && draft.coverImage !== current?.coverImage && !isAllowedEditorialImageSource(draft.coverImage, this.imageStorageUrl)) {
+      throw new EditorialRuleError(
+        "The cover image must be bundled media, an upload from the media library or an object of the configured editorial bucket.",
+        "article.invalidCoverImage",
+      );
+    }
     const [categories, taken] = await Promise.all([
       this.repository.listCategories(draft.locale),
       this.repository.findBySlug(slugify(draft.slug || draft.title), draft.locale),
     ]);
     if (!categories.some((category) => category.slug === draft.categorySlug)) {
       throw new EditorialRuleError(
-        `Unknown category "${draft.categorySlug}" for ${draft.locale}.`,
+        `There is no ${draft.locale} category with the slug "${draft.categorySlug}".`,
         "article.unknownCategory",
         { slug: draft.categorySlug, locale: draft.locale },
       );
@@ -300,7 +317,6 @@ export class ArticleCommandService {
       );
     }
     for (const link of draft.entities ?? []) {
-      if (!this.entities) throw new Error("The batch article use cases need an entity reader.");
       if (!(await this.entities.findEntityBySlug(link.slug, draft.locale))) {
         throw new EditorialRuleError(`Unknown entity "${link.slug}".`, "article.unknownEntity", { slug: link.slug });
       }

@@ -4,7 +4,7 @@ import type { CategoryWrite } from "@atlasnews/core/editorial/domain/category";
 import type { EntityWrite } from "@atlasnews/core/editorial/domain/entity";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
-import { SupabaseEditorialRepository } from "../editorial/supabase-editorial-repository";
+import { createSupabaseEditorialRepository } from "../editorial/supabase-editorial-repository";
 
 // Static check of the database contract, without Docker: the relations that each Supabase client role
 // reaches through SupabaseEditorialRepository must be granted to that role by the migrations. It cannot
@@ -162,7 +162,7 @@ describe("Supabase grants declared by the migrations", () => {
 
   it("lets the anonymous public read only what the public repository touches", async () => {
     const { client, accesses } = recordingClient();
-    const repository = new SupabaseEditorialRepository(client, { audience: "public" });
+    const repository = createSupabaseEditorialRepository(client, { audience: "public" });
     await swallow(
       () => repository.listPublished({ locale: "en", category: "research", entity: "openai", claimStatus: "analysis", query: "agents" }),
       () => repository.findBySlug("a-slug", "en"),
@@ -186,7 +186,7 @@ describe("Supabase grants declared by the migrations", () => {
 
   it("grants the service role every relation the admin editorial repository reaches", async () => {
     const { client, accesses } = recordingClient();
-    const repository = new SupabaseEditorialRepository(client, { audience: "editorial", authorId: uuid });
+    const repository = createSupabaseEditorialRepository(client, { audience: "editorial", authorId: uuid });
     await swallow(
       () => repository.listPublished({ locale: "en", entity: "openai" }),
       () => repository.listForStudio("en"),

@@ -122,7 +122,14 @@ function fakeEditorial(seed: Article | null) {
     };
     return stored;
   });
-  const repository = { findById, save, listCategories: vi.fn(async () => [category]) };
+  const entity = (slug: string) => ({ id: slug, kind: "company" as const, slug, name: slug, officialUrl: null, parent: null, description: "" });
+  const repository = {
+    findById,
+    save,
+    findBySlug: vi.fn(async () => null),
+    findEntityBySlug: vi.fn(async (slug: string) => entity(slug)),
+    listCategories: vi.fn(async () => [category]),
+  };
   return { save, repository: repository as unknown as AdminEditorialRepository };
 }
 

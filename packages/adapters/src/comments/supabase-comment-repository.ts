@@ -36,6 +36,7 @@ import {
   encodeAuditCursor,
   encodeCommentCursor,
 } from "@atlasnews/core/comments/domain/cursor";
+import { isUuid } from "../supabase/errors";
 
 type SupabaseFailure = { code?: string; message?: string; details?: string };
 
@@ -343,6 +344,7 @@ export class SupabaseCommentRepository implements CommentRepository {
   }
 
   async getModeration(id: string) {
+    if (!isUuid(id)) return null;
     const { data, error } = await this.service().from("comments").select(moderationColumns).eq("id", id).maybeSingle();
     if (error) throw repositoryError(error);
     if (!data) return null;
@@ -382,6 +384,7 @@ export class SupabaseCommentRepository implements CommentRepository {
   }
 
   async listReports(commentId: string) {
+    if (!isUuid(commentId)) return [];
     const { data, error } = await this.service()
       .from("comment_reports")
       .select("id,comment_id,reason,details,status,created_at")

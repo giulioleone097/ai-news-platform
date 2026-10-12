@@ -2,7 +2,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { NewsletterCampaignInput } from "@atlasnews/core/newsletter/domain/newsletter";
 import type { D1Database } from "../sites/cloudflare";
 import { createSitesTestStore, type SitesTestStore } from "../sites/testing";
-import { D1NewsletterDeliveryRepository } from "./d1-newsletter-delivery-repository";
+import type { NewsletterDeliveryRepository } from "@atlasnews/core/newsletter/domain/ports";
+import { createD1NewsletterDeliveryRepository } from "./d1-newsletter-delivery-repository";
 
 const hex = (seed: number) => seed.toString(16).padStart(64, "0");
 const worker = "worker-aaaaaaaa";
@@ -10,12 +11,12 @@ const editor = crypto.randomUUID();
 
 let store: SitesTestStore;
 let database: D1Database;
-let repository: D1NewsletterDeliveryRepository;
+let repository: NewsletterDeliveryRepository;
 
 beforeAll(async () => {
   store = await createSitesTestStore();
   database = store.database;
-  repository = new D1NewsletterDeliveryRepository(database);
+  repository = createD1NewsletterDeliveryRepository(database);
 });
 
 afterAll(async () => {
@@ -102,7 +103,7 @@ async function sendAll() {
   return claimed;
 }
 
-const request = (email: string, overrides: Partial<Parameters<D1NewsletterDeliveryRepository["requestSubscription"]>[0]> = {}) =>
+const request = (email: string, overrides: Partial<Parameters<NewsletterDeliveryRepository["requestSubscription"]>[0]> = {}) =>
   repository.requestSubscription({
     email,
     source: "site",

@@ -42,7 +42,7 @@ function route(request: Request, env: unknown, ctx: ExecutionContext) {
 
 // The Worker entry of the ChatGPT Sites artifact; the platform serves dist/client (static assets) before
 // this code runs.
-export default {
+const worker = {
   fetch(request: Request, env: unknown, ctx: ExecutionContext) {
     setSitesBindings(env);
     // Sites has no scheduler: due outbox and event jobs run in the background of ordinary requests.
@@ -50,3 +50,5 @@ export default {
     return route(request, env, ctx);
   },
 };
+
+export default worker;

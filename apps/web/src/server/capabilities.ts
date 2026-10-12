@@ -1,7 +1,7 @@
 import "server-only";
 
 import { revalidatePath } from "next/cache";
-import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
+import { getEditorialImageStorageUrl, getPublicSiteUrl } from "@atlasnews/adapters/config/env";
 import {
   capabilities,
   CapabilityFailure,
@@ -99,6 +99,7 @@ function createPorts(invalidations: Map<Locale, Set<string>>, editorUserId: stri
   const publicRepositories = getPublicEditorialRepositories();
   return {
     site: siteLinks(getPublicSiteUrl()),
+    imageStorageUrl: getEditorialImageStorageUrl(),
     articles: publicRepositories.articles,
     entities: publicRepositories.entities,
     invalidateCache({ locale, slugs }) {

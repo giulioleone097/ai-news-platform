@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUuid } from "../../crypto";
 
 import { SocialProviderError } from "../domain/errors";
 import type { SocialOutboxRepository, SocialProviderRegistry } from "../domain/ports";
@@ -23,7 +23,7 @@ export class SocialOutboxProcessor {
   async processBatch(input: { limit?: number; leaseSeconds?: number } = {}) {
     const limit = Math.min(Math.max(input.limit ?? 10, 1), 25);
     const leaseSeconds = Math.min(Math.max(input.leaseSeconds ?? 90, 30), 300);
-    const workerToken = randomUUID();
+    const workerToken = randomUuid();
     const jobs = await this.repository.claim({ workerToken, limit, leaseSeconds });
     const result: SocialOutboxProcessResult = {
       claimed: jobs.length,

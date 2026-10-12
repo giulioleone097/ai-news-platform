@@ -21,7 +21,7 @@ ESLint enforces this with `no-restricted-imports`, per layer:
 
 | Layer | Package | May import | Must not import |
 | --- | --- | --- | --- |
-| Core | `@atlasnews/core` | itself, `zod` and the Markdown parsing libraries | `next`, `react`, `server-only`, `@supabase/*`, adapters, contract, any app |
+| Core | `@atlasnews/core` | itself, `zod` and the Markdown parsing libraries | `next`, `react`, `server-only`, `@supabase/*`, adapters, contract, any app, `node:*` modules and `process.env` (an allow-list in `eslint.config.mjs`; hashing and random ids live in `crypto.ts`) |
 | Contract | `@atlasnews/contract` | core, `zod` | `next`, `react`, `server-only`, `@supabase/*`, adapters, any app |
 | Adapters | `@atlasnews/adapters` | core, provider and Supabase SDKs, the D1/R2 subset in `sites/cloudflare.ts` | `next`, `react`, `server-only`, any app |
 | Apps | `@atlasnews/web`, `@atlasnews/mcp`, `@atlasnews/jobs` | core, contract, adapters | another app; `apps/mcp` and `apps/jobs` also not `next`, `react` or `server-only` |
@@ -58,7 +58,7 @@ Where each part runs depends on the deployment. On ChatGPT Sites (the default, [
 1. The authenticated studio submits a Server Action.
 2. Input is parsed at the delivery boundary and passed to the shared `ArticleCommandService` invariants.
 3. The action rechecks the Auth user and editor profile; page/proxy checks are not trusted as authorization.
-4. The repository writes through Supabase and RLS evaluates the mutation again.
+4. The repository writes to its backend: D1 on Sites (the delivery layer is the authorization boundary) or Supabase, where RLS evaluates the mutation again.
 5. The `articles` data tag plus localized pages, archives, API, RSS and sitemap are invalidated immediately. Writes made through `apps/mcp` run in another process, so the site picks them up when its cached feed (60 seconds) and article (300 seconds) windows expire.
 
 ### MCP read
@@ -69,9 +69,9 @@ Where each part runs depends on the deployment. On ChatGPT Sites (the default, [
 
 ### MCP newsroom write
 
-1. A scoped tool called without a token is answered with HTTP 401 and a Bearer challenge that points at the OAuth resource metadata; the host runs OAuth 2.1 sign-in against Supabase Auth.
+1. A scoped tool called without a token is answered with HTTP 401 and a Bearer challenge that points at the OAuth resource metadata; the host runs OAuth 2.1 sign-in against Sign in with ChatGPT on Sites, or against Supabase Auth when self-hosted.
 2. A valid access token (or the optional CI API key) becomes a principal with scopes derived from the editor's profile role; a signed-in person without an editor profile gets no newsroom scope.
-3. The handler uses the server-only Supabase client with the service-role key; the editor's own author ID is carried on the principal and attributed to the write. Neither reaches the browser.
+3. The handler uses the adapters with full access (the D1 binding on Sites, the server-only Supabase client with the service-role key when self-hosted); the editor's own author ID is carried on the principal and attributed to the write. Neither reaches the browser.
 4. Tools that publish, delete, email or post ask for confirmation through a form, or need `confirm: true`. Email and social delivery are queued; the leased outbox workers send them.
 5. After an editorial write `apps/mcp` asks the site to invalidate its caches through `POST /api/revalidate`.
 
@@ -111,9 +111,15 @@ MCP carries data and operations; WebMCP carries only what needs the open page, s
 
 `ATLASNEWS_CONTENT_MODE=sites|supabase|demo` is the composition switch (`packages/adapters/src/config/env.ts`). Unset, a D1 binding selects `sites`, Supabase configuration selects `supabase`, and anything else is `demo`. Sites mode requires the `DB` and `BUCKET` bindings; D1 has no row-level security, so the delivery layer is the authorization boundary there (the Studio receives repositories only for a signed-in editor). Supabase mode requires both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`; partial configuration throws instead of falling back. Demo remains deterministic for development and CI. Studio uses demo only outside production or with the emergency `ATLASNEWS_ENABLE_DEMO_STUDIO=true` opt-in; production demo does not acknowledge ephemeral newsletter writes. `/api/health` returns `503` until production uses persistent content and a canonical HTTPS origin.
 
+### Adapters per port
+
+Each port in core has its own adapter class, for example `D1ArticleRepository`, `D1MediaRepository` or `D1CommentThreadRepository`, and the same split exists for Supabase and memory. A class holds only the SQL of its port; what the classes of one backend share (the database handle, options, row mappers, batch helpers) sits in a small `access` or `sql` module next to them (`packages/adapters/src/editorial/{d1,supabase,memory}`, `newsletter/d1`, `comments/d1`). `composePorts` (`compose-ports.ts`) joins the parts into the one object an app asks for. Its members tables are checked against the port at compile time, so a port method that no part implements fails the typecheck, and two parts cannot claim the same method. Core keeps small interfaces per use case and names the union as an alias (`AdminEditorialRepository`, `NewsletterDeliveryRepository`, `CommentRepository`); a service that needs less depends on less.
+
+There are two builders of the capability ports, `createPorts` in `apps/web/src/server/capabilities.ts` (Studio and site) and `createRuntimePorts` in `apps/mcp/src/runtime-ports.ts`. They stay apart because what they connect differs, not a setting. The Studio's builder takes the repositories and services from the `getStudio*` getters, which hand them out only for a signed-in editor, answers "not on the page" for the public comment and notification ports, and collects cache invalidations that `runStudioCapability` applies in the same process with `revalidatePath`. The MCP builder takes them from the adapter containers for the verified principal's author id (the API key keeps the configured one), loads optional adapters on first use and invalidates the site's caches over HTTP. The two share what is the same: the `CapabilityPorts` type, `siteLinks`, `imageStorageUrl` and the public read repositories. The rules (command services, `canonicalArticleUrl`, the image policy) live in core and the contract, so a merged builder would be a list of conditions with no rule in it.
+
 ## Article Markdown
 
-Article bodies are GFM rendered by one component, `apps/web/src/components/markdown/markdown-renderer.tsx` (react-markdown; Server Component on article pages, also used by the Studio preview). Raw HTML is dropped, link schemes are filtered and images must pass `editorial-image.ts`. Three extensions sit on top, all plain Markdown that degrades to a quote, a code block or a link wherever the text is read raw (the `/md` route, feeds, MCP `get_article`, email):
+Article bodies are GFM rendered by one component, `apps/web/src/components/markdown/markdown-renderer.tsx` (react-markdown; Server Component on article pages, also used by the Studio preview). Raw HTML is dropped, link schemes are filtered and images must pass `editorial-image.ts`; the one private storage address that is allowed as a source is injected (`imageStorageUrl`, from `getEditorialImageStorageUrl()` in the adapters' environment reader), because core does not read the environment. Three extensions sit on top, all plain Markdown that degrades to a quote, a code block or a link wherever the text is read raw (the `/md` route, feeds, MCP `get_article`, email):
 
 - **Code highlighting.** A fence tagged `ts`, `js`, `json`, `bash`, `python`, `sql`, `yaml`, `html`, `css`, `diff`, `go` or `rust` (or an alias such as `sh`, `py`, `yml`) is highlighted while rendering, with lowlight and token colours in `globals.css`; other languages stay plain. Only those grammars are bundled (`highlight.ts`). The server pages ship no highlighting code; the Studio preview loads it, about 23 KB gzipped, with its lazy chunk.
 - **Callouts.** A top-level quote whose first line is `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` or `[!CAUTION]` (GitHub alert syntax) renders as an `<aside role="note">` with a title from `messages.markdown.callouts` in the article locale. Nested quotes and other markers stay quotes.

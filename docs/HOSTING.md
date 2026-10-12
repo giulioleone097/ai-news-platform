@@ -89,4 +89,4 @@ The `401` on the unauthenticated request confirms the route is up. Authenticated
 
 ## Public origin of the MCP server
 
-Once a plugin is published, the public origin of the MCP server must never change. OpenAI ties a plugin to that origin. Choose the host (for example `https://mcp.news.example.com`), set `NEXT_PUBLIC_MCP_URL` to it, and keep it for the life of the plugin. The bundled plugin URLs are local until replaced; see [AGENT_PLUGIN.md](AGENT_PLUGIN.md).
+Once a plugin is published, the public origin of the MCP server must never change. OpenAI ties a plugin to that origin. For a self-hosted server, choose the host (for example `https://mcp.news.example.com`; on ChatGPT Sites the origin is the Site's own and the path is `/mcp`), set `NEXT_PUBLIC_MCP_URL` to it, and keep it for the life of the plugin. The bundled plugin URLs are local until replaced; see [AGENT_PLUGIN.md](AGENT_PLUGIN.md).

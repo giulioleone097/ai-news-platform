@@ -1,23 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { MemoryEditorialRepository } from "@atlasnews/adapters/editorial/memory-editorial-repository";
+import { createMemoryEditorialRepository } from "@atlasnews/adapters/editorial/memory-editorial-repository";
 
 import { memoryPorts, modernParams, sendRpc } from "../mcp-test-client";
 
 // What PostgREST puts into an error: table names, hints, constraint details.
 const leaky = 'relation "public.articles" does not exist (SQLSTATE 42P01) - hint: set SUPABASE_SERVICE_ROLE_KEY';
 
-class FailingRepository extends MemoryEditorialRepository {
-  override async findBySlug(): Promise<never> {
+const failingRepository = () => ({
+  ...createMemoryEditorialRepository(),
+  async findBySlug(): Promise<never> {
     throw new Error(leaky);
-  }
-
-  override async listPublished(): Promise<never> {
+  },
+  async listPublished(): Promise<never> {
     throw new Error(leaky);
-  }
-}
+  },
+});
 
-const ports = () => memoryPorts(new FailingRepository());
+const ports = () => memoryPorts(failingRepository());
 
 describe("article resources when the repository fails", () => {
   it("answers resources/read with a generic error and none of the repository's text", async () => {

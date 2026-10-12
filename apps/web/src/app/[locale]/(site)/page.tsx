@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EntityLeaderboard } from "@/components/site/entity-leaderboard";
-import { bundledHero } from "@/components/site/editorial-cover";
 import { FeedLead } from "@/components/site/feed-lead";
 import { toFeedItem } from "@/components/site/feed-item";
 import { formatTime } from "@/components/site/feed-format";
@@ -14,6 +13,7 @@ import { getMessages, isLocale, localizedPath } from "@/i18n";
 import { getCachedEntities, getCachedHomeFeed } from "@/lib/editorial-queries";
 import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
 import { encodeArticleCursor } from "@atlasnews/core/editorial/application/public-feed";
+import { defaultCoverImage } from "@atlasnews/core/editorial/domain/article";
 
 export const revalidate = 60;
 
@@ -36,7 +36,7 @@ export default async function Home({
   // A card shows a picture only when the story has one of its own that the page has not shown yet; any other card is text.
   const shownCovers = new Set(feed.lead ? [feed.lead.coverImage] : []);
   const cardImages = cards.map((article) => {
-    const show = Boolean(article.coverImage) && article.coverImage !== bundledHero && !shownCovers.has(article.coverImage);
+    const show = Boolean(article.coverImage) && article.coverImage !== defaultCoverImage && !shownCovers.has(article.coverImage);
     shownCovers.add(article.coverImage);
     return show;
   });

@@ -12,7 +12,8 @@ export type NewsletterCampaignPage = {
   total: number;
 };
 
-export interface NewsletterDeliveryRepository {
+/** The campaigns an editor writes and sends. */
+export interface NewsletterCampaignRepository {
   listCampaigns(input: {
     locale: "en" | "it";
     limit?: number;
@@ -25,6 +26,10 @@ export interface NewsletterDeliveryRepository {
   deleteDraft(id: string): Promise<boolean>;
   queueCampaign(id: string, scheduledFor: string | null): Promise<NewsletterCampaign>;
   cancelCampaign(id: string): Promise<NewsletterCampaign>;
+}
+
+/** The queue the delivery worker drains: claim a message, send it, report how it went. */
+export interface NewsletterOutboxRepository {
   claimOutbox(input: {
     limit: number;
     workerId: string;
@@ -46,12 +51,20 @@ export interface NewsletterDeliveryRepository {
     retryable: boolean;
     retryAfterSeconds: number;
   }): Promise<boolean>;
+}
+
+/** What the email provider reports back: delivered, opened, bounced, complained. */
+export interface NewsletterProviderEventRepository {
   recordProviderEvent(event: NewsletterProviderEvent): Promise<boolean>;
   registerSuppression(input: {
     providerMessageId: string;
     emailHash: string;
     reason: "bounce" | "complaint";
   }): Promise<boolean>;
+}
+
+/** A reader's subscription: the double opt-in, unsubscribing and erasure. */
+export interface NewsletterSubscriptionFlowRepository {
   requestSubscription(input: {
     email: string;
     source: string;
@@ -75,6 +88,12 @@ export interface NewsletterDeliveryRepository {
   getSubscriptionEmail(subscriptionId: string): Promise<string | null>;
   eraseSubscription(input: { subscriptionId: string; emailHash: string }): Promise<boolean>;
 }
+
+/** Everything a backend stores for the newsletter; the services take it whole, adapters implement it a port at a time. */
+export type NewsletterDeliveryRepository = NewsletterCampaignRepository
+  & NewsletterOutboxRepository
+  & NewsletterProviderEventRepository
+  & NewsletterSubscriptionFlowRepository;
 
 export type NewsletterProviderMessage = {
   fromName: string;

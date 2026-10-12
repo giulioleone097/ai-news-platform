@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  currentCoverImage,
+  defaultCoverImage,
   estimateReadingMinutes,
   formatArticleStatus,
   normalizeStoryFields,
@@ -112,5 +114,10 @@ describe("story fields", () => {
     expect(field(() => normalizeStoryFields({
       entities: Array.from({ length: 9 }, (_, index) => ({ slug: `entity-${index}` })),
     }))).toBe("entities");
+  });
+
+  it("reads the cover stored under the retired NEURA name as the current default", () => {
+    expect(currentCoverImage("/media/neura-agents-hero.webp")).toBe(defaultCoverImage);
+    expect(currentCoverImage("/media/own-cover.webp")).toBe("/media/own-cover.webp");
   });
 });

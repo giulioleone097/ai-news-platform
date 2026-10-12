@@ -14,6 +14,7 @@ export const editorialErrorCodes = [
   "article.invalidSlug",
   "article.invalidCategory",
   "article.invalidStatus",
+  "article.invalidCoverImage",
   "article.invalidCoverAlt",
   "article.invalidChannel",
   "article.invalidClaimStatus",

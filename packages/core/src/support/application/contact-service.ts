@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUuid, sha256Hex } from "../../crypto";
 import * as z from "zod/v4";
 import {
   assertBatchSize,
@@ -34,7 +34,7 @@ const requesterSchema = z.string().trim().min(1).max(512);
  * and carry no message. Upgrade trigger: a deployment-wide secret setting that already exists for contact.
  */
 export function contactRequesterKey(requester: string) {
-  return createHash("sha256").update(`contact:${requesterSchema.parse(requester)}`).digest("hex");
+  return sha256Hex(`contact:${requesterSchema.parse(requester)}`);
 }
 
 export class ContactMessageService {
@@ -46,7 +46,7 @@ export class ContactMessageService {
    */
   async submit(input: unknown, context: { requester: string }): Promise<"accepted" | "rate_limited"> {
     const message: ContactMessage = {
-      id: randomUUID(),
+      id: randomUuid(),
       ...contactMessageInputSchema.parse(input),
       status: "new",
       createdAt: new Date().toISOString(),

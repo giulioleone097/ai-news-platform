@@ -1,15 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { CommentRepository } from "@atlasnews/core/comments/application/comment-repository";
 import { CommentOperationError } from "@atlasnews/core/comments/application/errors";
 import type { D1Database } from "../sites/cloudflare";
 import { createSitesTestStore, type SitesTestStore } from "../sites/testing";
 import { D1CommentNotificationOutbox } from "./d1-comment-notification-outbox";
-import { D1CommentRepository } from "./d1-comment-repository";
+import { createD1CommentRepository } from "./d1-comment-repository";
 import { seedPublishedArticle } from "./d1-comment-test-support";
 
 let store: SitesTestStore;
 let database: D1Database;
 let outbox: D1CommentNotificationOutbox;
-let repository: D1CommentRepository;
+let repository: CommentRepository;
 let articleId: string;
 let counter = 0;
 const unique = () => (counter += 1).toString(16).padStart(64, "0");
@@ -50,7 +51,7 @@ beforeAll(async () => {
   store = await createSitesTestStore();
   database = store.database;
   outbox = new D1CommentNotificationOutbox(database);
-  repository = new D1CommentRepository(database);
+  repository = createD1CommentRepository(database);
   articleId = await seedPublishedArticle(database);
 });
 

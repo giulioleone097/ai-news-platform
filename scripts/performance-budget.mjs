@@ -167,12 +167,12 @@ if (target !== "sites") checkNextBuild();
 if (target !== "next") await checkSitesBuild();
 
 const heroFiles = [
-  "neura-agents-hero.webp",
-  "neura-agents-hero-480.webp",
-  "neura-agents-hero-672.webp",
-  "neura-agents-hero-750.webp",
-  "neura-agents-hero-1200.webp",
-  "neura-agents-hero-1536.webp",
+  "atlas-hero.webp",
+  "atlas-hero-480.webp",
+  "atlas-hero-672.webp",
+  "atlas-hero-750.webp",
+  "atlas-hero-1200.webp",
+  "atlas-hero-1536.webp",
 ];
 for (const heroFile of heroFiles) {
   const heroBytes = statSync(join(webRoot, "public", "media", heroFile)).size;

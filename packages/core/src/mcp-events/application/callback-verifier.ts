@@ -1,4 +1,4 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, timingSafeEqualBytes } from "../../crypto";
 
 import {
   WebhookTransportError,
@@ -11,9 +11,7 @@ import { buildWebhookHeaders } from "./webhook-signing";
 export const verificationTimeoutMs = 5_000;
 
 function constantTimeEqual(left: string, right: string) {
-  const leftBytes = Buffer.from(left);
-  const rightBytes = Buffer.from(right);
-  return leftBytes.byteLength === rightBytes.byteLength && timingSafeEqual(leftBytes, rightBytes);
+  return timingSafeEqualBytes(Buffer.from(left), Buffer.from(right));
 }
 
 function transportReason(error: unknown): CallbackFailureReason {
@@ -42,7 +40,7 @@ export class CallbackVerifier {
   constructor(
     private readonly client: WebhookClient,
     private readonly clock: () => Date = () => new Date(),
-    private readonly randomToken: () => string = () => randomBytes(24).toString("base64url"),
+    private readonly randomToken: () => string = () => Buffer.from(randomBytes(24)).toString("base64url"),
   ) {}
 
   async verify(input: { url: string; subscriptionId: string; secret: string }) {

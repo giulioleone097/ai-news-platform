@@ -1,6 +1,5 @@
 import Image from "next/image";
-
-export const bundledHero = "/media/neura-agents-hero.webp";
+import { defaultCoverImage } from "@atlasnews/core/editorial/domain/article";
 
 type EditorialCoverProps = {
   src: string;
@@ -10,7 +9,7 @@ type EditorialCoverProps = {
 };
 
 export function EditorialCover({ src, alt, sizes, quality }: EditorialCoverProps) {
-  if (src !== bundledHero) {
+  if (src !== defaultCoverImage) {
     return (
       <Image
         src={src}
@@ -31,20 +30,20 @@ export function EditorialCover({ src, alt, sizes, quality }: EditorialCoverProps
       <source
         media="(max-width: 40rem)"
         type="image/webp"
-        srcSet="/media/neura-agents-hero-672.webp"
+        srcSet="/media/atlas-hero-672.webp"
       />
       <source
         type="image/webp"
         srcSet={[
-          "/media/neura-agents-hero-480.webp 480w",
-          "/media/neura-agents-hero-750.webp 750w",
-          "/media/neura-agents-hero-1200.webp 1200w",
-          "/media/neura-agents-hero-1536.webp 1536w",
+          "/media/atlas-hero-480.webp 480w",
+          "/media/atlas-hero-750.webp 750w",
+          "/media/atlas-hero-1200.webp 1200w",
+          "/media/atlas-hero-1536.webp 1536w",
         ].join(", ")}
         sizes={sizes}
       />
       <img
-        src="/media/neura-agents-hero-750.webp"
+        src="/media/atlas-hero-750.webp"
         alt={alt}
         width={1536}
         height={1024}

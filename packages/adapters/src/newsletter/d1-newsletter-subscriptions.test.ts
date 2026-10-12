@@ -1,7 +1,7 @@
 import type { NewsletterRepository } from "@atlasnews/core/editorial/domain/article-repository";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createSitesTestStore, type SitesTestStore } from "../sites/testing";
-import { D1NewsletterDeliveryRepository } from "./d1-newsletter-delivery-repository";
+import { createD1NewsletterDeliveryRepository } from "./d1-newsletter-delivery-repository";
 import { D1NewsletterSubscriptionRepository } from "./d1-newsletter-subscriptions";
 
 let store: SitesTestStore;
@@ -118,7 +118,7 @@ describe("D1NewsletterSubscriptionRepository", () => {
     expect((await repository.listSubscriptions({ locale: "en", status: "suppressed" })).total).toBe(1);
 
     const reader = await add("queued@example.com", "active");
-    const delivery = new D1NewsletterDeliveryRepository(store.database);
+    const delivery = createD1NewsletterDeliveryRepository(store.database);
     const draft = await delivery.saveDraft({
       locale: "en",
       subject: "Hello",

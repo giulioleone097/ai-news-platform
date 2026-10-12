@@ -35,7 +35,7 @@ describe.each(backends)("article translations in the $name repository", (backend
 
   async function setup() {
     const repository = await backend.create();
-    return { repository, service: new ArticleCommandService(repository) };
+    return { repository, service: new ArticleCommandService(repository, repository) };
   }
 
   it("links a new article to the article in the other language by its slug", async () => {

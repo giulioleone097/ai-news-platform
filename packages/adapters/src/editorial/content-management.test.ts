@@ -8,7 +8,8 @@ import type { ArticleCreate } from "@atlasnews/core/editorial/domain/article";
 import type { MediaRepository } from "@atlasnews/core/editorial/domain/article-repository";
 import { BatchValidationError, EditorialRuleError } from "@atlasnews/core/editorial/domain/errors";
 
-import { MemoryEditorialRepository } from "./memory-editorial-repository";
+import { composeAdminEditorialRepository } from "./compose";
+import { createMemoryEditorialParts, createMemoryEditorialRepository } from "./memory-editorial-repository";
 import { createEditorialBackends, type EditorialBackend } from "./testing";
 
 // The article, category and entity cases run against the in-memory repository and against D1.
@@ -53,6 +54,41 @@ describe.each(backends)("$name repository", (backend) => {
       expect((await repository.listForStudio("en", { status: "draft", query: "fresh draft" })).map((item) => item.id)).toEqual([created.id]);
       expect(await repository.listForStudio("en", { category: "policy", status: "draft" })).toEqual([]);
       expect((await repository.listForStudio("en", { status: "published" })).every((item) => item.status === "published")).toBe(true);
+    });
+  });
+
+  describe("articles: a reference that does not exist is a rule error", () => {
+    it("names the missing category, entity and slug on create and patch, with a code", async () => {
+      const { articles } = await setup(backend);
+      const draft = await articles.create(story("A draft that others point to"));
+      const refused = async (promise: Promise<unknown>) => {
+        const error = await promise.then(() => null, (reason: unknown) => reason);
+        expect(error).toBeInstanceOf(EditorialRuleError);
+        return error as EditorialRuleError;
+      };
+
+      expect(await refused(articles.create(story("A story in an unknown category", { categorySlug: "nowhere" }))))
+        .toMatchObject({ code: "article.unknownCategory", params: { slug: "nowhere", locale: "en" }, message: 'There is no en category with the slug "nowhere".' });
+      expect(await refused(articles.patch(draft, { categorySlug: "nowhere" })))
+        .toMatchObject({ code: "article.unknownCategory" });
+      expect(await refused(articles.create(story("A story linking a ghost entity", { entities: [{ slug: "no-such-entity" }] }))))
+        .toMatchObject({ code: "article.unknownEntity", params: { slug: "no-such-entity" } });
+      expect(await refused(articles.create(story("Another story", { slug: draft.slug }))))
+        .toMatchObject({ code: "article.slugTaken" });
+    });
+
+    it("accepts a cover only from the places the deployment hosts images", async () => {
+      const { repository } = await setup(backend);
+      const object = "https://project.supabase.co/storage/v1/object/public/editorial-media/cover.webp";
+      const own = new ArticleCommandService(repository, repository);
+      const withBucket = new ArticleCommandService(repository, repository, "https://project.supabase.co");
+
+      await expect(own.create(story("A story with a bundled cover", { coverImage: "/media/atlas-hero.webp" }))).resolves.toBeTruthy();
+      await expect(own.create(story("A story with a bucket cover but no bucket", { coverImage: object })))
+        .rejects.toMatchObject({ code: "article.invalidCoverImage" });
+      await expect(own.create(story("A story with a foreign cover", { coverImage: "https://images.example.com/cover.webp" })))
+        .rejects.toMatchObject({ code: "article.invalidCoverImage" });
+      await expect(withBucket.create(story("A story with the bucket cover", { coverImage: object }))).resolves.toBeTruthy();
     });
   });
 
@@ -187,7 +223,7 @@ describe.each(backends)("$name repository", (backend) => {
         story("A perfectly valid story one"),
       ]));
       expect(found.map((item) => item.index)).toEqual([1, 3, 4, 5]);
-      expect(found[0].message).toContain("Unknown category");
+      expect(found[0].message).toContain("There is no en category with the slug");
       expect(found[1].message).toBe("Invalid article title");
       expect(found[2].message).toContain("Unknown entity");
       expect(found[3].message).toContain("repeats in this batch");
@@ -205,10 +241,13 @@ describe.each(backends)("$name repository", (backend) => {
     });
 
     it.runIf(backend.name === "memory")("leaves nothing behind when the write fails halfway", async () => {
-      const { repository, articles } = await setup(backend);
+      // The batch saves item by item inside the articles port, so the failure is injected on that port.
+      const parts = createMemoryEditorialParts();
+      const repository = composeAdminEditorialRepository(parts);
+      const articles = new ArticleCommandService(repository, repository);
       const before = (await repository.listForStudio("en")).length;
-      const save = vi.spyOn(repository, "save");
-      const real = MemoryEditorialRepository.prototype.save.bind(repository as MemoryEditorialRepository);
+      const save = vi.spyOn(parts.articles, "save");
+      const real = parts.articles.save.bind(parts.articles);
       let calls = 0;
       save.mockImplementation(async (input) => {
         calls += 1;
@@ -323,11 +362,13 @@ describe.each(backends)("$name repository", (backend) => {
     });
 
     it.runIf(backend.name === "memory")("leaves nothing behind when the write fails halfway", async () => {
-      const repository = await backend.create();
+      const parts = createMemoryEditorialParts();
+      const repository = composeAdminEditorialRepository(parts);
       const commands = new CategoryCommandService(repository);
       const before = await repository.listCategoryRecords();
-      const write = vi.spyOn(repository as unknown as { writeCategory(item: unknown, create: boolean): void }, "writeCategory");
-      const real = (repository as unknown as { writeCategory(item: unknown, create: boolean): void }).writeCategory.bind(repository);
+      const port = parts.categories as unknown as { writeCategory(item: unknown, create: boolean): void };
+      const write = vi.spyOn(port, "writeCategory");
+      const real = port.writeCategory.bind(port);
       let calls = 0;
       write.mockImplementation((item, create) => {
         calls += 1;
@@ -416,11 +457,13 @@ describe.each(backends)("$name repository", (backend) => {
     });
 
     it.runIf(backend.name === "memory")("leaves nothing behind when the write fails halfway", async () => {
-      const repository = await backend.create();
+      const parts = createMemoryEditorialParts();
+      const repository = composeAdminEditorialRepository(parts);
       const commands = new EntityCommandService(repository);
       const before = await repository.listEntityRecords();
-      const write = vi.spyOn(repository as unknown as { writeEntity(item: unknown, create: boolean): void }, "writeEntity");
-      const real = (repository as unknown as { writeEntity(item: unknown, create: boolean): void }).writeEntity.bind(repository);
+      const port = parts.entityAdmin as unknown as { writeEntity(item: unknown, create: boolean): void };
+      const write = vi.spyOn(port, "writeEntity");
+      const real = port.writeEntity.bind(port);
       let calls = 0;
       write.mockImplementation((item, create) => {
         calls += 1;
@@ -501,8 +544,8 @@ describe("media", () => {
   });
 
   it("says plainly that the demo store is read only", async () => {
-    const commands = new MediaCommandService(new MemoryEditorialRepository());
+    const commands = new MediaCommandService(createMemoryEditorialRepository());
     await expect(commands.uploadMany([{ name: "a.png", mimeType: "image/png", bytes: png }])).rejects.toThrow("Media uploads require media storage.");
-    await expect(commands.deleteOne("media/neura-agents-hero.webp")).rejects.toThrow("Media deletion requires media storage.");
+    await expect(commands.deleteOne("media/atlas-hero.webp")).rejects.toThrow("Media deletion requires media storage.");
   });
 });

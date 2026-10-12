@@ -1,5 +1,4 @@
-import { createHmac } from "node:crypto";
-
+import { hmacSha256 } from "../../crypto";
 import { decodeSigningSecret } from "./signing-secret";
 
 /** Standard Webhooks v1 signature: `v1,` + base64(HMAC-SHA256(key, "id.timestamp.body")). */
@@ -11,9 +10,9 @@ export function signWebhook(input: {
 }) {
   const key = decodeSigningSecret(input.secret);
   if (!key) throw new Error("Invalid webhook signing secret.");
-  const signature = createHmac("sha256", key)
-    .update(`${input.messageId}.${input.timestampSeconds}.${input.body}`)
-    .digest("base64");
+  const signature = Buffer.from(
+    hmacSha256(key, `${input.messageId}.${input.timestampSeconds}.${input.body}`),
+  ).toString("base64");
   return `v1,${signature}`;
 }
 

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import "../design.tokens.css";
 import "../globals.css";
 import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
+import { defaultCoverImage } from "@atlasnews/core/editorial/domain/article";
 import {
   getAlternates,
   getMessages,
@@ -68,7 +69,7 @@ export async function generateMetadata({
       locale: messages.metadata.openGraphLocale,
       alternateLocale: locale === "en" ? ["it_IT"] : ["en_US"],
       siteName: messages.common.brandName,
-      images: [{ url: "/media/neura-agents-hero.webp", width: 1536, height: 1024 }],
+      images: [{ url: defaultCoverImage, width: 1536, height: 1024 }],
     },
     twitter: { card: "summary_large_image" },
   };

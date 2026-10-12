@@ -22,9 +22,9 @@ Copilot CLI reads `.github/plugin/marketplace.json` from the same repository.
 
 ## Connect and sign in
 
-The server URL is in two files that must stay identical: `mcp.json` (OpenAI and Copilot) and `.mcp.json` (Claude). Both ship with the local development address `http://localhost:8787/mcp` (`pnpm --filter @atlasnews/mcp start`). Before you publish, replace it with the public HTTPS address of the deployed server, as described in `docs/AGENT_PLUGIN.md`.
+The server URL is in two files that must stay identical: `mcp.json` (OpenAI and Copilot) and `.mcp.json` (Claude). Both ship with the local development address `http://localhost:8787/mcp` (`pnpm --filter @atlasnews/mcp start`). Before you publish, replace it with the public HTTPS address of the deployed server, as described in `docs/AGENT_PLUGIN.md`. On ChatGPT Sites, the default deployment, that is `https://<your-site>/mcp`, a path on the Site itself.
 
-Reading is anonymous. When an editor tool is first used the host starts OAuth 2.1 sign-in against Supabase Auth with dynamic client registration; no key or token is ever stored in this plugin.
+Reading is anonymous. When an editor tool is first used the host starts the sign-in: on ChatGPT Sites the platform's Sign in with ChatGPT, on a self-hosted server OAuth 2.1 against Supabase Auth with dynamic client registration. Either way the person must be an editor of the newsroom, and no key or token is ever stored in this plugin.
 
 ## Skills
 

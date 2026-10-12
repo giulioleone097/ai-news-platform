@@ -9,6 +9,7 @@ import {
   type ContactMessageStatus,
 } from "@atlasnews/core/support/domain/contact-message";
 import type { ContactMessageRepository } from "@atlasnews/core/support/domain/ports";
+import { isUuid, throwIfError } from "../supabase/errors";
 
 const columns = "id, locale, name, email, subject, body, status, created_at";
 
@@ -22,10 +23,6 @@ const rowSchema = z.object({
   status: z.enum(contactMessageStatuses),
   created_at: z.string(),
 });
-
-function throwIfError(error: { message: string } | null, operation: string) {
-  if (error) throw new Error(`${operation}: ${error.message}`);
-}
 
 function toMessage(row: z.output<typeof rowSchema>): ContactMessage {
   return {
@@ -88,12 +85,16 @@ export class SupabaseContactMessageRepository implements ContactMessageRepositor
   }
 
   async findMany(ids: string[]) {
-    const { data, error } = await this.client.from("contact_messages").select(columns).in("id", ids);
+    // An id that is not a uuid belongs to no message; PostgREST would fail the whole query on it.
+    const known = ids.filter(isUuid);
+    if (!known.length) return [];
+    const { data, error } = await this.client.from("contact_messages").select(columns).in("id", known);
     throwIfError(error, "Unable to load contact messages");
     return z.array(rowSchema).parse(data ?? []).map(toMessage);
   }
 
   async setStatus(id: string, status: ContactMessageStatus) {
+    if (!isUuid(id)) return false;
     const { data, error } = await this.client.from("contact_messages").update({ status }).eq("id", id).select("id");
     throwIfError(error, "Unable to update the contact message");
     return (data?.length ?? 0) > 0;
@@ -106,6 +107,7 @@ export class SupabaseContactMessageRepository implements ContactMessageRepositor
   }
 
   async delete(id: string) {
+    if (!isUuid(id)) return false;
     const { data, error } = await this.client.from("contact_messages").delete().eq("id", id).select("id");
     throwIfError(error, "Unable to delete the contact message");
     return (data?.length ?? 0) > 0;

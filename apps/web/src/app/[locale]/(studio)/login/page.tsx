@@ -6,7 +6,7 @@ import "@/components/studio/auth.css";
 import { LoginForm } from "@/components/studio/login-form";
 import { StudioBrand } from "@/components/studio/studio-brand";
 import type { OAuthProviderId } from "@atlasnews/adapters/auth/oauth";
-import { getContentMode, getSignInProviders, isStudioAvailable } from "@atlasnews/adapters/config/env";
+import { getContentMode, getSignInProviders, isStudioAvailable, offersChatGptSignIn } from "@atlasnews/adapters/config/env";
 import { getMessages, isLocale, locales, type Messages } from "@/i18n";
 import { signInPath, signOutPath } from "@/lib/auth/paths";
 import type { SignedInUser } from "@/lib/auth/signed-in-user";
@@ -90,6 +90,7 @@ export default async function LoginPage({
   const mode = getContentMode();
   const user = studioAvailable && mode === "sites" ? await getSignedInUser() : null;
   const providers = getSignInProviders();
+  const chatgpt = offersChatGptSignIn();
   // Signed in with an account that is not an editor: the page is no invitation to sign in again.
   const signedInWithoutAccess = Boolean(user) && !editor;
 
@@ -141,11 +142,13 @@ export default async function LoginPage({
                 </p>
                 <SwitchAccount copy={messages.auth} locale={locale} user={user} />
               </>
-            ) : (
+            ) : chatgpt || providers.length ? (
               <>
-                <p className="auth-muted">{messages.auth.chatgptDescription}</p>
-                <ProviderLinks chatgpt copy={messages.auth} locale={locale} providers={providers} />
+                <p className="auth-muted">{messages.auth.invitedDescription}</p>
+                <ProviderLinks chatgpt={chatgpt} copy={messages.auth} locale={locale} providers={providers} />
               </>
+            ) : (
+              <p className="auth-note" role="status">{messages.auth.noSignIn}</p>
             )}
           </div>
         ) : (

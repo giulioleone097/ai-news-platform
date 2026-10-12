@@ -13,7 +13,6 @@ vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/lib/editor-auth", () => ({ requireEditor: mocks.requireEditor }));
 vi.mock("@/server/capabilities", () => ({ runEditorCapability: mocks.run }));
-vi.mock("@atlasnews/adapters/config/env", () => ({ getPublicSiteUrl: () => new URL("https://atlasnews.example") }));
 
 import { cancelSocialOutboxAction, retrySocialOutboxAction, submitSocialPublicationAction } from "./social-actions";
 import { idleSocialComposerState } from "./types";
@@ -73,7 +72,7 @@ beforeEach(() => {
 });
 
 describe("the social composer", () => {
-  it("previews through the capability with the canonical article address, not one the form typed", async () => {
+  it("previews through the capability with what the form chose and no article address of its own", async () => {
     const state = await submitSocialPublicationAction(idleSocialComposerState, composerForm());
 
     expect(state).toMatchObject({ status: "preview", preview: { provider: "linkedin", text: "Hello" } });
@@ -83,7 +82,7 @@ describe("the social composer", () => {
       {
         publicationId,
         provider: "linkedin",
-        payload: { text: "Hello", articleUrl: "https://atlasnews.example/it/articles/a%20story", recipient: undefined },
+        payload: { text: "Hello", recipient: undefined },
         scheduledFor: undefined,
       },
       { locale: "it" },

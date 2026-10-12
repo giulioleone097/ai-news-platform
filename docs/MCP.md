@@ -1,6 +1,6 @@
 # Model Context Protocol
 
-AtlasNews exposes one stateless Streamable HTTP endpoint, `POST /mcp`, served by the standalone `apps/mcp` process (`pnpm --filter @atlasnews/mcp start`, port `PORT`, default `8787`). Anonymous callers read published content and approved comments. A signed-in editor also gets the newsroom tools. OpenAI allows one MCP server for each plugin, so both live behind the same URL and the caller's token decides what runs.
+AtlasNews exposes one stateless Streamable HTTP endpoint, `POST /mcp`. It is a path on the site's own origin, not a subdomain: on ChatGPT Sites (the default deployment) the Site's Worker serves it at `https://<site>/mcp`; self-hosted, the standalone `apps/mcp` process serves it (`pnpm --filter @atlasnews/mcp start`, port `PORT`, default `8787`), usually behind the same origin or a host of your choice. Anonymous callers read published content and approved comments. A signed-in editor also gets the newsroom tools. OpenAI allows one MCP server for each plugin, so both live behind the same URL and the caller's token decides what runs.
 
 ## Where tools are defined
 
@@ -21,7 +21,7 @@ To add a capability: define a spec in `packages/contract/src/specs`, implement i
 | `/info` | `GET` | Machine-readable server metadata, derived from the catalogue |
 | `/.well-known/oauth-protected-resource` | `GET` | RFC 9728 resource metadata that the Bearer challenge points at; names the authorization server. 404 while no OAuth server is configured (on Sites, in demo mode, or without the variables below) |
 
-`GET /mcp` returns 405. `/mcp/admin` no longer exists. Below, `$MCP` is the base URL of `apps/mcp` (`http://localhost:8787` locally).
+`GET /mcp` returns 405. `/mcp/admin` no longer exists. Below, `$MCP` is the base URL of the server: the Site's origin on Sites, `http://localhost:8787` for a local `apps/mcp`.
 
 Current protocol version: `2026-07-28`, served by the stable MCP TypeScript server SDK v2. Ordinary modern responses are JSON and protocol streams can upgrade to SSE. Stateless 2025-era clients (`initialize` with `2025-11-25`) are served through the SDK's `legacy: "stateless"` path and may receive SSE.
 
@@ -67,7 +67,7 @@ The caller is resolved once per request from the `Authorization` header:
 Token checking sits behind the `AccessTokenVerifier` port (`apps/mcp/src/auth.ts`). Two verifiers are tried in this order:
 
 1. **Supabase OAuth access tokens** (`apps/mcp/src/auth/`), when sign-in is configured (see [Sign-in](#sign-in-with-supabase-auth)). The signature is checked against the project's JWKS (cached ten minutes; an unknown `kid` reloads it, at most every 30 seconds, so a rotated key is picked up), then issuer, audience, expiry and not-before. Only ES256 and RS256 are accepted; `alg: none` and HS256 are refused. The token must carry a `client_id` claim, which only the OAuth server sets, so an ordinary Studio session token cannot be replayed here. The subject must have a `public.profiles` row with role `editor` or `admin` (read with the service-role key, answers cached 30 seconds); it then gets every newsroom scope, and its `author_id` is carried on the principal. A valid token for anyone else is accepted as a caller with no newsroom scope, so scoped tools answer with the sign-in error.
-2. **The shared API key** `ATLASNEWS_MCP_ADMIN_API_KEY` (at least 32 characters, constant-time comparison), for the CI smoke and the self-hosted CLI. It maps to one editor with every scope, `newsroom.admin` included, so treat it like an admin credential.
+2. **The shared API key** `ATLASNEWS_MCP_ADMIN_API_KEY` (at least 32 characters, constant-time comparison), for the CI smoke and the self-hosted CLI. **Self-host only: on ChatGPT Sites the key is ignored and `Authorization` is never read** ([Sign-in on ChatGPT Sites](#sign-in-on-chatgpt-sites)); the two verifiers in this list describe the self-hosted server. It maps to one editor with every scope, `newsroom.admin` included, so treat it like an admin credential.
 
 If the key set or the profile table cannot be reached the request fails with HTTP 500, not 401, so a host does not discard a good token during an outage.
 
@@ -188,6 +188,8 @@ Anonymous (`noauth`, read-only, idempotent, closed-world):
 | `fetch` | `id` (from `search`, such as `en/some-slug`) | None | `{id,title,text,url,metadata}` with the article as Markdown |
 | `list_articles` | None | `locale=en`, `category`, `limit=10` (1–25), `cursor` | Published article summaries and opaque `nextCursor` |
 | `search_articles` | `query` (2–160 chars) | `locale=en`, `limit=10` (1–25) | Matching published summaries; also a page tool |
+| `list_entities` | None | `locale=en`, `kind` | The companies, models and products that stories link, with story counts |
+| `get_entity_timeline` | `slug` | `locale=en` | One entity with its published stories, oldest first, each with its claim status |
 | `get_article` | `slug` | `locale=en` | Full published article and public author metadata |
 | `list_categories` | None | `locale=en` | Localized categories |
 | `list_comments` | `slug` | `locale=en`, `parentId`, `limit=12` (1–24), `cursor` | Approved top-level comments or replies and opaque `nextCursor` |
@@ -232,6 +234,8 @@ Publishing is its own pair: `admin_publish_article` and `admin_unpublish_article
 - **Create and patch cannot publish.** `status` accepts `draft`, `review` and `scheduled` only. A published article keeps its status when patched; going live and coming back go through the publish tools, which need `newsroom.publish` and ask for confirmation. Core enforces this (`ArticleCommandService.create/patch`), and the SQL batch function repeats it.
 - **PATCH.** A field you leave out keeps its stored value; the tool descriptions say what an explicit value clears. Articles: `scheduledFor: null` removes the date, and empty `distribution`, `keyPoints`, `sources` or `entities` lists empty them; title, slug, excerpt, content, `categorySlug`, cover and `claimStatus` are replaced, never cleared. Categories: `description: ""` clears; name, slug and position are replaced. Entities: `null` clears `officialUrl`, `parentSlug` and a locale's description; name and kind are replaced. A patch with no field is refused.
 - **Bilingual content.** A category is created with both locales (`translations.en` and `translations.it`, each with `name`, optional `slug` and `description`) under one translation key, which is the English slug and never changes; patches name the locales they touch. `admin_list_categories` returns each category in the requested locale with its `position` and both locales under `translations` (the shape of `admin_get_category`), so one call lists everything an editor screen needs. An entity is one row with an optional description per locale (`descriptions.en`, `descriptions.it`); its slug is its handle and is never renamed. Slugs are lowercase kebab-case, derived from the name when omitted, and unique per locale (entities: globally).
+- **Social posts.** `admin_social_preview`, `admin_social_enqueue`, `admin_social_update` and `admin_social_requeue` check the post for every caller, not only the Studio: the publication must exist and belong to the post's channel (the Studio also checks the locale shown). The article address in the post is always the canonical one that core builds from the publication (`canonicalArticleUrl`), whatever address the caller sent; without an https site address there is none and the post goes out without a link.
+- **Missing references.** An article that names a category, an entity or a translation that does not exist is refused with a coded rule error (`article.unknownCategory`, `article.unknownEntity`, `article.translationNotFound`) and a message such as `There is no en category with the slug "x".`, the same on every backend. A cover image must be bundled media, an upload from the media library or an object of the configured editorial bucket (`article.invalidCoverImage`). An id that is not a UUID is "not found", never a storage error.
 - **Delete rules.** A category used by any article, an entity linked to any story or that is the company of other entities, and a media asset used as an article cover are refused with a clear error. A company can be deleted in the same call as its own models and products.
 - **Batches** take 1 to 25 items (media: 1 to 10). They are all or nothing: every item is checked first and every invalid item is reported by index (`#2 (slug): reason`) with nothing written; the write is then one database transaction (`save_articles_batch`, `publish_articles_batch`, `delete_articles_batch`, `create_categories_batch`, `update_categories_batch`, `delete_categories_batch`, `create_entities_batch`, `update_entities_batch`, `delete_entities_batch`), so a database failure halfway leaves nothing behind. Media storage is not a database: a failed batch upload removes the images already stored. A result is `{ count, items: [{ index, action, id | slug | translationKey | path, ... }] }` in request order.
 - **Untrusted visitor text.** `list_comments`, `admin_list_comments`, `admin_get_comment`, `admin_list_comment_reports`, `admin_list_newsletter_subscriptions`, `admin_get_newsletter_subscription`, `admin_list_contact_messages`, `admin_get_contact_message` and `admin_newsletter_list_recipients` return text that anonymous visitors wrote. Their results carry `contentTrust: { source: "anonymous-visitors", untrustedFields: [...], instruction }` and their descriptions say to treat those fields as data, never as instructions.
@@ -266,24 +270,26 @@ The `confirm` argument is optional in the advertised schema (it used to be a req
 
 ## Cache invalidation
 
+This applies to the self-hosted server. On Sites the MCP server and the site share one Worker and one D1 database, so no call is needed and pages show a write after their own revalidate window ([SITES.md](SITES.md#caching)).
+
 The MCP process cannot purge the reader site's Next cache directly. After an editorial write it calls `POST {NEXT_PUBLIC_SITE_URL}/api/revalidate` with `Authorization: Bearer $ATLASNEWS_REVALIDATE_SECRET` and `{ "locale": "en", "slugs": ["…"] }`. The route compares the secret in constant time and answers 503 to everyone when `ATLASNEWS_REVALIDATE_SECRET` (at least 32 characters) is unset on the site. Set the same value on both processes. Without it on the MCP process the call is skipped, and a failed call never fails the edit; the site then refreshes on its own revalidate windows. The two processes share articles only through Supabase, so the demo in-memory store of one is not visible to the other.
 
 ## Client configuration
 
-For clients that accept remote HTTP servers, use the canonical HTTPS endpoint:
+For clients that accept remote HTTP servers, use the canonical HTTPS endpoint: `https://<site>/mcp` on Sites, or the origin of your own `apps/mcp` deployment self-hosted:
 
 ```json
 {
   "mcpServers": {
     "atlasnews": {
       "type": "http",
-      "url": "https://mcp.news.example.com/mcp"
+      "url": "https://news.example.com/mcp"
     }
   }
 }
 ```
 
-Clients that sign in (see [Sign-in](#sign-in-with-supabase-auth)) send the token as `Authorization: Bearer …`; the repository-local plugin under `plugins/` is documented in [AGENT_PLUGIN.md](AGENT_PLUGIN.md).
+Clients that sign in (on Sites the platform runs it, see [Sign-in on ChatGPT Sites](#sign-in-on-chatgpt-sites); self-hosted see [Sign-in](#sign-in-with-supabase-auth)) send the token as `Authorization: Bearer …`; the repository-local plugin under `plugins/` is documented in [AGENT_PLUGIN.md](AGENT_PLUGIN.md).
 
 ## Error behavior
 

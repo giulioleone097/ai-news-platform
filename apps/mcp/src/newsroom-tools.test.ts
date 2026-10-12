@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MemoryEditorialRepository } from "@atlasnews/adapters/editorial/memory-editorial-repository";
+import { createMemoryEditorialRepository } from "@atlasnews/adapters/editorial/memory-editorial-repository";
 import type { EditorialCacheInvalidator } from "@atlasnews/core/editorial/application/cache-port";
 
 import { confirmationKey } from "./confirmation";
 import { memoryPorts, modernParams, sendRpc, testApiKey } from "./mcp-test-client";
 
-const repository = new MemoryEditorialRepository();
+const repository = createMemoryEditorialRepository();
 const onMutation = vi.fn<EditorialCacheInvalidator>(async () => undefined);
 const authorization = `Bearer ${testApiKey}`;
 

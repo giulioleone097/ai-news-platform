@@ -7,6 +7,7 @@ import {
   type TeamMember,
   type TeamRole,
 } from "@atlasnews/core/team/domain/team";
+import { isUuid } from "../supabase/errors";
 
 interface ProfileRow {
   id: string;
@@ -107,6 +108,7 @@ export class SupabaseEditorDirectory implements EditorDirectory {
   }
 
   async setRole(id: string, role: TeamRole) {
+    if (!isUuid(id)) return null;
     const { data, error } = await this.client.from("profiles").update({ role }).eq("id", id).select(profileColumns).maybeSingle();
     if (error) failed("update", error);
     if (!data) return null;
@@ -115,6 +117,7 @@ export class SupabaseEditorDirectory implements EditorDirectory {
   }
 
   async remove(id: string) {
+    if (!isUuid(id)) return false;
     const { data, error } = await this.client.from("profiles").delete().eq("id", id).select("author_id");
     if (error) failed("remove", error);
     const [removed] = data ?? [];
