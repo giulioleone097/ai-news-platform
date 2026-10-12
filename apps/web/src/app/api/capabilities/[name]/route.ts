@@ -90,7 +90,7 @@ export async function POST(request: Request, context: RouteContext) {
   const outcome = await runEditorCapability(name, body.input, { confirmed: body.confirmed });
   return outcome.ok
     ? reply(200, outcome)
-    : reply(outcome.status, { ok: false, error: outcome.error });
+    : reply(outcome.status, { ok: false, error: outcome.error, ...(outcome.code ? { code: outcome.code } : {}) });
 }
 
 function methodNotAllowed() {
