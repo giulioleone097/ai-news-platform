@@ -1006,6 +1006,11 @@ export class D1EditorialRepository
     return this.options.newsletter.listSubscriptions(query);
   }
 
+  async findSubscription(id: string) {
+    this.assertEditorial();
+    return this.options.newsletter.findSubscription(id);
+  }
+
   async updateSubscriptionStatus(id: string, status: "unsubscribed") {
     this.assertEditorial();
     return this.options.newsletter.updateSubscriptionStatus(id, status);
@@ -1073,6 +1078,13 @@ export class D1EditorialRepository
       .sort((left, right) => right.uploaded.getTime() - left.uploaded.getTime())
       .slice(0, listedAssets)
       .map(mapAsset);
+  }
+
+  async findAsset(path: string) {
+    const bucket = this.options.media;
+    if (!bucket || this.options.audience !== "editorial" || !isMediaPath(path)) return null;
+    const object = await bucket.head(`${mediaPrefix}${path}`);
+    return object ? mapAsset(object) : null;
   }
 
   async isAssetReferenced(path: string) {

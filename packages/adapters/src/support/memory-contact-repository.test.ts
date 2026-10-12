@@ -54,4 +54,27 @@ describe("ContactMessageService", () => {
     await expect(contact.setStatus(crypto.randomUUID(), "archived")).rejects.toBeInstanceOf(ContactMessageError);
     await expect(contact.list({ cursor: "garbage" })).rejects.toMatchObject({ code: "invalid_cursor" });
   });
+
+  it("reads one message and writes several together, or none when one id is unknown", async () => {
+    const contact = service();
+    await contact.submit(request, { requester: "203.0.113.7" });
+    await contact.submit({ ...request, subject: "Un'altra segnalazione" }, { requester: "203.0.113.8" });
+    const ids = (await contact.list()).items.map((message) => message.id);
+
+    expect(await contact.get(ids[0])).toMatchObject({ id: ids[0], status: "new" });
+    await expect(contact.get(crypto.randomUUID())).rejects.toMatchObject({ code: "not_found" });
+
+    await contact.setStatusMany(ids, "archived");
+    expect((await contact.list({ status: "archived" })).items).toHaveLength(2);
+    expect(await contact.countNew()).toBe(0);
+
+    const unknown = crypto.randomUUID();
+    await expect(contact.setStatusMany([ids[0], unknown], "new")).rejects.toThrow(`#1 (${unknown})`);
+    await expect(contact.deleteMany([ids[0], unknown])).rejects.toThrow("Nothing was written");
+    await expect(contact.deleteMany([ids[0], ids[0]])).rejects.toThrow("also item #0");
+    expect((await contact.list({ status: "archived" })).items).toHaveLength(2);
+
+    await contact.deleteMany(ids);
+    expect((await contact.list()).items).toEqual([]);
+  });
 });

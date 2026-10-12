@@ -419,6 +419,90 @@ describe("D1SocialOutboxRepository cancel and requeue", () => {
     expect((await publicationState(processingPublication))?.status).toBe("ready");
   });
 
+  it("edits a waiting job in one statement: new payload, send time and attempt limit, one revision up, same key", async () => {
+    const publicationId = await publication();
+    const job = await repository.enqueue(enqueueInput(publicationId));
+    const edit = (overrides: Record<string, unknown> = {}) => ({
+      id: job.id,
+      expectedRevision: job.revision,
+      provider: "linkedin" as const,
+      payload: { text: "A corrected post" } as SocialPublishPayload,
+      availableAt: future(2 * minute),
+      maxAttempts: 4,
+      ...overrides,
+    });
+
+    const request = edit();
+    const edited = await repository.updatePending(request);
+    expect(edited).toMatchObject({
+      id: job.id,
+      status: "pending",
+      payload: { text: "A corrected post" },
+      maxAttempts: 4,
+      availableAt: request.availableAt,
+      revision: job.revision + 1,
+      attempts: 0,
+      idempotencyKey: job.idempotencyKey,
+    });
+    expect((await publicationState(publicationId))?.status).toBe("ready");
+    expect(await repository.claim(lease)).toEqual([]);
+
+    // The revision it was read at is spent, a payload that breaks the provider's rules never reaches the row.
+    await fails(repository.updatePending(request));
+    await fails(repository.updatePending(edit({ expectedRevision: edited.revision, provider: "x" })));
+    await expect(repository.updatePending(edit({ expectedRevision: edited.revision, maxAttempts: 11 }))).rejects.toBeInstanceOf(SocialPublishingError);
+    await expect(repository.updatePending(edit({ expectedRevision: edited.revision, payload: { text: "Hi", recipient: "15551234567" } }))).rejects.toBeInstanceOf(SocialPublishingError);
+    expect(await repository.getById(job.id)).toEqual(edited);
+  });
+
+  it("does not edit a job that was claimed, dispatched or cancelled since it was read", async () => {
+    const edit = (job: { id: string; revision: number }) => ({
+      id: job.id,
+      expectedRevision: job.revision,
+      provider: "linkedin" as const,
+      payload: { text: "Too late" } as SocialPublishPayload,
+      availableAt: past(),
+      maxAttempts: 3,
+    });
+    const { job: claimed } = await leased();
+    await fails(repository.updatePending(edit(claimed)));
+    const { job: dispatched } = await leased({ dispatch: true });
+    await fails(repository.updatePending(edit(dispatched)));
+    const waiting = await repository.enqueue(enqueueInput(await publication()));
+    const cancelled = await repository.cancelPending(waiting.id);
+    await fails(repository.updatePending(edit(cancelled)));
+    expect((await repository.getById(claimed.id))?.payload).toEqual({ text: "Hi" });
+  });
+
+  it("cancels several waiting jobs together and returns every publication to draft", async () => {
+    const publications = [await publication(), await publication("x"), await publication()];
+    const jobs = [];
+    for (const [index, publicationId] of publications.entries()) {
+      jobs.push(await repository.enqueue(enqueueInput(publicationId, { provider: index === 1 ? "x" : "linkedin" })));
+    }
+    const bystander = await repository.enqueue(enqueueInput(await publication()));
+
+    const cancelled = await repository.cancelPendingMany(jobs.map((job) => job.id));
+    expect(cancelled.map((job) => job.id)).toEqual(jobs.map((job) => job.id));
+    expect(cancelled.every((job) => job.status === "cancelled" && job.retrySafe === false && job.revision === 1)).toBe(true);
+    for (const publicationId of publications) expect((await publicationState(publicationId))?.status).toBe("draft");
+    expect((await repository.getById(bystander.id))?.status).toBe("pending");
+  });
+
+  it("cancels none when one job was claimed since it was checked: no status, no revision, no publication change", async () => {
+    const { job: claimed, publicationId: claimedPublication } = await leased();
+    const waiting = await repository.enqueue(enqueueInput(await publication()));
+    const waitingBefore = await repository.getById(waiting.id);
+
+    await fails(repository.cancelPendingMany([waiting.id, claimed.id]));
+    await fails(repository.cancelPendingMany([waiting.id, crypto.randomUUID()]));
+    await fails(repository.cancelPendingMany([waiting.id, waiting.id]));
+
+    expect(await repository.getById(waiting.id)).toEqual(waitingBefore);
+    expect((await repository.getById(claimed.id))?.status).toBe("processing");
+    expect((await publicationState(claimedPublication))?.status).toBe("ready");
+  });
+
   it("requeues a cancelled job with new content, and replays the same requeue without a second change", async () => {
     const publicationId = await publication();
     const job = await repository.enqueue(enqueueInput(publicationId));

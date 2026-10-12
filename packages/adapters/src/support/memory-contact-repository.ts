@@ -58,6 +58,13 @@ export class MemoryContactRepository implements ContactMessageRepository {
     return [...this.messages.values()].filter((message) => message.status === status).length;
   }
 
+  async findMany(ids: string[]) {
+    return ids.flatMap((id) => {
+      const message = this.messages.get(id);
+      return message ? [{ ...message }] : [];
+    });
+  }
+
   async setStatus(id: string, status: ContactMessageStatus) {
     const message = this.messages.get(id);
     if (!message) return false;
@@ -65,7 +72,15 @@ export class MemoryContactRepository implements ContactMessageRepository {
     return true;
   }
 
+  async setStatusMany(ids: string[], status: ContactMessageStatus) {
+    for (const id of ids) await this.setStatus(id, status);
+  }
+
   async delete(id: string) {
     return this.messages.delete(id);
+  }
+
+  async deleteMany(ids: string[]) {
+    for (const id of ids) this.messages.delete(id);
   }
 }

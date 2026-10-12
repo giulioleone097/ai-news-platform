@@ -117,6 +117,17 @@ export class SupabaseSocialOutboxRepository implements SocialOutboxRepository {
     });
   }
 
+  updatePending(input: Parameters<SocialOutboxRepository["updatePending"]>[0]) {
+    return this.rpcRow("update_pending_social_outbox", {
+      p_id: input.id,
+      p_expected_revision: input.expectedRevision,
+      p_provider: input.provider,
+      p_payload: input.payload,
+      p_available_at: input.availableAt,
+      p_max_attempts: input.maxAttempts,
+    });
+  }
+
   async getById(id: string) {
     const { data, error } = await this.client
       .from("social_outbox")
@@ -159,6 +170,18 @@ export class SupabaseSocialOutboxRepository implements SocialOutboxRepository {
 
   cancelPending(id: string) {
     return this.rpcRow("cancel_social_outbox", { p_id: id });
+  }
+
+  async cancelPendingMany(ids: string[]) {
+    const { data, error } = await this.client.rpc("cancel_social_outbox_batch", { p_ids: ids });
+    if (error || !Array.isArray(data)) throw persistenceError();
+    const jobs = new Map(data.map(mapSocialOutboxJob).map((job) => [job.id, job]));
+    if (jobs.size !== ids.length) throw persistenceError();
+    return ids.map((id) => {
+      const job = jobs.get(id);
+      if (!job) throw persistenceError();
+      return job;
+    });
   }
 
   retryFailed(id: string) {

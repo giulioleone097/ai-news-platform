@@ -617,6 +617,11 @@ export class MemoryEditorialRepository
     };
   }
 
+  async findSubscription(id: string) {
+    const subscription = [...this.subscribers.values()].find((item) => item.id === id);
+    return subscription ? structuredClone(subscription) : null;
+  }
+
   async updateSubscriptionStatus(id: string, status: NewsletterStatus) {
     const subscription = [...this.subscribers.values()].find((item) => item.id === id);
     if (!subscription) throw new Error("Newsletter subscription not found");
@@ -658,6 +663,10 @@ export class MemoryEditorialRepository
       size: 129_262,
       createdAt: seedArticles.at(-1)?.createdAt ?? new Date(0).toISOString(),
     }];
+  }
+
+  async findAsset(path: string) {
+    return (await this.listAssets()).find((asset) => asset.path === path) ?? null;
   }
 
   async isAssetReferenced(path: string) {

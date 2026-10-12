@@ -440,6 +440,7 @@ describe("media", () => {
     const repository: MediaRepository = {
       writable: true,
       listAssets: async () => [...stored.keys()].map((path) => ({ path, url: `/${path}`, name: path, mimeType: "image/png", size: 1, createdAt: "" })),
+      findAsset: async (path) => (stored.has(path) ? { path, url: `/${path}`, name: path, mimeType: "image/png", size: 1, createdAt: "" } : null),
       isAssetReferenced: async (path) => stored.get(path) ?? false,
       uploadAsset: vi.fn(async (input) => {
         const path = `${stored.size}-${input.name}`;

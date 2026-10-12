@@ -38,6 +38,23 @@ async function add(email: string, status: string, options: { locale?: string; cr
 }
 
 describe("D1NewsletterSubscriptionRepository", () => {
+  it("reads one subscriber by id, in any status, and nothing for an unknown id", async () => {
+    const suppressed = await add("suppressed@example.com", "suppressed", { locale: "it" });
+    await add("other@example.com", "active");
+
+    expect(await repository.findSubscription(suppressed)).toEqual({
+      id: suppressed,
+      email: "suppressed@example.com",
+      source: "site",
+      locale: "it",
+      status: "suppressed",
+      consentedAt: expect.any(String),
+      unsubscribedAt: null,
+      createdAt: "2026-10-01T10:00:00.000Z",
+    });
+    expect(await repository.findSubscription(crypto.randomUUID())).toBeNull();
+  });
+
   it("lists pending and suppressed subscribers instead of hiding them", async () => {
     const statuses = ["pending", "active", "unsubscribed", "suppressed"];
     for (const [index, status] of statuses.entries()) {

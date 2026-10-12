@@ -234,6 +234,26 @@ export class D1SocialOutboxRepository implements SocialOutboxRepository {
     return job;
   }
 
+  async updatePending(input: Input<"updatePending">) {
+    assertJobBounds(input.provider, input.maxAttempts);
+    if (!Number.isSafeInteger(input.expectedRevision) || input.expectedRevision < 0) invalid();
+    const payload = assertPayload(input.provider, input.payload);
+    const now = new Date().toISOString();
+    // The WHERE clause is the whole rule: a job that was claimed, cancelled or edited since it was read matches no row.
+    return this.transition(this.statement(
+      `UPDATE social_outbox SET payload = ?, max_attempts = ?, available_at = ?, revision = revision + 1, updated_at = ?
+       WHERE id = ? AND provider = ? AND revision = ? AND status = 'pending' AND dispatch_started_at IS NULL
+       RETURNING *`,
+      payload,
+      input.maxAttempts,
+      instant(input.availableAt),
+      now,
+      input.id,
+      input.provider,
+      input.expectedRevision,
+    ));
+  }
+
   getById(id: string) {
     return this.findOne("SELECT * FROM social_outbox WHERE id = ?", id);
   }
@@ -286,6 +306,41 @@ export class D1SocialOutboxRepository implements SocialOutboxRepository {
       ),
       this.publicationFollows({ where: "id = ?", values: [id] }, "status = 'draft'", [], now),
     );
+  }
+
+  /**
+   * One UPDATE cancels every job, and only when the count of jobs that can still be cancelled (taken before the
+   * update runs) is all of them: a job that was claimed since the service checked cancels none.
+   */
+  async cancelPendingMany(ids: string[]) {
+    const now = new Date().toISOString();
+    const idList = ids.map(() => "?").join(", ");
+    const [cancelled] = await this.run([
+      this.statement(
+        `UPDATE social_outbox SET status = 'cancelled', revision = revision + 1, retry_safe = 0, updated_at = ?
+         WHERE id IN (${idList}) AND status = 'pending' AND dispatch_started_at IS NULL
+           AND (SELECT count(*) FROM social_outbox
+                WHERE id IN (${idList}) AND status = 'pending' AND dispatch_started_at IS NULL) = ?
+         RETURNING *`,
+        now,
+        ...ids,
+        ...ids,
+        ids.length,
+      ),
+      this.statement(
+        `UPDATE social_publications SET status = 'draft', updated_at = ?
+         WHERE changes() > 0 AND id IN (SELECT publication_id FROM social_outbox WHERE id IN (${idList}))`,
+        now,
+        ...ids,
+      ),
+    ]);
+    const jobs = new Map(cancelled.map(toJob).map((job) => [job.id, job]));
+    if (jobs.size !== ids.length) throw persistenceError();
+    return ids.map((id) => {
+      const job = jobs.get(id);
+      if (!job) throw persistenceError();
+      return job;
+    });
   }
 
   retryFailed(id: string) {

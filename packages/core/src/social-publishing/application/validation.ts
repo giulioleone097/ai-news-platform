@@ -5,8 +5,10 @@ import {
   socialProviders,
   type EnqueueSocialPublicationInput,
   type RequeueSocialPublicationInput,
+  type SocialOutboxJob,
   type SocialPublishPayload,
   type SocialProvider,
+  type UpdatePendingSocialPublicationInput,
 } from "../domain/social-publication";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -110,6 +112,40 @@ export function normalizeRequeueInput(input: RequeueSocialPublicationInput) {
     payload: normalized.payload,
     scheduledFor: normalized.scheduledFor,
     maxAttempts: normalized.maxAttempts,
+  };
+}
+
+/** The job as it is after `input`: the payload merged over the stored one and checked as a new job's is. */
+export function normalizePendingUpdate(job: SocialOutboxJob, input: UpdatePendingSocialPublicationInput, now: Date) {
+  const id = input.id?.trim();
+  const expectedRevision = input.expectedRevision;
+  if (!uuidPattern.test(id)) invalid("Outbox job ID must be a UUID.");
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
+    invalid("Expected job revision must be a non-negative integer.");
+  }
+  const changes = Object.fromEntries(Object.entries(input.payload ?? {}).filter(([, value]) => value !== undefined));
+  if (!Object.keys(changes).length && input.scheduledFor === undefined && input.maxAttempts === undefined) {
+    invalid("Nothing to change: pass a payload field, scheduledFor or maxAttempts.");
+  }
+  const maxAttempts = input.maxAttempts ?? job.maxAttempts;
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10) {
+    invalid("Max attempts must be between 1 and 10.");
+  }
+  if (maxAttempts <= job.attempts) invalid(`Max attempts must be more than the ${job.attempts} attempts already made.`);
+  let availableAt = job.availableAt;
+  if (input.scheduledFor === null) availableAt = now.toISOString();
+  else if (input.scheduledFor !== undefined) {
+    const time = Date.parse(input.scheduledFor.trim());
+    if (Number.isNaN(time)) invalid("Invalid scheduled date.");
+    availableAt = new Date(time).toISOString();
+  }
+  return {
+    id,
+    expectedRevision,
+    provider: job.provider,
+    payload: normalizeSocialPayload(job.provider, { ...job.payload, ...changes }),
+    availableAt,
+    maxAttempts,
   };
 }
 

@@ -22,6 +22,9 @@ export const unusedNewsletter: NewsletterRepository = {
   listSubscriptions: async () => {
     throw new Error("The newsletter adapter is not part of this test");
   },
+  findSubscription: async () => {
+    throw new Error("The newsletter adapter is not part of this test");
+  },
   updateSubscriptionStatus: async () => {
     throw new Error("The newsletter adapter is not part of this test");
   },

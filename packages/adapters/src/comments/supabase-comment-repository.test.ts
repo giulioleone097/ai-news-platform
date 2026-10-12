@@ -106,3 +106,74 @@ describe("SupabaseCommentRepository guest edits", () => {
     }));
   });
 });
+
+describe("SupabaseCommentRepository moderation reads and batches", () => {
+  const row = {
+    id: parentId,
+    article_id: articleId,
+    locale: "en",
+    parent_id: null,
+    body: "Awaiting review.",
+    author_display_name: "Ada",
+    author_kind: "guest",
+    status: "pending",
+    created_at: "2026-08-10T09:00:00.000Z",
+    updated_at: "2026-08-10T09:00:00.000Z",
+    edited_at: null,
+  };
+
+  function clientWith(comment: unknown, openReports: number) {
+    const comments = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: comment, error: null }) };
+    const reports = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis() };
+    reports.eq.mockReturnValueOnce(reports).mockResolvedValueOnce({ count: openReports, error: null });
+    const from = vi.fn((table: string) => (table === "comments" ? comments : reports));
+    return { client: { from } as unknown as SupabaseClient, comments, reports };
+  }
+
+  it("reads one comment with the number of its open reports", async () => {
+    const { client, comments, reports } = clientWith(row, 2);
+    expect(await new SupabaseCommentRepository(client, client).getModeration(parentId)).toEqual({
+      id: parentId, articleId, locale: "en", parentId: null, body: "Awaiting review.", displayName: "Ada", authorKind: "guest",
+      status: "pending", reportCount: 2, createdAt: row.created_at, updatedAt: row.updated_at, editedAt: null,
+    });
+    expect(comments.eq).toHaveBeenCalledWith("id", parentId);
+    expect(reports.select).toHaveBeenCalledWith("id", { count: "exact", head: true });
+    expect(reports.eq).toHaveBeenNthCalledWith(1, "comment_id", parentId);
+    expect(reports.eq).toHaveBeenNthCalledWith(2, "status", "open");
+  });
+
+  it("returns null for an unknown id without asking for reports", async () => {
+    const { client, reports } = clientWith(null, 0);
+    expect(await new SupabaseCommentRepository(client, client).getModeration(parentId)).toBeNull();
+    expect(reports.select).not.toHaveBeenCalled();
+  });
+
+  it("moderates several comments with one RPC, so Postgres does it in one transaction", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+    const client = { rpc } as unknown as SupabaseClient;
+    const moderator = crypto.randomUUID();
+    await new SupabaseCommentRepository(client, client).moderateMany({
+      ids: [articleId, parentId],
+      status: "spam",
+      reason: "Advertising.",
+      actor: { kind: "user", userId: moderator, label: null },
+    });
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("moderate_comments_batch", {
+      p_comment_ids: [articleId, parentId],
+      p_status: "spam",
+      p_reason: "Advertising.",
+      p_actor_kind: "user",
+      p_actor_user_id: moderator,
+      p_actor_label: null,
+    });
+  });
+
+  it("raises the repository error when the batch function refuses", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: "comment_not_found", code: "P0002" } });
+    const client = { rpc } as unknown as SupabaseClient;
+    await expect(new SupabaseCommentRepository(client, client).moderateMany({
+      ids: [parentId], status: "spam", reason: "Advertising.", actor: { kind: "system", userId: null, label: "mcp-admin" },
+    })).rejects.toBeInstanceOf(Error);
+  });
+});

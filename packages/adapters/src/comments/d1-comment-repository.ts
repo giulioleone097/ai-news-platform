@@ -17,6 +17,7 @@ import {
   type CreateCommentInput,
   type CreatedComment,
   type ModerateCommentInput,
+  type ModerateCommentsInput,
   type ModerationAuditEvent,
   type ModerationComment,
   type ModerationReport,
@@ -210,6 +211,48 @@ function cursorFilter(cursor: { createdAt: string; id: string } | null) {
   return cursor
     ? { sql: " AND (c.created_at, c.id) < (?, ?)", binds: [new Date(cursor.createdAt).toISOString(), cursor.id] }
     : { sql: "", binds: [] as string[] };
+}
+
+const moderationSelect = `SELECT c.id, c.article_id, c.locale, c.parent_id, c.body, c.author_display_name, c.author_kind,
+           c.status, c.created_at, c.updated_at, c.edited_at,
+           (SELECT count(*) FROM comment_reports r WHERE r.comment_id = c.id AND r.status = 'open') AS report_count
+         FROM comments c`;
+
+type ModerationRow = CommentRow & { report_count: number };
+
+const toModerationComment = (row: ModerationRow): ModerationComment => ({
+  id: row.id,
+  articleId: row.article_id,
+  locale: row.locale,
+  parentId: row.parent_id,
+  body: row.body,
+  displayName: row.author_display_name,
+  authorKind: row.author_kind,
+  status: row.status,
+  reportCount: row.report_count,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  editedAt: row.edited_at,
+});
+
+/** SQL: the comment aliased `alias` is a top-level comment or a reply under an approved one. */
+const parentApproved = (alias: string) => `(${alias}.parent_id IS NULL OR EXISTS (
+  SELECT 1 FROM comments parent WHERE parent.id = ${alias}.parent_id AND parent.status = 'approved'))`;
+
+/** The checks every moderation makes on its status, reason and actor; returns the trimmed reason. */
+function assertModeration(input: Pick<ModerateCommentInput, "status" | "reason" | "actor">) {
+  const reason = input.reason.trim();
+  if (!moderationTargetStatuses.includes(input.status) || [...reason].length < 2 || [...reason].length > 500) {
+    throw new CommentOperationError("invalid_request", "Invalid comment request.", 400);
+  }
+  // The delivery layer decides who is a moderator (as it does for the service-role Supabase client);
+  // here only the shape of the actor is checked.
+  const { actor } = input;
+  const actorValid = actor.kind === "user"
+    ? Boolean(actor.userId)
+    : actor.kind === "system" && actor.userId === null && systemLabelPattern.test(actor.label.trim());
+  if (!actorValid) throw notAllowed();
+  return reason;
 }
 
 /** The bucket key shared by every caller of the site-wide limits (the column holds a SHA-256 hex digest). */
@@ -624,10 +667,7 @@ export class D1CommentRepository implements CommentRepository {
     return guarded(async () => {
       const cursor = cursorFilter(query.cursor);
       const { results } = await this.statement(
-        `SELECT c.id, c.article_id, c.locale, c.parent_id, c.body, c.author_display_name, c.author_kind, c.status,
-           c.created_at, c.updated_at, c.edited_at,
-           (SELECT count(*) FROM comment_reports r WHERE r.comment_id = c.id AND r.status = 'open') AS report_count
-         FROM comments c
+        `${moderationSelect}
          WHERE (? IS NULL OR c.status = ?) AND (? IS NULL OR c.locale = ?) ${cursor.sql}
          ORDER BY c.created_at DESC, c.id DESC LIMIT ?`,
         query.status,
@@ -636,21 +676,15 @@ export class D1CommentRepository implements CommentRepository {
         query.locale,
         ...cursor.binds,
         query.limit + 1,
-      ).all<CommentRow & { report_count: number }>();
-      return pageOf(results, query.limit, (row): ModerationComment => ({
-        id: row.id,
-        articleId: row.article_id,
-        locale: row.locale,
-        parentId: row.parent_id,
-        body: row.body,
-        displayName: row.author_display_name,
-        authorKind: row.author_kind,
-        status: row.status,
-        reportCount: row.report_count,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        editedAt: row.edited_at,
-      }));
+      ).all<ModerationRow>();
+      return pageOf(results, query.limit, toModerationComment);
+    });
+  }
+
+  async getModeration(id: string) {
+    return guarded(async () => {
+      const row = await this.statement(`${moderationSelect} WHERE c.id = ?`, id).first<ModerationRow>();
+      return row ? toModerationComment(row) : null;
     });
   }
 
@@ -687,24 +721,12 @@ export class D1CommentRepository implements CommentRepository {
   }
 
   async moderate(input: ModerateCommentInput) {
-    const reason = input.reason.trim();
-    if (!moderationTargetStatuses.includes(input.status) || [...reason].length < 2 || [...reason].length > 500) {
-      throw new CommentOperationError("invalid_request", "Invalid comment request.", 400);
-    }
-    // The delivery layer decides who is a moderator (as it does for the service-role Supabase client);
-    // here only the shape of the actor is checked.
-    const { actor } = input;
-    const actorValid = actor.kind === "user"
-      ? Boolean(actor.userId)
-      : actor.kind === "system" && actor.userId === null && systemLabelPattern.test(actor.label.trim());
-    if (!actorValid) throw notAllowed();
+    const reason = assertModeration(input);
 
     await guarded(async () => {
       const target = await this.commentById(input.id);
       if (!target) throw notFound();
       if (target.status === "deleted") throw notAllowed();
-      const parentApproved = `(c.parent_id IS NULL OR EXISTS (
-        SELECT 1 FROM comments parent WHERE parent.id = c.parent_id AND parent.status = 'approved'))`;
       if (input.status === "approved" && target.parent_id !== null) {
         const parent = await this.commentById(target.parent_id);
         if (parent?.status !== "approved") throw notAllowed();
@@ -712,10 +734,6 @@ export class D1CommentRepository implements CommentRepository {
 
       const now = new Date().toISOString();
       const deleting = input.status === "deleted";
-      const applied = new Condition(
-        "EXISTS (SELECT 1 FROM comments WHERE id = ? AND updated_at = ? AND status = ?)",
-        [target.id, now, input.status],
-      );
       const statements = [
         this.statement(
           `UPDATE comments AS c SET status = ?,
@@ -723,7 +741,7 @@ export class D1CommentRepository implements CommentRepository {
              author_display_name = CASE WHEN ? THEN 'Deleted user' ELSE author_display_name END,
              deleted_at = CASE WHEN ? THEN ? ELSE NULL END,
              updated_at = ?
-           WHERE c.id = ? AND c.status = ? AND (? <> 'approved' OR ${parentApproved})`,
+           WHERE c.id = ? AND c.status = ? AND (? <> 'approved' OR ${parentApproved("c")})`,
           input.status,
           deleting ? 1 : 0,
           deleting ? 1 : 0,
@@ -734,31 +752,96 @@ export class D1CommentRepository implements CommentRepository {
           target.status,
           input.status,
         ),
-        this.audit(
-          now,
-          target.id,
-          { approved: "approved", rejected: "rejected", spam: "marked_spam", deleted: "moderator_deleted" }[input.status],
-          { kind: actor.kind === "user" ? "moderator" : "system", userId: actor.userId, label: actor.label },
-          target.status,
-          input.status,
-          reason,
-          applied,
-        ),
-        this.statement(
-          `UPDATE comment_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
-           WHERE comment_id = ? AND status = 'open' AND ${applied.sql}`,
-          now,
-          actor.userId,
-          target.id,
-          ...applied.binds,
-        ),
+        ...this.moderationRecords(target, input, reason, now),
       ];
-      if (target.status !== input.status) statements.push(this.moderationNotification(target, input.status, now, applied));
-      if (target.parent_id !== null && input.status === "approved" && target.status !== "approved") {
-        statements.push(this.replyNotification(target, now, applied));
-      }
       if (!(await this.didApply(statements, 0))) throw notAllowed();
     });
+  }
+
+  /**
+   * One status for every comment, in one `batch()` that holds a single UPDATE. Its WHERE clause only matches
+   * when all the comments can take the status (a count taken before the update runs), so a comment that was
+   * deleted or whose parent is not approved since the service checked leaves every comment untouched.
+   */
+  async moderateMany(input: ModerateCommentsInput) {
+    const reason = assertModeration(input);
+
+    await guarded(async () => {
+      const { results: targets } = await this.statement(
+        `SELECT * FROM comments WHERE id IN (${input.ids.map(() => "?").join(", ")})`,
+        ...input.ids,
+      ).all<CommentRow>();
+      if (targets.length !== input.ids.length) throw notFound();
+      const byId = new Map(targets.map((target) => [target.id, target]));
+
+      const now = new Date().toISOString();
+      const deleting = input.status === "deleted" ? 1 : 0;
+      const idList = input.ids.map(() => "?").join(", ");
+      const eligible = (alias: string) =>
+        `${alias}.status <> 'deleted' AND (? <> 'approved' OR ${parentApproved(alias)})`;
+      const statements = [
+        this.statement(
+          `UPDATE comments AS c SET status = ?,
+             body = CASE WHEN ? THEN '[deleted]' ELSE body END,
+             author_display_name = CASE WHEN ? THEN 'Deleted user' ELSE author_display_name END,
+             deleted_at = CASE WHEN ? THEN ? ELSE NULL END,
+             updated_at = ?
+           WHERE c.id IN (${idList}) AND ${eligible("c")}
+             AND (SELECT count(*) FROM comments t WHERE t.id IN (${idList}) AND ${eligible("t")}) = ?`,
+          input.status,
+          deleting,
+          deleting,
+          deleting,
+          now,
+          now,
+          ...input.ids,
+          input.status,
+          ...input.ids,
+          input.status,
+          input.ids.length,
+        ),
+        ...input.ids.flatMap((id) => this.moderationRecords(byId.get(id)!, input, reason, now)),
+      ];
+      if (!(await this.didApply(statements, 0))) throw notAllowed();
+    });
+  }
+
+  /**
+   * What follows the status change of one comment: its audit row, the resolved reports and the notifications.
+   * Every statement carries the condition that the comment now holds this status as of `now`, so it is a
+   * no-op when the UPDATE did not apply.
+   */
+  private moderationRecords(target: CommentRow, input: Pick<ModerateCommentInput, "status" | "actor">, reason: string, now: string) {
+    const { actor } = input;
+    const applied = new Condition(
+      "EXISTS (SELECT 1 FROM comments WHERE id = ? AND updated_at = ? AND status = ?)",
+      [target.id, now, input.status],
+    );
+    const statements = [
+      this.audit(
+        now,
+        target.id,
+        { approved: "approved", rejected: "rejected", spam: "marked_spam", deleted: "moderator_deleted" }[input.status],
+        { kind: actor.kind === "user" ? "moderator" : "system", userId: actor.userId, label: actor.label },
+        target.status,
+        input.status,
+        reason,
+        applied,
+      ),
+      this.statement(
+        `UPDATE comment_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
+         WHERE comment_id = ? AND status = 'open' AND ${applied.sql}`,
+        now,
+        actor.userId,
+        target.id,
+        ...applied.binds,
+      ),
+    ];
+    if (target.status !== input.status) statements.push(this.moderationNotification(target, input.status, now, applied));
+    if (target.parent_id !== null && input.status === "approved" && target.status !== "approved") {
+      statements.push(this.replyNotification(target, now, applied));
+    }
+    return statements;
   }
 
   /** Tells the verified, still subscribed author that a moderator changed the status of the comment. */

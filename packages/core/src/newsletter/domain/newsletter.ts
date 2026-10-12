@@ -56,6 +56,9 @@ export const newsletterCampaignInputSchema = z.object({
 
 export type NewsletterCampaignInput = z.infer<typeof newsletterCampaignInputSchema>;
 
+/** The fields of a draft that an edit may change; the ones left out keep their stored value. */
+export type NewsletterCampaignPatch = Partial<Omit<z.input<typeof newsletterCampaignInputSchema>, "id">>;
+
 export type NewsletterCampaign = {
   id: string;
   locale: Locale;

@@ -17,6 +17,7 @@ import type {
   MediaUpload,
   NewsletterPage,
   NewsletterQuery,
+  NewsletterSubscription,
 } from "./editorial-operations";
 
 export interface ArticleRepository {
@@ -46,6 +47,8 @@ export interface NewsletterRepository {
     locale: Locale,
   ): Promise<void>;
   listSubscriptions(query: NewsletterQuery): Promise<NewsletterPage>;
+  /** One subscriber by id, or null when no subscriber has it. */
+  findSubscription(id: string): Promise<NewsletterSubscription | null>;
   /** Editors may only unsubscribe; reactivation goes through a fresh double opt-in. */
   updateSubscriptionStatus(id: string, status: "unsubscribed"): Promise<void>;
 }
@@ -58,6 +61,8 @@ export interface DistributionRepository {
 export interface MediaRepository {
   readonly writable: boolean;
   listAssets(): Promise<MediaAsset[]>;
+  /** One asset by its path, or null when nothing is stored there. */
+  findAsset(path: string): Promise<MediaAsset | null>;
   isAssetReferenced(path: string): Promise<boolean>;
   uploadAsset(input: MediaUpload): Promise<MediaAsset>;
   deleteAsset(path: string): Promise<void>;

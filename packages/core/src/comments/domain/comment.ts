@@ -147,6 +147,14 @@ export type ModerateCommentInput = {
   actor: ModerationActor;
 };
 
+/** One status and one audit reason for several comments, applied together or not at all. */
+export type ModerateCommentsInput = {
+  ids: string[];
+  status: ModerationTargetStatus;
+  reason: string;
+  actor: ModerationActor;
+};
+
 export type ModerationComment = {
   id: string;
   articleId: string;

@@ -231,6 +231,17 @@ export class SupabaseNewsletterDeliveryRepository implements NewsletterDeliveryR
     return mapCampaign(campaignRowSchema.parse(data));
   }
 
+  async deleteDraft(id: string) {
+    const { data, error } = await this.client
+      .from("newsletter_campaigns")
+      .delete()
+      .eq("id", id)
+      .eq("status", "draft")
+      .select("id");
+    throwIfError(error, "Unable to delete newsletter draft");
+    return (data?.length ?? 0) > 0;
+  }
+
   async queueCampaign(id: string, scheduledFor: string | null) {
     const { data, error } = await this.client
       .rpc("queue_newsletter_campaign", {

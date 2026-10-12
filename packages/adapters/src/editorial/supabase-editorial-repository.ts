@@ -192,6 +192,21 @@ const newsletterSubscriptionSchema = z.object({
 
 const mediaBucket = "editorial-media";
 
+const subscriptionColumns = "id, email, source, locale, status, consented_at, unsubscribed_at, created_at";
+
+function mapSubscription(item: z.output<typeof newsletterSubscriptionSchema>) {
+  return {
+    id: item.id,
+    email: item.email,
+    source: item.source,
+    locale: item.locale,
+    status: item.status,
+    consentedAt: item.consented_at,
+    unsubscribedAt: item.unsubscribed_at,
+    createdAt: item.created_at,
+  };
+}
+
 function relationOne<T>(value: T | T[]) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -815,10 +830,7 @@ export class SupabaseEditorialRepository
     const offset = Math.max(input.offset ?? 0, 0);
     let query = this.client
       .from("newsletter_subscriptions")
-      .select(
-        "id, email, source, locale, status, consented_at, unsubscribed_at, created_at",
-        { count: "exact" },
-      )
+      .select(subscriptionColumns, { count: "exact" })
       .eq("locale", input.locale)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false });
@@ -827,16 +839,7 @@ export class SupabaseEditorialRepository
     const { count, data, error } = await query.range(offset, offset + limit - 1);
     throwIfError(error, "Unable to list newsletter subscriptions");
     if (count === null) throw new Error("Unable to count newsletter subscriptions");
-    const items = z.array(newsletterSubscriptionSchema).parse(data ?? []).map((item) => ({
-      id: item.id,
-      email: item.email,
-      source: item.source,
-      locale: item.locale,
-      status: item.status,
-      consentedAt: item.consented_at,
-      unsubscribedAt: item.unsubscribed_at,
-      createdAt: item.created_at,
-    }));
+    const items = z.array(newsletterSubscriptionSchema).parse(data ?? []).map(mapSubscription);
     return {
       items,
       total: count,
@@ -844,6 +847,16 @@ export class SupabaseEditorialRepository
       limit,
       hasMore: offset + items.length < count,
     };
+  }
+
+  async findSubscription(id: string) {
+    const { data, error } = await this.client
+      .from("newsletter_subscriptions")
+      .select(subscriptionColumns)
+      .eq("id", id)
+      .maybeSingle();
+    throwIfError(error, "Unable to load newsletter subscription");
+    return data ? mapSubscription(newsletterSubscriptionSchema.parse(data)) : null;
   }
 
   async updateSubscriptionStatus(id: string, status: NewsletterStatus) {
@@ -900,18 +913,25 @@ export class SupabaseEditorialRepository
       .from(mediaBucket)
       .list("", { limit: 100, sortBy: { column: "created_at", order: "desc" } });
     throwIfError(error, "Unable to list media assets");
-    return (data ?? [])
-      .filter((item) => item.id && item.name)
-      .map((item) => ({
-        path: item.name,
-        url: this.client.storage.from(mediaBucket).getPublicUrl(item.name).data.publicUrl,
-        name: typeof item.metadata?.originalName === "string"
-          ? item.metadata.originalName
-          : item.name,
-        mimeType: typeof item.metadata?.mimetype === "string" ? item.metadata.mimetype : "application/octet-stream",
-        size: typeof item.metadata?.size === "number" ? item.metadata.size : 0,
-        createdAt: item.created_at ?? new Date(0).toISOString(),
-      }));
+    return (data ?? []).filter((item) => item.id && item.name).map((item) => this.mapAsset(item));
+  }
+
+  async findAsset(path: string) {
+    const { data, error } = await this.client.storage.from(mediaBucket).list("", { search: path });
+    throwIfError(error, "Unable to load media asset");
+    const item = (data ?? []).find((candidate) => candidate.id && candidate.name === path);
+    return item ? this.mapAsset(item) : null;
+  }
+
+  private mapAsset(item: { name: string; created_at?: string | null; metadata?: Record<string, unknown> | null }) {
+    return {
+      path: item.name,
+      url: this.client.storage.from(mediaBucket).getPublicUrl(item.name).data.publicUrl,
+      name: typeof item.metadata?.originalName === "string" ? item.metadata.originalName : item.name,
+      mimeType: typeof item.metadata?.mimetype === "string" ? item.metadata.mimetype : "application/octet-stream",
+      size: typeof item.metadata?.size === "number" ? item.metadata.size : 0,
+      createdAt: item.created_at ?? new Date(0).toISOString(),
+    };
   }
 
   async isAssetReferenced(path: string) {

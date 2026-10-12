@@ -76,6 +76,43 @@ describe("SupabaseContactMessageRepository", () => {
   });
 });
 
+describe("SupabaseContactMessageRepository batches", () => {
+  const ids = [message.id, "7f1c2c1e-6a2b-4f7e-9d3e-1a2b3c4d5e6f"];
+
+  it("reads the messages among the ids, changes their status and deletes them in one statement each", async () => {
+    const row = { id: message.id, locale: "en", name: "Ada Lovelace", email: "ada@example.com", subject: "A correction", body: "The article names the wrong model.", status: "new", created_at: "2026-10-11T10:00:00.000Z" };
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      delete: vi.fn().mockReturnThis(),
+      in: vi.fn().mockResolvedValue({ data: [row], error: null }),
+    };
+    const repository = new SupabaseContactMessageRepository({ from: vi.fn().mockReturnValue(query) } as unknown as SupabaseClient);
+
+    expect(await repository.findMany(ids)).toEqual([message]);
+    expect(query.in).toHaveBeenLastCalledWith("id", ids);
+    await repository.setStatusMany(ids, "archived");
+    expect(query.update).toHaveBeenCalledWith({ status: "archived" });
+    expect(query.in).toHaveBeenLastCalledWith("id", ids);
+    await repository.deleteMany(ids);
+    expect(query.delete).toHaveBeenCalledTimes(1);
+    expect(query.in).toHaveBeenLastCalledWith("id", ids);
+  });
+
+  it("fails loudly when a statement errors", async () => {
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      delete: vi.fn().mockReturnThis(),
+      in: vi.fn().mockResolvedValue({ data: null, error: { message: "permission denied" } }),
+    };
+    const repository = new SupabaseContactMessageRepository({ from: vi.fn().mockReturnValue(query) } as unknown as SupabaseClient);
+    await expect(repository.findMany(ids)).rejects.toThrow("permission denied");
+    await expect(repository.setStatusMany(ids, "handled")).rejects.toThrow("permission denied");
+    await expect(repository.deleteMany(ids)).rejects.toThrow("permission denied");
+  });
+});
+
 describe("contact_messages migration", () => {
   const migration = readFileSync(join(process.cwd(), "supabase/migrations/20261015100000_contact_messages.sql"), "utf8");
 

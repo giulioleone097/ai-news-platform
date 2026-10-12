@@ -87,15 +87,32 @@ export class SupabaseContactMessageRepository implements ContactMessageRepositor
     return count ?? 0;
   }
 
+  async findMany(ids: string[]) {
+    const { data, error } = await this.client.from("contact_messages").select(columns).in("id", ids);
+    throwIfError(error, "Unable to load contact messages");
+    return z.array(rowSchema).parse(data ?? []).map(toMessage);
+  }
+
   async setStatus(id: string, status: ContactMessageStatus) {
     const { data, error } = await this.client.from("contact_messages").update({ status }).eq("id", id).select("id");
     throwIfError(error, "Unable to update the contact message");
     return (data?.length ?? 0) > 0;
   }
 
+  /** One UPDATE statement, so every message changes or none does. */
+  async setStatusMany(ids: string[], status: ContactMessageStatus) {
+    const { error } = await this.client.from("contact_messages").update({ status }).in("id", ids);
+    throwIfError(error, "Unable to update the contact messages");
+  }
+
   async delete(id: string) {
     const { data, error } = await this.client.from("contact_messages").delete().eq("id", id).select("id");
     throwIfError(error, "Unable to delete the contact message");
     return (data?.length ?? 0) > 0;
+  }
+
+  async deleteMany(ids: string[]) {
+    const { error } = await this.client.from("contact_messages").delete().in("id", ids);
+    throwIfError(error, "Unable to delete the contact messages");
   }
 }
