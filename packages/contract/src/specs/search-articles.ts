@@ -10,7 +10,10 @@ import {
   newsroomAppUri,
 } from "./shared";
 
-/** Shared by the MCP endpoint and the open page, so it lives apart from the server-only specs. */
+/**
+ * The MCP tool. The open page has a tool of the same name (`searchArticlesOnPage` in `page.ts`) with the same
+ * input and text, but it answers from the site's feed API and shows the results page, so it declares its own output.
+ */
 export const searchArticles = defineSpec({
   name: "search_articles",
   title: "Search published AI news",
@@ -26,6 +29,6 @@ export const searchArticles = defineSpec({
   output: z.object({ items: z.array(articleSummaryOutputSchema) }),
   annotations: readOnly,
   scopes: [],
-  surfaces: ["mcp", "page"],
+  surfaces: ["mcp"],
   ui: newsroomAppUri,
 });

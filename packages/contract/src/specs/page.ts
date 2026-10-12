@@ -20,6 +20,25 @@ const storyRef = z.object({
   entity: z.object({ slug: z.string(), name: z.string() }).nullable(),
 });
 
+/** The page's `search_articles`: the MCP tool's name, text and input, but a result of the open page. */
+export const searchArticlesOnPage = defineSpec({
+  name: searchArticles.name,
+  title: searchArticles.title,
+  description: searchArticles.description,
+  input: searchArticles.input,
+  output: z.object({
+    query: z.string().describe("The text searched for, as the search page shows it."),
+    path: z.string(),
+    count: z.number().int().nonnegative(),
+    hasMore: z.boolean(),
+    items: z.array(storyRef),
+    notShownOnPage: z.array(z.enum(["entity", "claimStatus"])).optional(),
+  }),
+  annotations: searchArticles.annotations,
+  scopes: [],
+  surfaces: ["page"],
+});
+
 export const filterFeed = defineSpec({
   name: "filter_feed",
   title: "Filter the feed",
@@ -89,4 +108,4 @@ export const saveArticle = defineSpec({
 });
 
 /** The reader tools of the page, in the order the site registers them. */
-export const pageSpecs = [searchArticles, filterFeed, openArticle, readOpenArticle, saveArticle] as const;
+export const pageSpecs = [searchArticlesOnPage, filterFeed, openArticle, readOpenArticle, saveArticle] as const;

@@ -8,8 +8,7 @@ import { entitySpecs } from "./specs/entities";
 import { mediaSpecs } from "./specs/media";
 import { newsletterSpecs } from "./specs/newsletter";
 import { newsroomSpecs } from "./specs/newsroom";
-import { filterFeed, openArticle, pageSpecs, readOpenArticle, saveArticle } from "./specs/page";
-import { searchArticles } from "./specs/search-articles";
+import { filterFeed, openArticle, pageSpecs, readOpenArticle, saveArticle, searchArticlesOnPage } from "./specs/page";
 import { socialSpecs } from "./specs/social";
 import { supportSpecs } from "./specs/support";
 import { teamSpecs } from "./specs/team";
@@ -67,7 +66,7 @@ export const editorPageSpecs = [
 export const editorPageCapabilities: readonly PageCapability[] = editorPageSpecs.map(describe);
 
 const inputs = {
-  search_articles: searchArticles.input,
+  search_articles: searchArticlesOnPage.input,
   filter_feed: filterFeed.input,
   open_article: openArticle.input,
   read_open_article: readOpenArticle.input,

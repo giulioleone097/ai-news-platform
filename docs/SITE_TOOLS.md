@@ -18,7 +18,7 @@ Limits that the results state: the site has no feed for an entity and a status t
 
 ## Where they are defined
 
-- Name, title, description, input schema and hints: `packages/contract/src/specs/page.ts` and `search-articles.ts` (shared with the MCP endpoint), published as plain data by `@atlasnews/contract/page`. The web app writes no tool text and no schema.
+- Name, title, description, input schema, hints and the shape of the result: `packages/contract/src/specs/page.ts`, published as plain data by `@atlasnews/contract/page`. The page's `search_articles` takes its name, text and input from the MCP tool of the same name (`search-articles.ts`) and declares its own result. The web app writes no tool text and no schema.
 - Handlers: `apps/web/src/components/site/site-tools/`
   - `site-tools.tsx` is mounted in `app/[locale]/(site)/layout.tsx`. It renders nothing and loads nothing unless `document.modelContext.registerTool` exists.
   - `start.ts` loads on demand, together with `register.ts` (registers the catalogue's capabilities), `tools.ts` (the handlers) and `environment.ts` (router, DOM, bookmarks).

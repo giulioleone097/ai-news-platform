@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import * as z from "zod/v4";
 
 import { hasScopes, scopesForRole } from "./capability";
 import { capabilities, mcpCapabilities } from "./catalogue";
@@ -373,12 +374,17 @@ describe("@atlasnews/contract/page", () => {
     expect(JSON.parse(JSON.stringify(editorPageCapabilities))).toEqual(editorPageCapabilities);
   });
 
-  it("matches the MCP definition of the capability it shares", () => {
-    const shared = mcpCapabilities.find((capability) => capability.name === "search_articles")!;
+  it("gives the page search the MCP tool's name, text and input, with an output of its own", () => {
+    const mcp = mcpCapabilities.find((capability) => capability.name === "search_articles")!;
     const page = pageCapabilities.find((capability) => capability.name === "search_articles")!;
-    expect(shared.surfaces).toEqual(["mcp", "page"]);
-    expect(page.description).toBe(shared.description);
-    expect(page.annotations).toEqual(shared.annotations);
+    const onPage = pageSpecs.find((spec) => spec.name === "search_articles")!;
+    expect(mcp.surfaces).toEqual(["mcp"]);
+    expect(onPage.surfaces).toEqual(["page"]);
+    expect(page.title).toBe(mcp.title);
+    expect(page.description).toBe(mcp.description);
+    expect(page.annotations).toEqual(mcp.annotations);
+    expect(page.inputSchema).toEqual(z.toJSONSchema(mcp.input, { io: "input" }));
+    expect(onPage.output).not.toBe(mcp.output);
   });
 
   it("imports no handler, use case, adapter or Node API", () => {
