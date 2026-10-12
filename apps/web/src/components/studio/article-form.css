@@ -1,7 +1,7 @@
 /* The article form. One DOM order serves both layouts: title, publishing settings, body.
    Below 64rem the groups stack in that order and the settings panel dissolves into the grid, so
    Publishing sits under the title and the extras fold away at the end. From 64rem the panel is a
-   sticky column beside the content. */
+   sticky column beside the content: publishing settings, Save, the extras, then Delete. */
 .article-editor {
   display: grid;
   gap: 0;
@@ -204,13 +204,11 @@
     border-top: 0;
   }
 
-  /* Save stays at the foot of the panel while the rest of it scrolls. */
+  /* Save follows the settings it acts on, so it is in view when the page opens and when the panel sticks;
+     the extras and Delete scroll below it. */
   .article-editor__actions {
-    position: sticky;
-    bottom: -1rem;
     padding-block: 1rem;
     border-top: 1px solid var(--line);
-    background: var(--bg-sunken);
   }
 
   .article-editor__share > div {

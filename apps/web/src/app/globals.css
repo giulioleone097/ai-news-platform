@@ -229,8 +229,9 @@ h4 {
   background: var(--accent-hover);
 }
 
+/* A quiet button keeps a 3:1 outline, like a field, so it still reads as a control. */
 .button--quiet {
-  border-color: var(--line-strong);
+  border-color: var(--line-control);
 }
 
 .button--ghost {

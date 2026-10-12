@@ -283,6 +283,16 @@ export function ArticleForm({
             </label>
           </section>
 
+          <div className="studio-buttons article-editor__actions">
+            <StudioSubmitButton
+              idleLabel={saveLabel(messages, status, article?.status)}
+              pendingLabel={messages.studio.saving}
+            />
+            <Link className="button button--quiet" href={`/${locale}/studio/articles`}>
+              {messages.common.cancel}
+            </Link>
+          </div>
+
           <details
             className="article-editor__extras"
             open={wide || fieldHasError("distribution") || undefined}
@@ -315,16 +325,6 @@ export function ArticleForm({
               </fieldset>
             </div>
           </details>
-
-          <div className="studio-buttons article-editor__actions">
-            <StudioSubmitButton
-              idleLabel={saveLabel(messages, status, article?.status)}
-              pendingLabel={messages.studio.saving}
-            />
-            <Link className="button button--quiet" href={`/${locale}/studio/articles`}>
-              {messages.common.cancel}
-            </Link>
-          </div>
 
           {article ? (
             <div className="article-editor__danger">

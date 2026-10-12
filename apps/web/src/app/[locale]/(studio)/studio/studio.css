@@ -1512,11 +1512,6 @@ fieldset.studio-section > legend {
   gap: 0.75rem;
 }
 
-/* A secondary button sits beside fields and dialogs: its outline follows the fields' 3:1 control outline. */
-.studio-main .button--quiet {
-  border-color: var(--line-control);
-}
-
 /* A long label wraps instead of pushing the page wider at large text sizes. */
 .studio-main .button {
   white-space: normal;
