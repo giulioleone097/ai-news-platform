@@ -165,22 +165,19 @@ components:
   media-frame:
     backgroundColor: "{colors.paper-sunken}"
     rounded: "{rounded.md}"
-  cover-plate-marker:
-    backgroundColor: "{colors.marker}"
-    textColor: "{colors.ink}"
-  cover-plate-sky:
+  topic-tile-sky:
     backgroundColor: "{colors.plate-sky}"
     textColor: "{colors.ink}"
-  cover-plate-leaf:
+  topic-tile-leaf:
     backgroundColor: "{colors.plate-leaf}"
     textColor: "{colors.ink}"
-  cover-plate-peach:
+  topic-tile-peach:
     backgroundColor: "{colors.plate-peach}"
     textColor: "{colors.ink}"
-  cover-plate-lilac:
+  topic-tile-lilac:
     backgroundColor: "{colors.plate-lilac}"
     textColor: "{colors.ink}"
-  cover-plate-sand:
+  topic-tile-sand:
     backgroundColor: "{colors.plate-sand}"
     textColor: "{colors.ink}"
   control-outline:
@@ -217,19 +214,19 @@ components:
 
 ## Overview
 
-AtlasNews follows AI products from the first rumour to the release. A reader arrives to answer two questions fast: what changed today, and how much of it is real. The design is a news desk, not a magazine: a white page, black type, pictures where a story has one, and a single yellow marker that points at what matters.
+AtlasNews follows AI products from the first rumour to the release. A reader arrives to answer two questions fast: what changed today, and how much of it is real. The design is a news desk, not a magazine: a white page, black type, pictures only where a story has one, and a single yellow marker that points at what matters.
 
 The signature is the status meter. Every story carries four small bars that fill as its claim firms up: rumour, in test, rolling out, confirmed. It is the one device no other AI news site has, so it appears wherever a story does and nothing else competes with it.
 
-Studio, the editors' side, uses the same tokens at tool density: small sentence-case headings, tables, and forms. Most editing happens through AI assistants, so Studio stays lean.
+Studio, the editors' side, uses the same tokens at tool density: small sentence-case headings, tables, and forms. Most editing happens through AI assistants, so Studio stays lean, and it shows where an agent did the work.
 
 ## Colors
 
-Paper is white and ink is near-black. Sunken paper marks bands, inputs and quiet panels. Muted ink is for metadata only. Rules separate; they never decorate.
+Paper is white and ink is near-black. Sunken paper marks bands, quiet panels and the key points. Muted ink is for metadata only. Rules separate; they never decorate. Inputs, selects and other controls take the control gray for their border, which keeps 3:1 or more against paper (night-control on night), so a field reads as a field.
 
-Marker yellow is the only accent. It fills the primary button, the newsletter band, the selected navigation item, the wordmark stroke, and the highlight that appears under a headline on hover. Yellow is always a background behind ink; it is never a text color on a light page.
+Marker yellow is the only accent. It fills the primary button, the newsletter band, the selected navigation item or segment, the wordmark stroke, and the highlight that appears under a headline on hover. Yellow is always a background behind ink; it is never a text color on a light page and never a decoration: the bar beside the key points and beside a quote is ink.
 
-Four pale plate tints (sky, leaf, peach, lilac) plus the marker color fill cover plates: the typographic tile a story gets when it has no picture of its own. A category always gets the same tint, so the tint reads as the section. Plates keep their light tints and ink text in the dark theme, as pictures do.
+Five pale tints (sky, leaf, peach, lilac, sand) mark the topic tiles: a topic always gets the same tint, so the tint reads as the section. They keep their light tints and ink text in the dark theme. The same tints color code syntax in an article. They are never a story cover.
 
 Success, warning, danger and info are for operational states in Studio and for form feedback. The status meter uses ink, not color, so it reads the same in both themes and for every kind of vision.
 
@@ -239,19 +236,23 @@ The dark theme follows the system setting. It swaps paper for night, ink for nig
 
 Schibsted Grotesk, a typeface drawn for news interfaces, sets everything a reader scans: headlines, decks, navigation, metadata, controls and all of Studio. Newsreader sets the body of an article and nothing else.
 
-Headlines are heavy and tight, in sentence case. The largest size on the site is the article title at 3rem; there are no poster-sized headings. Labels and metadata are sentence case at normal tracking. Uppercase is not used for labels, eyebrows or headings.
+Headlines are heavy and tight, in sentence case. The largest size on the site is the article title at 3rem; there are no poster-sized headings. Labels and metadata are sentence case at normal tracking. Uppercase is not used for labels, eyebrows or headings. No text is smaller than 0.75rem.
 
-Reading measure for article body is 60 to 72 characters. Card and row titles wrap to at most three lines.
+Reading measure for article body is 60 to 72 characters: the body is 35rem wide. Card and row titles wrap to at most three lines. Times are in UTC, and a dated list says so once, beside its first day heading.
 
 ## Layout
 
-The public shell is 1280px wide with 20px gutters on phones and 40px on desktop. The header is one row: wordmark, the products readers follow, then search, language and Subscribe. On a phone the products scroll sideways on a second row.
+The public shell is 80rem wide (90rem on very wide screens) with gutters from 1.25rem on phones to 2.5rem on desktop. The header is one row: wordmark, Latest, the five products readers follow and Products, then search, language and Subscribe. The current section is marked. On a phone the sections scroll sideways on a second row that fades at its edge. Subscribe jumps to the newsletter band, which closes every reader page above the footer.
 
-The home page reads in three steps of decreasing size. First the lead story with its picture. Then three stories as cards with a picture or a cover plate. Then a band that explains the status meter, and every other story as a dated stream of compact rows beside the most covered products. The newsletter band and the topics close the page.
+The home page reads in three steps of decreasing size. First the lead story with its picture. Then three stories as cards: a card shows a picture only when the story has its own and the page has not shown it yet; otherwise it is a text card. Then a band that explains the status meter, and every other story as a dated stream of compact rows beside the most covered products, each with its latest status and date. The topics close the page.
 
-An article is one column: status, title, deck, byline row, picture, then the body beside a sticky table of contents on wide screens. Lists (products, search, a topic, a status) reuse the stream rows so every list on the site scans the same way.
+An article is one column with one right edge: the way back to its topic, status, product, title, deck, byline row, picture, the key points, the story so far when its product has two stories or more, then the body beside a sticky table of contents on wide screens, the sources and the products in the story. Only the picture may run wider than the column.
 
-Studio is a narrow navigation column and one working area. Lists are tables. Forms put the content on the left and the publishing settings in a side panel. Interactive targets are at least 44px on touch screens.
+Lists (Latest, search, a topic, a status, a product) reuse the stream rows so every list on the site scans the same way. A side column beside a list starts level with the first day of the list, not with the page title. The status legend appears on the home page and on the status pages, not beside every list.
+
+An unknown address shows a page in the reader's language with the header and the footer.
+
+Studio is a navigation column, grouped into Content, Audience, Publishing and Admin, beside one working area. The dashboard starts with what waits for an editor. Lists are tables with search, filters and pages. Forms put the content on the left and the publishing settings in a side panel; on a phone the publication settings sit below the excerpt and the save button names the action: save draft, publish or schedule. A feature that is not configured says what it does and who turns it on, with no empty table below. Controls in one row share one height, and interactive targets are at least 44px on touch screens.
 
 ## Elevation & Depth
 
@@ -263,15 +264,19 @@ Corners are small: 4px on chips and inputs, 8px on buttons, pictures and panels,
 
 ## Components
 
-Status chip: a glyph followed by the status word. The glyph is the four-bar meter: rumour fills one bar, in test two, rolling out three, confirmed four. Analysis is not a claim, so its glyph is three lines of text instead of bars. The word is always present.
+Status chip: a glyph followed by the status word. The glyph is the four-bar meter: rumour fills one bar, in test two, rolling out three, confirmed four. Analysis is not a claim, so its glyph is three lines of text instead of bars. The word is always present. The chip has three sizes: row, card, and lead (the home lead and the article head, where it links to the page of that status).
 
-Cover: the story's picture at 16:10. When a story has no picture of its own, or its picture already appears higher on the page, the cover is a plate: the section tint, the story's status glyph drawn large in the corner, and the product or section name set large.
+Cover: the story's own picture at 16:10. A story without one has no cover: its card is text only, with the same meta line, headline and deck.
 
-Story row: status chip, product or section, time, headline. The whole row is one link. Story card: cover, the same meta line, headline, deck.
+Story row: status chip, product or section, time, headline. The whole row is one link. Story card: the picture when there is one, the same meta line, headline, deck.
 
-Buttons: primary is marker yellow with ink text; secondary is an ink outline; destructive actions are danger red and always ask first. One primary button per view.
+Key points: up to three short lines on sunken paper with an ink bar, before the body.
 
-Newsletter band: marker yellow, one email field, one button.
+Buttons: primary is marker yellow with ink text; secondary is an ink outline; destructive actions are danger red and always ask first, in a dialog that names what goes away. One primary button per view.
+
+Newsletter band: marker yellow, one email field, one button. It is the last block of every reader page.
+
+Topic tile: the topic's tint, its icon and its name. The topics are the only tinted tiles on the site.
 
 Icons are Lucide at 1.75px stroke. Brand marks such as `in`, `X` and `WA` are set as text.
 
@@ -281,7 +286,8 @@ Icons are Lucide at 1.75px stroke. Brand marks such as `in`, `X` and `WA` are se
 - Do write labels and headings in sentence case.
 - Do let a list be a list: rows and rules, not a grid of boxes.
 - Do size everything in rem or em, so the page follows the reader's text size. Only a 1px hairline is in px.
-- Don't use yellow as text on a light page, or for anything that is not a highlight or a primary action.
+- Do give each concept one name in each language, the same on the site, in Studio and in the tools for agents.
+- Don't use yellow as text on a light page, or for anything that is not a highlight, a selection or a primary action.
 - Don't number sections or steps unless they are a real sequence.
 - Don't show a count that is zero; leave the count out.
 - Don't add a second accent color, a gradient, or a decorative illustration.
