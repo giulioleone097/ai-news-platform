@@ -1,6 +1,6 @@
 # Agent plugin
 
-AtlasNews ships one plugin, `plugins/atlasnews`, for ChatGPT and Codex (OpenAI Agent Plugins), Claude (Claude Code, claude.ai, Cowork) and GitHub Copilot CLI. It declares exactly one MCP server, the `POST /mcp` endpoint of `apps/mcp` ([MCP.md](MCP.md)): anonymous callers read, signed-in editors also get the newsroom tools.
+AtlasNews ships one plugin, `plugins/atlasnews`, for ChatGPT and Codex (OpenAI Agent Plugins), Claude (Claude Code, claude.ai, Cowork) and GitHub Copilot CLI. It declares exactly one MCP server, the `POST /mcp` endpoint ([MCP.md](MCP.md)), which is `apps/mcp` served at `/mcp` of the Site's Worker on ChatGPT Sites, or the standalone `apps/mcp` self-hosted: anonymous callers read, signed-in editors also get the newsroom tools.
 
 ## Files
 

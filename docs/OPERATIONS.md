@@ -30,7 +30,7 @@ pnpm supabase:start
 pnpm supabase:reset
 ```
 
-The CI build intentionally runs without Supabase credentials, proving the zero-config public demo remains viable while production Studio fails closed. A green CI build does not replace staging smoke checks against Supabase, and the ChatGPT Sites artifact has only been run locally in `workerd` ([SITES.md](SITES.md#not-verified-without-a-real-deployment)).
+The check build (`pnpm check`, and the GitHub Actions workflow with the same steps while it is enabled) intentionally runs without Supabase credentials, proving the zero-config public demo remains viable while production Studio fails closed. A green build does not replace staging smoke checks against Supabase, and the ChatGPT Sites artifact has only been run locally in `workerd` ([SITES.md](SITES.md#not-verified-without-a-real-deployment)).
 
 ## Performance budgets
 

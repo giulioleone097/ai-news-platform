@@ -29,7 +29,7 @@ The app calls only the server's public catalogue tools (`list_articles`, `search
 
 ## MCP Events
 
-- `server/discover` advertises `events: {}` only when `SUPABASE_SERVICE_ROLE_KEY` is configured; otherwise no event methods are registered.
+- `server/discover` advertises `events: {}` only when a server-side store exists (the D1 database on Sites, `SUPABASE_SERVICE_ROLE_KEY` self-hosted); otherwise no event methods are registered.
 - Subscribing makes this server call an address the caller chose, so it needs a signed-in caller (any account, not only an editor): an anonymous `events/subscribe` is answered `401` with a Bearer challenge, which is what starts account linking in ChatGPT. Listing the events stays anonymous. Identity is `sha256(canonical {principal: <subject>, url, name, arguments})`, so two accounts never share a subscription, and nothing below asks ChatGPT for more than the guide describes (a `whsec_` secret, a callback that answers the signed challenge, `ttlMs`, a refresh before `refreshBefore`). Abuse limits: HTTPS callbacks only, DNS resolved and checked against private, loopback, link-local, CGNAT, multicast and documentation ranges at connect time, no redirects, 5 s verification and 10 s delivery timeouts, 256 KiB bodies, TTL 1 h to 30 days (7 days default, never unlimited), and the caps in [Abuse limits](#abuse-limits).
 - Every new or re-pointed subscription must echo a signed, single-use verification challenge before activation; successful verification is cached for 24 h per callback URL and secret.
 - The `/internal/mcp-events` worker (`apps/jobs`) (every minute) enqueues articles published after each subscription's checkpoint (never backfills), then sends due deliveries with leases, stable `evt_` IDs, fresh signatures per attempt, exponential backoff, no retry on 410/413, and deactivation on 410.
@@ -59,15 +59,15 @@ A subscription belongs to the account that created it: `events/unsubscribe` carr
 
 ## Testing in ChatGPT
 
-1. Deploy over HTTPS and set `NEXT_PUBLIC_SITE_URL`; image URLs and the CSP `resourceDomains` derive from it (plus the Supabase origin when configured).
-2. Apply the migration, set `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET`, and confirm the per-minute cron runs.
-3. Connect `https://<mcp-host>/mcp` in ChatGPT developer mode, then rescan after every tool or event change.
+1. Deploy over HTTPS and set `NEXT_PUBLIC_SITE_URL`; image URLs and the CSP `resourceDomains` derive from it (plus the Supabase origin when configured). On ChatGPT Sites the Site's own address is used.
+2. On Sites there is no cron to set up: the Worker runs the due jobs after requests, and `CRON_SECRET` is only for an external schedule ([SITES.md](SITES.md)). Self-hosted, apply the Supabase migrations, set `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET`, and confirm the per-minute cron runs.
+3. Connect `https://<site>/mcp` (self-hosted: `https://<mcp-host>/mcp`) in ChatGPT developer mode, then rescan after every tool or event change.
 4. Check: AtlasNews appears in the sidebar; the panel opens in a chat; `@` finds articles on desktop; "Build my AI news briefing" shows the form; the plugin page lists `article.published`; a subscription in a Work chat receives a newly published article. ChatGPT desktop needs version 26.928.20710 or later for these APIs.
 
 ## Open decisions
 
 - **Plugin settings** need per-user persistence, which now has an identity (the signed-in Supabase user) but no table or tool. Not built.
-- **MCP on its own subdomain** (redesign decision): nothing here assumes the MCP shares the reader site's origin. Links, images, the icon, the `search` and `fetch` URLs and the CSP `resourceDomains` all derive from `NEXT_PUBLIC_SITE_URL`, so set it to the reader site on the MCP deployment. The sign-in challenge derives its `resource_metadata` URL from the MCP request's own origin.
+- **MCP path or subdomain** (decided: `/mcp` on the Site): on ChatGPT Sites the MCP server is the path `/mcp` of the Site's own origin, served by the same Worker. Nothing in the server needs that, though: a self-hosted `apps/mcp` may sit on its own host. Links, images, the icon, the `search` and `fetch` URLs and the CSP `resourceDomains` all derive from `NEXT_PUBLIC_SITE_URL`, so set it to the reader site on a separate MCP deployment. The sign-in challenge derives its `resource_metadata` URL from the MCP request's own origin.
 - **Brand** (decided: AtlasNews): the server, the plugin (`atlasnews`), the icon, the environment variables (`ATLASNEWS_*`) and the resource URIs (`ui://atlasnews/newsroom-v1.html`, `atlasnews://articles/...`) carry the name. Hosts store these identifiers, so they must not change after the plugin is first published.
 - **Portable manifest**: done. `plugins/atlasnews` has a root `plugin.json` with `extensions.com.openai` and a root `mcp.json`, plus the Claude files. The legacy `.codex-plugin/plugin.json` is gone: OpenAI documents it only as a fallback when the inline `extensions.com.openai` object is absent. [AGENT_PLUGIN.md](AGENT_PLUGIN.md) lists the rules and `pnpm plugin:check` enforces them.
 - **Publishing** to the ChatGPT directory needs what `pnpm plugin:release` lists (production URLs, listing pages, licence, demo recording), an OpenAI developer account with a verified publisher and global data residency, the domain-verification token served at `/.well-known/openai-apps-challenge` on the MCP origin (`apps/mcp` serves it from `ATLASNEWS_OPENAI_APPS_CHALLENGE`, see [HOSTING.md](HOSTING.md); the owner sets the token), and `_meta.ui.domain` on the UI resource (not set yet). The review sees the anonymous read tools plus tools that need an account, so it needs an editor test account.
