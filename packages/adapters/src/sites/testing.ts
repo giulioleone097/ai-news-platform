@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { Miniflare } from "miniflare";
+import { convertV4MiniflareOptions, Miniflare } from "miniflare";
 import type { D1Database, R2Bucket } from "./cloudflare";
 import { setSitesBindings } from "./bindings";
 
@@ -35,13 +35,13 @@ export interface SitesTestStore {
 
 /** A fresh, migrated D1 database plus an empty R2 bucket. `register` also makes them the Sites bindings. */
 export async function createSitesTestStore(options: { register?: boolean } = {}): Promise<SitesTestStore> {
-  const miniflare = new Miniflare({
+  const miniflare = new Miniflare(convertV4MiniflareOptions({
     modules: true,
     script: "export default { fetch() { return new Response(null, { status: 404 }); } };",
     compatibilityDate: "2026-05-15",
     d1Databases: ["DB"],
     r2Buckets: ["BUCKET"],
-  });
+  }));
   const database = (await miniflare.getD1Database("DB")) as unknown as D1Database;
   const media = (await miniflare.getR2Bucket("BUCKET")) as unknown as R2Bucket;
   for (const migration of readSitesMigrations()) {
