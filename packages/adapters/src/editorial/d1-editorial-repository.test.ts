@@ -504,7 +504,7 @@ describe("media", () => {
     await cover(asset.url);
     await expect(editorial.deleteAsset(asset.path)).rejects.toThrow("Unable to delete media assets");
     expect(await store.media.head(`editorial-media/${asset.path}`)).not.toBeNull();
-    await cover("/media/neura-agents-hero.webp");
+    await cover("/media/atlas-hero.webp");
     await editorial.deleteAsset(asset.path);
     expect(await store.media.head(`editorial-media/${asset.path}`)).toBeNull();
     await expect(editorial.deleteAsset(asset.path)).rejects.toThrow("Unable to delete media assets");

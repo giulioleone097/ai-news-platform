@@ -34,7 +34,7 @@ import { listEditorMediaAction, uploadEditorMediaAction } from "./actions";
 const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const eightMiB = 8_388_608;
 
-function pngFile(size = 64, name = "neura-hero.png") {
+function pngFile(size = 64, name = "atlas-hero.png") {
   const bytes = new Uint8Array(size);
   bytes.set(pngSignature);
   return new File([bytes], name, { type: "image/png" });
@@ -129,18 +129,18 @@ describe("Studio Markdown editor media actions", () => {
     });
 
     it("stores a valid image through the media command and returns the URL to insert", async () => {
-      await expect(uploadEditorMediaAction(uploadForm(pngFile(64, "neura-hero.png")))).resolves.toEqual({
+      await expect(uploadEditorMediaAction(uploadForm(pngFile(64, "atlas-hero.png")))).resolves.toEqual({
         ok: true,
         asset: {
-          path: "stored-neura-hero.png",
-          url: "/media-store/stored-neura-hero.png",
-          name: "neura-hero.png",
+          path: "stored-atlas-hero.png",
+          url: "/media-store/stored-atlas-hero.png",
+          name: "atlas-hero.png",
           mimeType: "image/png",
         },
       });
       expect(mocks.requireEditor).toHaveBeenCalledWith("it");
       expect(mocks.media.uploadAsset).toHaveBeenCalledWith(expect.objectContaining({
-        name: "neura-hero.png",
+        name: "atlas-hero.png",
         mimeType: "image/png",
       }));
       expect(mocks.revalidatePath).toHaveBeenCalledWith("/it/studio/media");

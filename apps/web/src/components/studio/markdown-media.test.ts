@@ -13,8 +13,8 @@ import {
 
 describe("Markdown image syntax", () => {
   it("writes the alt text and the URL the capability returned", () => {
-    expect(markdownImage("Neural agents", "/media/neura-agents-hero.webp")).toBe(
-      "![Neural agents](/media/neura-agents-hero.webp)",
+    expect(markdownImage("Neural agents", "/media/atlas-hero.webp")).toBe(
+      "![Neural agents](/media/atlas-hero.webp)",
     );
     expect(markdownImage("Chart", "/media-store/chart-2026.png")).toBe("![Chart](/media-store/chart-2026.png)");
     expect(markdownImage("Lab", "https://project.supabase.co/storage/v1/object/public/media/lab.jpg")).toBe(
@@ -29,7 +29,7 @@ describe("Markdown image syntax", () => {
   });
 
   it("derives a proposed alt text from the file name", () => {
-    expect(altTextFromFileName("neura_agents-hero.webp")).toBe("neura agents hero");
+    expect(altTextFromFileName("atlas_news-hero.webp")).toBe("atlas news hero");
     expect(altTextFromFileName("photo.final.PNG")).toBe("photo.final");
     expect(altTextFromFileName(".png")).toBe("");
   });

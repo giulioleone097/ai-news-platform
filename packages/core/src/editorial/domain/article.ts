@@ -62,7 +62,15 @@ export const articleLimits = {
 } as const;
 
 /** The cover of an article that has none of its own: the image bundled with the site (`apps/web/public/media`). */
-export const defaultCoverImage = "/media/neura-agents-hero.webp";
+export const defaultCoverImage = "/media/atlas-hero.webp";
+
+/** What the default cover was called before the rename from NEURA; stored articles may still hold it. */
+const retiredDefaultCoverImage = "/media/neura-agents-hero.webp";
+
+/** A stored cover as the site serves it today. */
+export function currentCoverImage(stored: string) {
+  return stored === retiredDefaultCoverImage ? defaultCoverImage : stored;
+}
 
 export const storyLimits = {
   keyPoints: { count: 3, min: 3, max: 140 },

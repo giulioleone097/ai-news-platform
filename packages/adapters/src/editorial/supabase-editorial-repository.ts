@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   articleStatuses,
   claimStatuses,
+  currentCoverImage,
   defaultCoverImage,
   estimateReadingMinutes,
   normalizeStoryFields,
@@ -226,7 +227,7 @@ function mapArticle(value: unknown): Article {
     title: row.title,
     excerpt: row.excerpt,
     content: row.content,
-    coverImage: row.cover_image,
+    coverImage: currentCoverImage(row.cover_image),
     coverAlt: row.cover_alt,
     status: row.status,
     featured: row.featured,

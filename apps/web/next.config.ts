@@ -64,6 +64,10 @@ const contentSecurityPolicyReportOnly = [
   "frame-src 'self' https://www.youtube-nocookie.com https://platform.twitter.com",
 ].join("; ");
 
+// The bundled hero image used to be called after NEURA. Pages and feeds that were published with the old addresses
+// (og:image, RSS media) still point at them, so every size redirects for good to the file of the same size.
+const retiredHeroSizes = ["", "-480", "-672", "-750", "-1200", "-1536"];
+
 const nextConfig: NextConfig = {
   transpilePackages: ["@atlasnews/core", "@atlasnews/contract", "@atlasnews/adapters"],
   poweredByHeader: false,
@@ -80,6 +84,13 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 31_536_000,
     qualities: [70, 75, 88],
     remotePatterns,
+  },
+  async redirects() {
+    return retiredHeroSizes.map((size) => ({
+      source: `/media/neura-agents-hero${size}.webp`,
+      destination: `/media/atlas-hero${size}.webp`,
+      permanent: true,
+    }));
   },
   // Both builds read this: `next build` and the vinext Sites build (measured on the artifact in workerd).
   // Do not give two rules the same header for one path: Next lets the later rule win, vinext the first.

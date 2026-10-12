@@ -524,6 +524,6 @@ describe("media", () => {
   it("says plainly that the demo store is read only", async () => {
     const commands = new MediaCommandService(new MemoryEditorialRepository());
     await expect(commands.uploadMany([{ name: "a.png", mimeType: "image/png", bytes: png }])).rejects.toThrow("Media uploads require media storage.");
-    await expect(commands.deleteOne("media/neura-agents-hero.webp")).rejects.toThrow("Media deletion requires media storage.");
+    await expect(commands.deleteOne("media/atlas-hero.webp")).rejects.toThrow("Media deletion requires media storage.");
   });
 });

@@ -30,20 +30,20 @@ export function EditorialCover({ src, alt, sizes, quality }: EditorialCoverProps
       <source
         media="(max-width: 40rem)"
         type="image/webp"
-        srcSet="/media/neura-agents-hero-672.webp"
+        srcSet="/media/atlas-hero-672.webp"
       />
       <source
         type="image/webp"
         srcSet={[
-          "/media/neura-agents-hero-480.webp 480w",
-          "/media/neura-agents-hero-750.webp 750w",
-          "/media/neura-agents-hero-1200.webp 1200w",
-          "/media/neura-agents-hero-1536.webp 1536w",
+          "/media/atlas-hero-480.webp 480w",
+          "/media/atlas-hero-750.webp 750w",
+          "/media/atlas-hero-1200.webp 1200w",
+          "/media/atlas-hero-1536.webp 1536w",
         ].join(", ")}
         sizes={sizes}
       />
       <img
-        src="/media/neura-agents-hero-750.webp"
+        src="/media/atlas-hero-750.webp"
         alt={alt}
         width={1536}
         height={1024}

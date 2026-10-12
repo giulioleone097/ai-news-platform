@@ -1,4 +1,5 @@
 import {
+  currentCoverImage,
   defaultCoverImage,
   estimateReadingMinutes,
   normalizeStoryFields,
@@ -190,7 +191,7 @@ function mapArticle(row: ArticleRow): Article {
     title: row.title,
     excerpt: row.excerpt,
     content: row.content,
-    coverImage: row.cover_image,
+    coverImage: currentCoverImage(row.cover_image),
     coverAlt: row.cover_alt,
     status: row.status,
     featured: row.featured === 1,
