@@ -1,15 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { CommentRepository } from "@atlasnews/core/comments/application/comment-repository";
 import { CommentOperationError } from "@atlasnews/core/comments/application/errors";
 import type { CommentActor, ModerationActor } from "@atlasnews/core/comments/domain/comment";
 import { decodeAuditCursor, decodeCommentCursor } from "@atlasnews/core/comments/domain/cursor";
 import type { D1Database } from "../sites/cloudflare";
 import { createSitesTestStore, type SitesTestStore } from "../sites/testing";
-import { D1CommentRepository } from "./d1-comment-repository";
+import { createD1CommentRepository } from "./d1-comment-repository";
 import { seedPublishedArticle } from "./d1-comment-test-support";
 
 let store: SitesTestStore;
 let database: D1Database;
-let repository: D1CommentRepository;
+let repository: CommentRepository;
 let articleId: string;
 
 const hex = (seed: string) => seed.repeat(64).slice(0, 64);
@@ -86,7 +87,7 @@ function notificationPreference(overrides: Partial<{ onReplies: boolean; onModer
 beforeAll(async () => {
   store = await createSitesTestStore();
   database = store.database;
-  repository = new D1CommentRepository(database);
+  repository = createD1CommentRepository(database);
   articleId = await seedPublishedArticle(database);
 });
 

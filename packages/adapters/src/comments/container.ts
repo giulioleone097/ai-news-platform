@@ -10,7 +10,7 @@ import { createPublicSupabaseClient } from "../supabase/public";
 import { createServiceSupabaseClient } from "../supabase/service";
 import { requireSitesBindings } from "../sites/bindings";
 import { D1CommentNotificationOutbox } from "./d1-comment-notification-outbox";
-import { D1CommentRepository } from "./d1-comment-repository";
+import { createD1CommentRepository } from "./d1-comment-repository";
 import { SupabaseCommentNotificationOutbox } from "./supabase-comment-notification-outbox";
 import type { CommentRepository } from "@atlasnews/core/comments/application/comment-repository";
 import { CommentOperationError } from "@atlasnews/core/comments/application/errors";
@@ -45,7 +45,7 @@ export function getCommentCapability(): CommentCapability {
 }
 
 function createSitesCommentRepository() {
-  return new D1CommentRepository(requireSitesBindings().database);
+  return createD1CommentRepository(requireSitesBindings().database);
 }
 
 /** Approved comments only, as the Supabase repository without a service client: D1 has no RLS to stop the rest. */
