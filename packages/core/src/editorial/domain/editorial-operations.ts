@@ -53,6 +53,28 @@ export interface DistributionPublication {
   updatedAt: string;
 }
 
+/**
+ * The publication a social post is about: one of those listed for the editor's locale (`publications`), and for
+ * the channel the post goes to when one is given. Nothing else may be queued, so a post cannot name another
+ * language's article or a channel the publication was not made for.
+ */
+export function findPublication(
+  publications: readonly DistributionPublication[],
+  id: string,
+  channel?: string,
+): DistributionPublication | null {
+  return publications.find((publication) => publication.id === id && (channel === undefined || publication.channel === channel)) ?? null;
+}
+
+/**
+ * The address a social post links to: the article on the public site. Only a public https site has one, so
+ * a post never carries a local, insecure or credentialed address.
+ */
+export function canonicalArticleUrl(site: URL, locale: Locale, slug: string): string | undefined {
+  if (site.protocol !== "https:" || site.username || site.password) return undefined;
+  return new URL(`/${locale}/articles/${encodeURIComponent(slug)}`, site).toString();
+}
+
 export interface DistributionUpdate {
   id: string;
   status: DistributionStatus;
