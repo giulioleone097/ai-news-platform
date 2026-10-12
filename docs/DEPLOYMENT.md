@@ -39,15 +39,15 @@ Never point a Preview deployment at the production database.
 | `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_API_VERSION` | Empty | Optional test-number values | Preview values | Production values | Server-only |
 | `WHATSAPP_WEBHOOK_SECRET` / `WHATSAPP_VERIFY_TOKEN` | Empty | Independent test values | Preview values | Production values | Server-only |
 | `ATLASNEWS_ENABLE_DEMO_STUDIO` | Empty | Empty | Empty unless the preview is intentionally ephemeral | Empty | Server-only |
-| `ATLASNEWS_CLIENT_IP_HEADER` | Empty | Empty | Name of the edge's client-address header | Name of the edge's client-address header | Server-only, `apps/web` and `apps/mcp`; [below](#client-address-and-rate-limits) |
+| `ATLASNEWS_CLIENT_IP_HEADER` | Empty | Empty | Name of the edge's client-address header | Name of the edge's client-address header | Server-only, `apps/web`; [below](#client-address-and-rate-limits) |
 | `ATLASNEWS_SUPABASE_OAUTH_PROVIDERS` | Empty | Empty or `google,github` | `google,github`, only those enabled in the Preview project | `google,github`, only those enabled in the Production project | Server-only, `apps/web`; lists the providers the login page and the comment section offer ([below](#sign-in-with-google-and-github)) |
-| `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` | Empty | Empty | Pre-registered client ids | Pre-registered client ids | Server-only, `apps/mcp`; [MCP.md](MCP.md#sign-in-with-supabase-auth) |
+| `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` | Empty | Empty | Pre-registered client ids (required for editor sign-in) | Pre-registered client ids (required for editor sign-in) | Server-only, `apps/mcp` and `apps/web` (health); [MCP.md](MCP.md#sign-in-with-supabase-auth) |
 | `ATLASNEWS_OAUTH_REDIRECT_HOSTS` | Empty (default hosts) | Empty | Empty unless a client needs another host | Empty unless a client needs another host | Server-only, `apps/web`; [MCP.md](MCP.md#sign-in-with-supabase-auth) |
-| `ATLASNEWS_MCP_EVENTS_MAX_PER_HOST` / `_MAX_PER_DOMAIN` / `_MAX_SUBSCRIPTIONS` / `_SUBSCRIBES_PER_MINUTE` | Empty (25 / 100 / 1000 / 30) | Empty | Empty | Tune from observed ChatGPT callback hosts | Server-only, `apps/mcp`; [OPENAI_EXTENSIONS.md](OPENAI_EXTENSIONS.md#abuse-limits) |
+| `ATLASNEWS_MCP_EVENTS_MAX_PER_PRINCIPAL` / `_MAX_PER_HOST` / `_MAX_PER_DOMAIN` / `_MAX_SUBSCRIPTIONS` / `_SUBSCRIBES_PER_MINUTE` | Empty (20 / 25 / 100 / 1000 / 30) | Empty | Empty | Tune from observed ChatGPT callback hosts | Server-only, `apps/mcp`; [OPENAI_EXTENSIONS.md](OPENAI_EXTENSIONS.md#abuse-limits) |
 | `NEXT_PUBLIC_LINKEDIN_URL` | Empty | Empty or official profile | Preview-safe official profile | Official LinkedIn profile URL | Public, build-time |
 | `NEXT_PUBLIC_X_URL` | Empty | Empty or official profile | Preview-safe official profile | Official X profile URL | Public, build-time |
 | `NEXT_PUBLIC_MCP_URL` | Empty (defaults to `http://localhost:8787`) | Local `apps/mcp` origin | Preview `apps/mcp` origin | Production `apps/mcp` origin | Public, build-time |
-| `MCP_ALLOWED_ORIGINS` | `http://localhost:3000` or empty | Local caller origins | Approved preview callers | Comma-separated production callers; empty for public wildcard | Server-only |
+| `MCP_ALLOWED_ORIGINS` | Empty, or `http://localhost:3000` to call from a local page | Local caller origins | Approved preview callers | Comma-separated production callers; empty allows the site's own origin, `https://chatgpt.com` and `https://claude.ai` | Server-only |
 
 `ATLASNEWS_CONTENT_MODE` selects the adapter explicitly. Supabase mode requires both the public URL and anon key and fails visibly if either is missing. The service-role key is mandatory for production workers, comment mutations and the signed-in newsroom MCP tools; never expose it through `NEXT_PUBLIC_*`. Production readiness reports every incomplete operational capability instead of silently simulating it.
 
@@ -59,7 +59,7 @@ In explicit demo mode, public routes serve the read-only memory dataset. Studio 
 
 ### Client address and rate limits
 
-Three limits are keyed by the caller's network: new comments, edits, deletions and reports, newsletter subscription requests, and `events/subscribe` on the MCP server. A client controls every request header unless a proxy in front of the app overwrites it, so the address is read from exactly one header, named by `ATLASNEWS_CLIENT_IP_HEADER`, with no fallback and no default. The value must be an IP address; for a comma list such as `x-forwarded-for` the last entry (the one your proxy appended) is used. IPv6 addresses count per /64.
+Two limits are keyed by the caller's network: new comments, edits, deletions and reports, and newsletter subscription requests. (`events/subscribe` on the MCP server is keyed by the signed-in account instead.) A client controls every request header unless a proxy in front of the app overwrites it, so the address is read from exactly one header, named by `ATLASNEWS_CLIENT_IP_HEADER`, with no fallback and no default. The value must be an IP address; for a comma list such as `x-forwarded-for` the last entry (the one your proxy appended) is used. IPv6 addresses count per /64.
 
 | Deployment | Set `ATLASNEWS_CLIENT_IP_HEADER` to |
 | --- | --- |
@@ -71,8 +71,8 @@ Three limits are keyed by the caller's network: new comments, edits, deletions a
 While it is empty no network identity is derived from the request, and the limits behave as follows:
 
 - Comments and newsletter requests give each request a network bucket of its own, so the per-network limit never binds. Everything else still does: the per-visitor limits (signed guest cookie or account), the 5-minute resend cooldown per email address and the global request limit of the newsletter. A shared "unknown" bucket was rejected because one client could use up the limit for every visitor.
-- `events/subscribe` shares one window of `ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE` calls for all callers. It holds back a flood but lets one caller delay others for up to a minute.
-- Counters of the MCP limiter are in memory, per process: with several instances the limit is multiplied by their number.
+- On ChatGPT Sites `/api/health` lists `client-address-header` under `warnings` while it is empty in production. The status stays 200: a missing header weakens two limits and blocks nothing.
+- The counters of the `events/subscribe` limiter (per signed-in account) are in memory, per process: with several instances the limit is multiplied by their number. The cap on live subscriptions per account is in the store and holds across instances.
 
 ## Local demo
 
@@ -222,7 +222,7 @@ GET|POST https://<canonical-host>/api/webhooks/social/whatsapp
 
 Resend must sign the raw payload with the configured webhook secret. WhatsApp must pass both the verification challenge and signed POST validation. Do not put cron or webhook secrets in query strings.
 
-`GET /api/health` is the deployment-readiness boundary. In production it returns `200` only when content mode is Supabase and the canonical origin is non-local HTTPS; it reports bounded check names and never credentials.
+`GET /api/health` is the deployment-readiness boundary. In production it returns `200` only when content mode is Supabase and the canonical origin is non-local HTTPS; it reports bounded check names (`checks`, blocking) and non-blocking `warnings`, never credentials.
 
 ## Schedule the workers
 

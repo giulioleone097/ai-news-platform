@@ -118,12 +118,12 @@ Runtime:
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional | turn on Google sign-in (with the session secret) |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | optional | turn on GitHub sign-in (with the session secret) |
 | `ATLASNEWS_COMMENT_GUEST_SECRET` | yes | signs guest commenter identities (`openssl rand -hex 32`) |
-| `ATLASNEWS_CLIENT_IP_HEADER` | yes | `cf-connecting-ip`; keys the per-network limits of comments, newsletter and MCP events |
+| `ATLASNEWS_CLIENT_IP_HEADER` | yes | `cf-connecting-ip`; keys the per-network limits of comments and newsletter requests. Without it every request counts as its own network, the limits never bind, and `/api/health` lists `client-address-header` under `warnings` (the status stays 200) |
 | `NEXT_PUBLIC_SITE_URL` | yes | same value as at build time; the server and the MCP server read it at run time |
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `NEWSLETTER_FROM_EMAIL`, `NEWSLETTER_REPLY_TO`, `NEWSLETTER_UNSUBSCRIBE_SECRET` | for the newsletter and comment emails | Resend delivery |
 | `LINKEDIN_*`, `X_USER_ACCESS_TOKEN`, `WHATSAPP_*` | for social publishing | provider credentials |
 | `CRON_SECRET` | only for an external schedule | guards `/internal/*` |
-| `ATLASNEWS_MCP_ADMIN_API_KEY` | optional | Bearer key for CI or scripts calling the newsroom tools without ChatGPT sign-in |
+| `ATLASNEWS_MCP_ADMIN_API_KEY` | no effect | Ignored on Sites: `/mcp` identifies the caller from the platform's sign-in headers only and never reads `Authorization`. It is for the self-host (`supabase`, demo) deployments ([MCP.md](MCP.md#sign-in-on-chatgpt-sites)) |
 | `ATLASNEWS_OPENAI_APPS_CHALLENGE`, `ATLASNEWS_MCP_UI_DOMAIN` | for public plugin submission | [AGENT_PLUGIN.md](AGENT_PLUGIN.md) |
 
 What the owner registers for Google and GitHub (`<site>` is the origin in `NEXT_PUBLIC_SITE_URL`):
@@ -211,10 +211,11 @@ Measured locally on the demo build, phone viewport (390 px, device pixel ratio 3
 
 1. That Sites accepts and runs this artifact end to end, provisions D1 and R2 from `hosting.json` and applies `dist/.openai/drizzle` before the upload.
 2. That the platform strips client-sent `oai-authenticated-*` headers before adding its own. The code relies on it, as OpenAI's starter does. Run the probe in [GO_LIVE.md](GO_LIVE.md#before-the-site-is-public-the-identity-probe) before the audience is public; `ATLASNEWS_CHATGPT_SIGN_IN=off` turns the headers off without a code change. Tests pin that only `sites` mode reads them and that the switch ignores them (`apps/web/src/lib/editor-auth.test.ts`, `apps/mcp/src/auth.test.ts`).
-3. How MCP clients other than ChatGPT authenticate to a Site's `/mcp` (anonymous read tools do not need it).
+3. How MCP clients other than ChatGPT authenticate to a Site's `/mcp` (anonymous read tools do not need it). `events/subscribe` and the newsroom tools need the platform's sign-in, and a script has no key to use. A browser origin outside the Site, `https://chatgpt.com` and `https://claude.ai` is refused unless `MCP_ALLOWED_ORIGINS` names it.
 4. How the ChatGPT app treats a monorepo project root. The plugin's own install, build and package scripts worked from `apps/web` in a full checkout; a copy of `apps/web` alone fails to install. The managed environment's pnpm was not checked (see [Package manager](#package-manager)).
 5. Whether Sites passes variables to the build step, or only to the runtime. If only to the runtime, use `.env.production`.
 6. Platform limits: Worker size, startup and request CPU, subrequests per request, request body size (the Studio upload allows 9 MB), D1 and R2 plan limits.
 7. Background jobs driven by traffic on a real Site, and provider sends (Resend, LinkedIn, X, WhatsApp) with real credentials.
 8. Behaviour of `vinext 1.0.0-beta.5` on routes the checks did not time (ISR expiry), and any upgrade to vinext 1.1.0.
 9. Google and GitHub sign-in against the real providers. The adapters, the cookie codec and the route handlers are tested with mocked `fetch`; the Worker's handling of `__Host-` cookies and of the provider redirects on a real Site was not exercised.
+10. That `cf-connecting-ip` reaches the Worker with the visitor's address on a real Site. `ATLASNEWS_CLIENT_IP_HEADER` names it, and the per-network limits of comments and newsletter requests bind only if it is right ([DEPLOYMENT.md](DEPLOYMENT.md#client-address-and-rate-limits)). Send a request with a forged `cf-connecting-ip` and read the value back before trusting it.

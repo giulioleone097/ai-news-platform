@@ -154,7 +154,7 @@ Search is locale-scoped. Confirm the translated row exists, uses the requested l
 
 ### MCP browser call is blocked by CORS
 
-Add the exact caller origin (scheme, host, and port) to `MCP_ALLOWED_ORIGINS`, comma-separated, then redeploy. CLI/agent clients that omit `Origin` should continue to work. `GET /mcp` returning 405 is expected; use POST. Browsers cannot call the editor tools cross-origin by design.
+A foreign `Origin` is answered 403 (error `-32003`). Add the exact caller origin (scheme, host, and port) to `MCP_ALLOWED_ORIGINS`, comma-separated (the list replaces the default of the site, `https://chatgpt.com` and `https://claude.ai`), then redeploy. CLI/agent clients that omit `Origin` should continue to work. `GET /mcp` returning 405 is expected; use POST. Browsers cannot call the editor tools cross-origin by design.
 
 ### An editor cannot sign in to the MCP server
 
@@ -166,7 +166,7 @@ The per-network limits depend on `ATLASNEWS_CLIENT_IP_HEADER` ([DEPLOYMENT.md](D
 
 ### ChatGPT cannot subscribe to events
 
-Check the answer to `events/subscribe`: HTTP 429 means the per-network subscribe limit (`ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE`, shared by all callers while `ATLASNEWS_CLIENT_IP_HEADER` is empty); `subscription_limit` means the per-host, per-domain or global cap ([OPENAI_EXTENSIONS.md](OPENAI_EXTENSIONS.md#abuse-limits)). All ChatGPT callbacks may arrive from one host, in which case raise `ATLASNEWS_MCP_EVENTS_MAX_PER_HOST` and `_PER_DOMAIN`.
+Check the answer to `events/subscribe`: HTTP 401 means the caller is not signed in; HTTP 429 means the per-account subscribe limit (`ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE`); `subscription_limit` means the per-account, per-host, per-domain or global cap ([OPENAI_EXTENSIONS.md](OPENAI_EXTENSIONS.md#abuse-limits)). All ChatGPT callbacks may arrive from one host, in which case raise `ATLASNEWS_MCP_EVENTS_MAX_PER_HOST` and `_PER_DOMAIN`.
 
 ### MCP call times out
 

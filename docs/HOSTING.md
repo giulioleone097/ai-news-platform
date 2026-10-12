@@ -40,12 +40,12 @@ Names come from [.env.example](../.env.example), [DEPLOYMENT.md](DEPLOYMENT.md) 
 | `ATLASNEWS_OPENAI_APPS_CHALLENGE` | Optional OpenAI domain-verification token. `GET /.well-known/openai-apps-challenge` returns it as `text/plain` with `Cache-Control: no-store`; unset, blank or invalid answers `404`. One line of printable ASCII without spaces, 8 to 256 characters. |
 | `ATLASNEWS_MCP_UI_DOMAIN` | Optional dedicated origin of the hosted UI, sent as `_meta.ui.domain`. OpenAI requires it for a plugin that ships UI, unique per plugin. Must be `https://` with no path, query, fragment or trailing path, for example `https://ui.news.example.com`; invalid values are ignored and the metadata stays unchanged. |
 | `NEXT_PUBLIC_MCP_URL` | Public origin of this server, no path. Required for editor sign-in (without it only the API key works); set it to the exact origin hosts were given. |
-| `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` | Optional comma-separated OAuth client ids to accept. Empty accepts every client of the Supabase project (not recommended in production). |
-| `ATLASNEWS_CLIENT_IP_HEADER` | Optional name of the one header your proxy overwrites with the client's IP address. It keys the `events/subscribe` rate limit; empty means one shared window. See [DEPLOYMENT.md](DEPLOYMENT.md#client-address-and-rate-limits). |
-| `ATLASNEWS_MCP_EVENTS_MAX_PER_HOST`, `ATLASNEWS_MCP_EVENTS_MAX_PER_DOMAIN`, `ATLASNEWS_MCP_EVENTS_MAX_SUBSCRIPTIONS`, `ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE` | Optional MCP Events limits (25, 100, 1000, 30). The rate counter is in memory, per container. |
+| `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` | Comma-separated OAuth client ids to accept; required for editor sign-in. Empty means no OAuth, and `/api/health` reports it as not ready (set it on the site too). |
+| `ATLASNEWS_CLIENT_IP_HEADER` | Optional name of the one header your proxy overwrites with the client's IP address. It keys the per-network limits of comments and newsletter requests; empty means they never bind. See [DEPLOYMENT.md](DEPLOYMENT.md#client-address-and-rate-limits). |
+| `ATLASNEWS_MCP_EVENTS_MAX_PER_PRINCIPAL`, `ATLASNEWS_MCP_EVENTS_MAX_PER_HOST`, `ATLASNEWS_MCP_EVENTS_MAX_PER_DOMAIN`, `ATLASNEWS_MCP_EVENTS_MAX_SUBSCRIPTIONS`, `ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE` | Optional MCP Events limits (20, 25, 100, 1000, 30). The rate counter is in memory, per container. |
 | `NEXT_PUBLIC_SITE_URL` | Canonical origin of the reader site. Used for revalidation. |
 | `ATLASNEWS_REVALIDATE_SECRET` | Same value as on `apps/web` (32+ characters). |
-| `MCP_ALLOWED_ORIGINS` | Optional comma-separated browser origins. Empty means wildcard CORS for the public endpoint. |
+| `MCP_ALLOWED_ORIGINS` | Optional comma-separated browser origins; any other `Origin` is answered 403. Empty allows the site's own origin, `https://chatgpt.com` and `https://claude.ai`. |
 | `PORT` | Optional. Default 8787. |
 
 `apps/jobs`:

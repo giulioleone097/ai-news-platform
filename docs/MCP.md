@@ -19,7 +19,7 @@ To add a capability: define a spec in `packages/contract/src/specs`, implement i
 | `/mcp` | `POST` | MCP JSON-RPC over Streamable HTTP, anonymous or with a Bearer token |
 | `/mcp` | `OPTIONS` | CORS preflight |
 | `/info` | `GET` | Machine-readable server metadata, derived from the catalogue |
-| `/.well-known/oauth-protected-resource` | `GET` | RFC 9728 resource metadata that the Bearer challenge points at; names the authorization server |
+| `/.well-known/oauth-protected-resource` | `GET` | RFC 9728 resource metadata that the Bearer challenge points at; names the authorization server. 404 while no OAuth server is configured (on Sites, in demo mode, or without the variables below) |
 
 `GET /mcp` returns 405. `/mcp/admin` no longer exists. Below, `$MCP` is the base URL of `apps/mcp` (`http://localhost:8787` locally).
 
@@ -36,6 +36,10 @@ MCP-Name: <tool name, required for tools/call>
 ```
 
 Every modern request also carries the protocol version, client information and client capabilities in `params._meta`. The server is stateless and issues no session ID.
+
+A `POST` without `MCP-Protocol-Version` is answered `400` with JSON-RPC error `-32000` (the same status the SDK gives a wrong value), which lists the supported versions. The one exception is `initialize`, which opens the connection that fixes the version and cannot carry it. A client older than the 2025-06-18 transport, which never sent the header, is therefore refused; set it to the version negotiated at `initialize`.
+
+`tools/list` and `resources/list` answer with cache hints (`ttlMs` 300000 and 60000, `cacheScope` `private`) to a client that speaks `2026-07-28`; the SDK adds nothing for 2025-era clients.
 
 ## Discover and list tools
 
@@ -83,15 +87,19 @@ A tool declares `[{ "type": "noauth" }]` or `[{ "type": "oauth2", "scopes": [...
 
 How the gate reads a request: the JSON-RPC body is what the SDK executes, so every `tools/call` in it counts, for 2026-07-28 and 2025-era requests alike and for each message of a batch. The `MCP-Name` header (2026-07-28 requests carry `MCP-Method` and `MCP-Name`) can only add to that, never lower it: if the header names a scoped tool the request is challenged even when the body says otherwise, and the other way round. A body that is not JSON contributes nothing and the SDK rejects it. `initialize`, `server/discover`, `tools/list`, resources, the events methods and anonymous tools never reach the gate. The body is read once (limit 256 KiB, `413` above it, before any parsing) and the SDK receives that same body.
 
-The challenge's `resource_metadata` points at `/.well-known/oauth-protected-resource`, which lists `authorization_servers` (Supabase Auth, first) once sign-in is configured.
+The challenge's `resource_metadata` points at `/.well-known/oauth-protected-resource`, which lists `authorization_servers` (Supabase Auth). The challenge carries it, and the route answers, only once sign-in is configured; otherwise there is no metadata to point at and the route answers 404.
 
 Supabase Auth cannot grant custom scopes; it rejects an authorization request for a scope it does not define. The `newsroom.*` scopes are therefore a server-side decision taken from the profile role (`scopesForRole` in `apps/mcp/src/auth/editors.ts`, the only place), and with sign-in configured the metadata, the challenges and `_meta.securitySchemes` offer hosts only the scopes Supabase grants (`email`). Without sign-in configured they show the `newsroom.*` scopes as before.
 
-Responses to a signed-in editor are `Cache-Control: no-store` and carry no CORS headers. Anonymous responses keep today's CORS behaviour: `*` unless `MCP_ALLOWED_ORIGINS` is set. `Authorization` is not in the allowed preflight headers, so browsers cannot call the editor tools cross-origin.
+Responses to a signed-in editor are `Cache-Control: no-store` and carry no CORS headers. `Authorization` is not in the allowed preflight headers, so browsers cannot call the editor tools cross-origin.
+
+**Origin.** The transport requires a server to validate `Origin`. Every request that carries one (`POST`, `OPTIONS`, `GET`) is checked against the allow list and a foreign origin is answered `403` with JSON-RPC error `-32003`, before the body is read. The list is `MCP_ALLOWED_ORIGINS` when set, otherwise the site's own origin (`NEXT_PUBLIC_SITE_URL`), `https://chatgpt.com` and `https://claude.ai`. A request without `Origin` (a CLI, a server, the plugin) is not a browser's and is not checked. Anonymous responses to an allowed origin echo it in `Access-Control-Allow-Origin` with `Vary: Origin`; there is no `*`. The CORS headers name neither `MCP-Session-Id` nor `Last-Event-ID`, which the 2026-07-28 transport does not have.
 
 ## Sign-in on ChatGPT Sites
 
-On Sites (`ATLASNEWS_CONTENT_MODE=sites`) the MCP server runs inside the Site's Worker at `https://<site>/mcp`, and the platform is the authorization server: `hosting.json` declares the `mcp` capability, Sites runs the OAuth flow for MCP clients and forwards the signed-in account as the `oai-authenticated-user-*` headers, as it does for the site. `resolveSitesPrincipal` (`apps/mcp/src/auth.ts`) maps that account to its editor row (`packages/adapters/src/sites/editors.ts`, [SITES.md](SITES.md#sign-in-and-editors)) and the role to scopes with the same `scopesForRole`; an account without an editor row is a caller with no newsroom scope. The Bearer challenge then carries no `resource_metadata`, none of the Supabase variables below apply, and no revalidation call is needed because the site and the server share one Worker and one D1 database. `ATLASNEWS_MCP_ADMIN_API_KEY` still works for scripts.
+On Sites (`ATLASNEWS_CONTENT_MODE=sites`) the MCP server runs inside the Site's Worker at `https://<site>/mcp`, and the platform is the authorization server: `hosting.json` declares the `mcp` capability, Sites runs the OAuth flow for MCP clients and forwards the signed-in account as the `oai-authenticated-user-*` headers, as it does for the site. `resolveSitesPrincipal` (`apps/mcp/src/auth.ts`) maps that account to its editor row (`packages/adapters/src/sites/editors.ts`, [SITES.md](SITES.md#sign-in-and-editors)) and the role to scopes with the same `scopesForRole`; an account without an editor row is a caller with no newsroom scope. The Bearer challenge then carries no `resource_metadata`, `/.well-known/oauth-protected-resource` answers 404, none of the Supabase variables below apply, and no revalidation call is needed because the site and the server share one Worker and one D1 database. `resolvePrincipal` reads only the identity headers there and never looks at `Authorization`, so `ATLASNEWS_MCP_ADMIN_API_KEY` is ignored on Sites: a script has no credential of its own, and the editor tools are reachable only through the platform's sign-in. `ATLASNEWS_CHATGPT_SIGN_IN=off` ignores the headers too, which leaves `/mcp` anonymous ([SITES.md](SITES.md#sign-in-and-editors)). Run the probe in [GO_LIVE.md](GO_LIVE.md#before-the-site-is-public-the-identity-probe) before the Site is public.
+
+`events/subscribe` makes the server call an address the caller chose, so it needs a signed-in caller: an anonymous one is answered `401` with a Bearer challenge, and a signed-in reader (an account without an editor row, so without newsroom scopes) may subscribe. Listing the events stays anonymous. Each account may hold 20 live subscriptions (`ATLASNEWS_MCP_EVENTS_MAX_PER_PRINCIPAL`), counted in the store, so the cap holds across Worker isolates.
 
 ## Sign-in with Supabase Auth
 
@@ -138,7 +146,7 @@ The consent page is `apps/web/src/app/oauth/consent`, in English and Italian (ch
 Anyone can register a client when dynamic registration is on, and a client can choose any name and any redirect URI, so a phishing site can ask a signed-in editor to approve "Claude". Three layers answer that:
 
 1. **Redirect host allowlist (always on, `apps/web`).** The consent decision re-reads the request from Supabase and refuses to approve unless the redirect URI is HTTPS on an allowed host (or HTTP on loopback). The default is `claude.ai`, `claude.com`, `chatgpt.com`, `localhost`, `127.0.0.1` and `[::1]`; `ATLASNEWS_OAUTH_REDIRECT_HOSTS` replaces it (exact hosts, or `*.example.com`). A request for any other host shows a warning and no Allow button, and an earlier approval is not followed automatically to such a host. The page puts that host in large type under the application's name, which the application chooses itself. A host with a custom URL scheme (some desktop editors) is not covered by the default: add its callback host, or use a loopback redirect.
-2. **Client allowlist (optional, `apps/mcp`).** `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` lists the OAuth client ids whose tokens the verifier accepts; a token from any other client is a 401. Unset accepts every client of the project, which is what dynamic registration needs and is not recommended in production.
+2. **Client allowlist (required, `apps/mcp`).** `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` lists the OAuth client ids whose tokens the verifier accepts; a token from any other client is a 401. While it is empty the server offers no OAuth at all (no verifier, no `resource_metadata`, metadata 404), and `/api/health` reports `mcp-oauth-client-ids` as not ready (set the variable on `apps/web` too), because accepting every client of the project would let anyone who registers one be approved by an editor.
 3. **No dynamic registration in production.** Pre-register the hosts you use in the dashboard (OAuth Apps), turn `allow_dynamic_registration` off (`supabase/config.toml` locally, Authentication, OAuth Server in the dashboard), put the registered client ids in `ATLASNEWS_MCP_OAUTH_CLIENT_IDS`, and review the client list regularly.
 
 The local `supabase/config.toml` keeps dynamic registration on so that Claude and ChatGPT can be tried without setup.
@@ -149,9 +157,9 @@ The local `supabase/config.toml` keeps dynamic registration on so that Claude an
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | `apps/mcp`, `apps/web` | Sign-in is on when all three are set (the service role key, at least 32 characters, reads the editor profile). The issuer is `<url>/auth/v1` and the key set `<issuer>/.well-known/jwks.json`. Unset means no OAuth: only the API key |
 | `NEXT_PUBLIC_MCP_URL` | `apps/mcp`, `apps/web` | Public origin of the MCP server (`https://mcp.news.example.com`). **Required for sign-in**: without it `apps/mcp` offers no OAuth (only the API key), because the `resource` in the challenge and in the publicly cached metadata would otherwise come from the request's Host header, which a caller chooses. It must be the exact URL hosts were given, which behind a proxy the request URL seen by Node is not. `apps/web` links to it from the footer |
-| `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` | `apps/mcp` | Optional comma-separated OAuth client ids whose tokens are accepted. Unset accepts every client of the project (not recommended in production) |
+| `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` | `apps/mcp`, `apps/web` | **Required for sign-in.** Comma-separated OAuth client ids whose tokens are accepted. Empty means no OAuth, and `/api/health` lists `mcp-oauth-client-ids` as an issue (`apps/web` reads it for that) |
 | `ATLASNEWS_OAUTH_REDIRECT_HOSTS` | `apps/web` | Optional comma-separated hosts a client may return the editor to; replaces the default (`claude.ai`, `claude.com`, `chatgpt.com`, loopback) |
-| `ATLASNEWS_CLIENT_IP_HEADER` | `apps/mcp`, `apps/web` | Optional name of the one trusted client-address header, used for the per-network limits, see [DEPLOYMENT.md](DEPLOYMENT.md#client-address-and-rate-limits) |
+| `ATLASNEWS_CLIENT_IP_HEADER` | `apps/web` | Optional name of the one trusted client-address header, used for the per-network limits of comments and newsletter requests, see [DEPLOYMENT.md](DEPLOYMENT.md#client-address-and-rate-limits) |
 | `ATLASNEWS_MCP_OAUTH_ISSUER` | `apps/mcp` | Optional. Issuer when it differs from `<url>/auth/v1`, such as a Supabase custom domain |
 | `ATLASNEWS_MCP_OAUTH_AUDIENCE` | `apps/mcp` | Optional. Required `aud`. Unset accepts `authenticated`. Set it to the MCP URL once a custom access token hook sets that audience (below) |
 | `ATLASNEWS_MCP_ADMIN_API_KEY`, `ATLASNEWS_MCP_ADMIN_AUTHOR_ID` | `apps/mcp` | The API key path. Its writes are attributed to `ATLASNEWS_MCP_ADMIN_AUTHOR_ID`; a signed-in editor's are attributed to their own `author_id` |

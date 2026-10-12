@@ -13,7 +13,7 @@ What is left before AtlasNews is public, in order. Each step needs an account, a
 
 See [SITES.md](SITES.md#what-the-owner-does-in-chatgpt). Deploy `apps/web` with `@Sites`, commit the `project_id`, set the variables in the Site settings, redeploy. Then check:
 
-- `GET /api/health` answers with `contentMode: "sites"`; `checks` lists anything still unconfigured.
+- `GET /api/health` answers with `contentMode: "sites"`; `checks` lists anything still unconfigured (status 503) and `warnings` lists what weakens a limit without blocking (status stays 200), such as `client-address-header`: set `ATLASNEWS_CLIENT_IP_HEADER=cf-connecting-ip`.
 - Sign in at `/en/login` with an admin account, write and publish a draft in the Studio, upload a cover.
 - `/oauth/consent`, `/en/login` and the Studio carry `X-Frame-Options: DENY`.
 - The build ran with pnpm. The Sites image ships pnpm 11.25.0 and the repository pins 12.11.2; if the build fails on the package manager, pin 11.25.0 in both `package.json` files.
