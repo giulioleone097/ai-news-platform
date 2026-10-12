@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 import { MemoryEditorialRepository } from "./memory-editorial-repository";
 import { ArticleCommandService } from "@atlasnews/core/editorial/application/article-commands";
 
+function commandService() {
+  const repository = new MemoryEditorialRepository();
+  return new ArticleCommandService(repository, repository);
+}
+
 describe("article command service", () => {
   it("enforces the canonical transport-independent draft limits", async () => {
-    const service = new ArticleCommandService(new MemoryEditorialRepository());
+    const service = commandService();
     await expect(service.save({
       locale: "en",
       title: "Short",
@@ -16,7 +21,7 @@ describe("article command service", () => {
   });
 
   it("rejects a scheduled story without a real publishing date", async () => {
-    const service = new ArticleCommandService(new MemoryEditorialRepository());
+    const service = commandService();
     await expect(service.save({
       locale: "en",
       title: "A valid scheduled article title",

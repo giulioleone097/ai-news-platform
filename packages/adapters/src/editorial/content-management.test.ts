@@ -56,6 +56,27 @@ describe.each(backends)("$name repository", (backend) => {
     });
   });
 
+  describe("articles: a reference that does not exist is a rule error", () => {
+    it("names the missing category, entity and slug on create and patch, with a code", async () => {
+      const { articles } = await setup(backend);
+      const draft = await articles.create(story("A draft that others point to"));
+      const refused = async (promise: Promise<unknown>) => {
+        const error = await promise.then(() => null, (reason: unknown) => reason);
+        expect(error).toBeInstanceOf(EditorialRuleError);
+        return error as EditorialRuleError;
+      };
+
+      expect(await refused(articles.create(story("A story in an unknown category", { categorySlug: "nowhere" }))))
+        .toMatchObject({ code: "article.unknownCategory", params: { slug: "nowhere", locale: "en" }, message: 'There is no en category with the slug "nowhere".' });
+      expect(await refused(articles.patch(draft, { categorySlug: "nowhere" })))
+        .toMatchObject({ code: "article.unknownCategory" });
+      expect(await refused(articles.create(story("A story linking a ghost entity", { entities: [{ slug: "no-such-entity" }] }))))
+        .toMatchObject({ code: "article.unknownEntity", params: { slug: "no-such-entity" } });
+      expect(await refused(articles.create(story("Another story", { slug: draft.slug }))))
+        .toMatchObject({ code: "article.slugTaken" });
+    });
+  });
+
   describe("articles: the publish bypass is closed", () => {
     it("never publishes on create, patch or their batches, and never unpublishes either", async () => {
       const { repository, articles } = await setup(backend);
@@ -187,7 +208,7 @@ describe.each(backends)("$name repository", (backend) => {
         story("A perfectly valid story one"),
       ]));
       expect(found.map((item) => item.index)).toEqual([1, 3, 4, 5]);
-      expect(found[0].message).toContain("Unknown category");
+      expect(found[0].message).toContain("There is no en category with the slug");
       expect(found[1].message).toBe("Invalid article title");
       expect(found[2].message).toContain("Unknown entity");
       expect(found[3].message).toContain("repeats in this batch");

@@ -90,7 +90,7 @@ describe.each(backends)("story fields in the $name repository", (backend) => {
 
   it("keeps the story fields when an article is published through the command service", async () => {
     const repository = await backend.create();
-    const commands = new ArticleCommandService(repository);
+    const commands = new ArticleCommandService(repository, repository);
     const draft = await commands.save(story("A draft that gets published", {
       status: "draft",
       claimStatus: "rumour",
@@ -106,7 +106,8 @@ describe.each(backends)("story fields in the $name repository", (backend) => {
   });
 
   it("rejects invalid story fields through the command service", async () => {
-    const commands = new ArticleCommandService(await backend.create());
+    const repository = await backend.create();
+    const commands = new ArticleCommandService(repository, repository);
     await expect(commands.save(story("A story with a plain http source", {
       sources: [{ title: "Insecure source", url: "http://example.com", supports: "The claim." }],
     }))).rejects.toThrow("Invalid sources");
