@@ -205,9 +205,30 @@ describe("social capabilities", () => {
   const find = (name: string) => capabilities.find((capability) => capability.name === name)!;
   const editor = { kind: "editor", subject: "tester", scopes: ["newsroom.read", "newsroom.write"] } as const;
 
-  function portsOver(repository: SocialOutboxRepository) {
+  const publication = (overrides: Record<string, unknown> = {}) => ({
+    id: job.publicationId,
+    articleId: "a1",
+    articleLocale: "it",
+    articleSlug: "una storia",
+    articleTitle: "Una storia",
+    channel: "whatsapp",
+    status: "ready",
+    message: "",
+    externalUrl: null,
+    scheduledFor: null,
+    publishedAt: null,
+    updatedAt: "2026-08-10T10:00:00.000Z",
+    ...overrides,
+  });
+
+  /** The ports a social capability reads: the outbox, the publications of each language and the public site. */
+  function portsOver(repository: SocialOutboxRepository, publications: Array<ReturnType<typeof publication>> = [publication()], site = "https://atlasnews.example") {
     const { providers } = setup();
     return {
+      site: { absolute: (path: string) => new URL(path, site).href },
+      editorial: async () => ({
+        listPublications: async (locale: string) => publications.filter((item) => item.articleLocale === locale),
+      }),
       social: async () => ({
         service: new SocialPublishingService(repository),
         processor: {} as SocialOutboxProcessor,
@@ -244,13 +265,71 @@ describe("social capabilities", () => {
     await expect(update.run(ports, update.input.parse({ id: job.id, expectedRevision: 0 }), editor))
       .rejects.toBeInstanceOf(CapabilityFailure);
     const enqueue = find("admin_social_enqueue");
-    await expect(enqueue.run(ports, enqueue.input.parse({
+    await expect(enqueue.run(portsOver(repository, [publication({ channel: "x" })]), enqueue.input.parse({
       publicationId: job.publicationId, provider: "x", payload: { text: "Hi", recipient: "15551234567" },
     }), editor)).rejects.toThrow("Recipient is only valid for WhatsApp jobs.");
 
     vi.mocked(repository.updatePending).mockRejectedValueOnce(new SocialPublishingError("Social outbox persistence failed.", "persistence_error"));
     await expect(update.run(ports, update.input.parse({ id: job.id, expectedRevision: 0, payload: { text: "x" } }), editor))
       .rejects.not.toBeInstanceOf(CapabilityFailure);
+  });
+
+  it("queues a post only for a publication that exists and is made for the channel", async () => {
+    const { repository } = setup();
+    const post = { publicationId: job.publicationId, provider: "linkedin", payload: { text: "Hello" } };
+    for (const name of ["admin_social_preview", "admin_social_enqueue"]) {
+      const capability = find(name);
+      const input = capability.input.parse(post);
+      await expect(capability.run(portsOver(repository, []), input, editor), name)
+        .rejects.toEqual(new CapabilityFailure(`There is no social publication with the ID ${job.publicationId}.`, { code: "social.invalidInput" }));
+      await expect(capability.run(portsOver(repository), input, editor), name)
+        .rejects.toEqual(new CapabilityFailure(`Publication ${job.publicationId} is for whatsapp, not linkedin.`, { code: "social.invalidInput" }));
+    }
+    expect(repository.enqueue).not.toHaveBeenCalled();
+    const requeue = find("admin_social_requeue");
+    await expect(requeue.run(portsOver(repository), requeue.input.parse({ ...post, id: job.id, expectedRevision: 0 }), editor))
+      .rejects.toMatchObject({ code: "social.invalidInput" });
+    expect(repository.requeue).not.toHaveBeenCalled();
+  });
+
+  it("links every post to the canonical address of the publication's article, whatever the caller passed", async () => {
+    const { repository } = setup();
+    const ports = portsOver(repository);
+    const enqueue = find("admin_social_enqueue");
+    const asked = { publicationId: job.publicationId, provider: "whatsapp", payload: { text: "Hello", recipient: "15551234567", articleUrl: "https://elsewhere.example/phish" } };
+    await enqueue.run(ports, enqueue.input.parse(asked), editor);
+    expect(repository.enqueue).toHaveBeenLastCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({ articleUrl: "https://atlasnews.example/it/articles/una%20storia" }),
+    }));
+
+    const preview = find("admin_social_preview");
+    const previewed = preview.output.parse(await preview.run(ports, preview.input.parse(asked), editor)) as { preview: { articleUrl: string | null } };
+    expect(previewed.preview.articleUrl).toBe("https://atlasnews.example/it/articles/una%20storia");
+
+    // No public https site, no canonical link: the post goes without one.
+    await enqueue.run(portsOver(repository, [publication()], "http://localhost:3000"), enqueue.input.parse(asked), editor);
+    expect(vi.mocked(repository.enqueue).mock.lastCall![0].payload.articleUrl).toBeUndefined();
+  });
+
+  it("keeps an edited or requeued link canonical too", async () => {
+    const { repository } = setup();
+    const ports = portsOver(repository);
+    const update = find("admin_social_update");
+    await update.run(ports, update.input.parse({ id: job.id, expectedRevision: 0, payload: { articleUrl: "https://elsewhere.example/phish" } }), editor);
+    expect(vi.mocked(repository.updatePending).mock.lastCall![0].payload).toMatchObject({ articleUrl: "https://atlasnews.example/it/articles/una%20storia" });
+
+    // An edit that leaves the link alone does not look the publication up.
+    await update.run(portsOver(repository, []), update.input.parse({ id: job.id, expectedRevision: 0, payload: { text: "Corrected" } }), editor);
+
+    await expect(update.run(portsOver(repository, []), update.input.parse({ id: job.id, expectedRevision: 0, payload: { articleUrl: "https://atlasnews.example/it/articles/x" } }), editor))
+      .rejects.toMatchObject({ code: "social.invalidInput" });
+
+    const requeue = find("admin_social_requeue");
+    await requeue.run(ports, requeue.input.parse({
+      id: job.id, expectedRevision: 0, publicationId: job.publicationId, provider: "whatsapp",
+      payload: { text: "Again", recipient: "15551234567", articleUrl: "https://elsewhere.example/phish" },
+    }), editor);
+    expect(vi.mocked(repository.requeue).mock.lastCall![0].payload.articleUrl).toBe("https://atlasnews.example/it/articles/una%20storia");
   });
 
   it("offers the edit and the batch cancel on the page, behind newsroom.write and a confirmation", () => {

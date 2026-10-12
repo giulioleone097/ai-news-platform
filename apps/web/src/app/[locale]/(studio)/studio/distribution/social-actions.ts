@@ -2,17 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
 import type { Locale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { parseUtcDateTimeInput } from "@/lib/editorial-datetime";
 import type { CapabilityRunResult } from "@/server/capabilities";
 import { runStudioCapability } from "@/server/studio-capability";
-import {
-  canonicalArticleUrl,
-  findPublication,
-  type DistributionPublication,
-} from "@atlasnews/core/editorial/domain/editorial-operations";
+import { findPublication, type DistributionPublication } from "@atlasnews/core/editorial/domain/editorial-operations";
 import type { SocialOutboxStatus, SocialProvider } from "@atlasnews/core/social-publishing/domain/social-publication";
 import {
   parseSocialComposerForm,
@@ -57,17 +52,16 @@ async function listPublications(locale: Locale) {
 }
 
 /**
- * The post as the outbox capabilities take it. The article address is the canonical one of the publication's
- * article (core builds it), never one the form typed.
+ * The post as the outbox capabilities take it: what the person chose. The capabilities check the publication and
+ * link the article's canonical address themselves, for every caller.
  */
-function postInput(input: SocialComposerForm, publication: DistributionPublication) {
+function postInput(input: SocialComposerForm) {
   const scheduledFor = input.scheduledFor ? parseUtcDateTimeInput(input.scheduledFor) : null;
   return {
     publicationId: input.publicationId,
     provider: input.provider,
     payload: {
       text: input.text,
-      articleUrl: canonicalArticleUrl(getPublicSiteUrl(), input.locale, publication.articleSlug),
       recipient: input.provider === "whatsapp" ? input.recipient : undefined,
     },
     scheduledFor: scheduledFor ?? undefined,
@@ -106,10 +100,12 @@ export async function submitSocialPublicationAction(
 
   const publications = await listPublications(input.locale);
   if (publications.failed) return failureState(input.locale, publications.failed);
-  const publication = findPublication(publications.items, input.publicationId, input.provider);
-  if (!publication) return { status: "error", message: actionMessage(input.locale, "ownership") };
+  // The composer works on one language: a publication of the other one is not offered here.
+  if (!findPublication(publications.items, input.publicationId, input.provider)) {
+    return { status: "error", message: actionMessage(input.locale, "ownership") };
+  }
 
-  const post = postInput(input, publication);
+  const post = postInput(input);
   // The preview checks the post against its channel's rules; nothing is queued that it would refuse.
   const previewed = await run("admin_social_preview", post);
   if (!previewed.ok) return failureState(input.locale, previewed);
