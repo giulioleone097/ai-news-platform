@@ -44,6 +44,7 @@ export function StudioShell({
 
   return (
     <div className="studio-shell">
+      <a className="skip-link" href="#studio-main">{messages.navigation.skipToContent}</a>
       <StudioSidebar
         brand={<StudioBrand href={`/${locale}/studio`} label="Studio" name={messages.common.brandName} />}
         label={studio.navigationLabel}
