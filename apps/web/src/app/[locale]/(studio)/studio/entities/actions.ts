@@ -2,10 +2,11 @@
 
 import { redirect } from "next/navigation";
 import type { StudioActionState } from "@/components/studio/action-state";
-import { defaultLocale, isLocale, type Locale } from "@/i18n";
+import type { Locale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import type { EntityRecord } from "@atlasnews/core/editorial/domain/entity";
-import { runEditorCapability, type CapabilityRunResult } from "@/server/capabilities";
+import type { CapabilityRunResult } from "@/server/capabilities";
+import { readLocale, runStudioCapability } from "@/server/studio-capability";
 
 /** The entity form as the person typed it. Blank optional fields are empty strings. */
 export interface EntityFormValues {
@@ -25,11 +26,6 @@ export interface EntityFormState extends StudioActionState {
 }
 
 type Refusal = Extract<CapabilityRunResult, { ok: false }>;
-
-function readLocale(formData: FormData): Locale {
-  const value = formData.get("locale");
-  return isLocale(value) ? value : defaultLocale;
-}
 
 function readValues(formData: FormData): EntityFormValues {
   const text = (name: string) => String(formData.get(name) ?? "");
@@ -80,17 +76,16 @@ function patchFor(slug: string, current: EntityRecord, values: EntityFormValues)
   return patch;
 }
 
-async function updateEntity(slug: string, values: EntityFormValues): Promise<CapabilityRunResult> {
-  const current = await runEditorCapability("admin_get_entity", { slug });
+async function updateEntity(locale: Locale, slug: string, values: EntityFormValues): Promise<CapabilityRunResult> {
+  const current = await runStudioCapability(locale, "admin_get_entity", { slug });
   if (!current.ok) return current;
   const patch = patchFor(slug, (current.result as { entity: EntityRecord }).entity, values);
   if (Object.keys(patch).length === 1) return { ok: true, result: {} };
-  return runEditorCapability("admin_update_entity", patch);
+  return runStudioCapability(locale, "admin_update_entity", patch);
 }
 
-/** Nobody signed in goes to the login page, as the other Studio actions do; any other refusal is shown. */
-function refusal(locale: Locale, failure: Refusal): StudioActionState {
-  if (failure.status === 401) redirect(`/${locale}/login`);
+/** The refusal as the form shows it, already in the editor's language. */
+function refusal(failure: Refusal): StudioActionState {
   return { status: "error", message: failure.error };
 }
 
@@ -104,10 +99,10 @@ export async function saveEntityAction(
   await requireEditor(locale);
 
   const result = slug
-    ? await updateEntity(slug, values)
-    : await runEditorCapability("admin_create_entity", createInput(values));
+    ? await updateEntity(locale, slug, values)
+    : await runStudioCapability(locale, "admin_create_entity", createInput(values));
   if (!result.ok) {
-    return { ...refusal(locale, result), values, attempt: (previous.attempt ?? 0) + 1 };
+    return { ...refusal(result), values, attempt: (previous.attempt ?? 0) + 1 };
   }
 
   redirect(`/${locale}/studio/entities?saved=${slug ? "updated" : "created"}`);
@@ -122,8 +117,8 @@ export async function deleteEntityAction(
   await requireEditor(locale);
 
   // The person confirmed this deletion in the page (window.confirm) before the form was sent.
-  const result = await runEditorCapability("admin_delete_entity", { slug }, { confirmed: true });
-  if (!result.ok) return refusal(locale, result);
+  const result = await runStudioCapability(locale, "admin_delete_entity", { slug }, { confirmed: true });
+  if (!result.ok) return refusal(result);
 
   redirect(`/${locale}/studio/entities?deleted=1`);
 }

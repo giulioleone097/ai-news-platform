@@ -19,6 +19,10 @@ import { locales } from "../../locale";
 
 type Taken = Map<string, string>;
 
+const notFound = (key: string) => new EditorialRuleError(`Category "${key}" not found.`, "category.notFound", { key });
+const slugTaken = (locale: Locale, slug: string, owner: string) =>
+  new EditorialRuleError(`The ${locale} slug "${slug}" is already used by category "${owner}".`, "category.slugTaken", { locale, slug, owner });
+
 /** Which category key owns each slug in each locale; the base of every uniqueness check. */
 function slugOwners(records: readonly CategoryRecord[]) {
   const owners = new Map<Locale, Taken>(locales.map((locale) => [locale, new Map()]));
@@ -64,10 +68,12 @@ export class CategoryCommandService {
         const translations: CategoryWrite["translations"] = {};
         for (const locale of locales) translations[locale] = normalizeCategoryText(locale, input.translations[locale]);
         const translationKey = translations.en?.slug ?? "";
-        if (keys.has(translationKey)) throw new EditorialRuleError(`The category "${translationKey}" already exists.`);
+        if (keys.has(translationKey)) {
+          throw new EditorialRuleError(`The category "${translationKey}" already exists.`, "category.exists", { key: translationKey });
+        }
         for (const locale of locales) {
           const owner = owners.get(locale)!.get(translations[locale]!.slug);
-          if (owner) throw new EditorialRuleError(`The ${locale} slug "${translations[locale]!.slug}" is already used by category "${owner}".`);
+          if (owner) throw slugTaken(locale, translations[locale]!.slug, owner);
         }
         const position = input.position ?? next;
         assertCategoryPosition(position);
@@ -92,9 +98,11 @@ export class CategoryCommandService {
       patches,
       (patch) => {
         const current = records.get(patch.translationKey);
-        if (!current) throw new EditorialRuleError(`Category "${patch.translationKey}" not found.`);
+        if (!current) throw notFound(patch.translationKey);
         const texts = Object.entries(patch.translations ?? {}).filter(([, text]) => text && Object.values(text).some((value) => value !== undefined));
-        if (patch.position === undefined && !texts.length) throw new EditorialRuleError("Nothing to change: pass a position or a translation field.");
+        if (patch.position === undefined && !texts.length) {
+          throw new EditorialRuleError("Nothing to change: pass a position or a translation field.", "category.nothingToChange");
+        }
 
         const translations: CategoryWrite["translations"] = {};
         for (const locale of locales) {
@@ -108,12 +116,18 @@ export class CategoryCommandService {
           });
           const owner = owners.get(locale)!.get(merged.slug);
           if (owner && owner !== current.translationKey) {
-            throw new EditorialRuleError(`The ${locale} slug "${merged.slug}" is already used by category "${owner}".`);
+            throw slugTaken(locale, merged.slug, owner);
           }
           translations[locale] = merged;
         }
         for (const [locale] of texts) {
-          if (!current.translations[locale as Locale]) throw new EditorialRuleError(`Category "${patch.translationKey}" has no ${locale} translation to change.`);
+          if (!current.translations[locale as Locale]) {
+            throw new EditorialRuleError(
+              `Category "${patch.translationKey}" has no ${locale} translation to change.`,
+              "category.noTranslation",
+              { key: patch.translationKey, locale },
+            );
+          }
         }
         const position = patch.position ?? current.position;
         assertCategoryPosition(position);
@@ -141,11 +155,13 @@ export class CategoryCommandService {
     await validateEach(
       translationKeys,
       (key) => {
-        if (!known.has(key)) throw new EditorialRuleError(`Category "${key}" not found.`);
+        if (!known.has(key)) throw notFound(key);
         const used = counts.get(key) ?? 0;
         if (used > 0) {
           throw new EditorialRuleError(
             `Category "${key}" is used by ${used} article${used === 1 ? "" : "s"}. Move them to another category first.`,
+            "category.inUse",
+            { key, count: used },
           );
         }
       },

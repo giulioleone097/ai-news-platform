@@ -64,7 +64,7 @@ describe("Studio category actions", () => {
           it: { name: "Politica", slug: "politica", description: "Notizie" },
         },
       },
-      {},
+      { locale: "en" },
     );
   });
 
@@ -88,7 +88,7 @@ describe("Studio category actions", () => {
       ),
     ).rejects.toThrow("REDIRECT:/en/studio/categories?saved=1");
 
-    expect(mocks.run).toHaveBeenNthCalledWith(1, "admin_get_category", { translationKey: "politics" }, {});
+    expect(mocks.run).toHaveBeenNthCalledWith(1, "admin_get_category", { translationKey: "politics" }, { locale: "en" });
     expect(mocks.run).toHaveBeenNthCalledWith(
       2,
       "admin_update_category",
@@ -100,7 +100,7 @@ describe("Studio category actions", () => {
           it: { slug: "politica-italia", description: "" },
         },
       },
-      {},
+      { locale: "en" },
     );
   });
 
@@ -163,7 +163,7 @@ describe("Studio category actions", () => {
     expect(mocks.run).toHaveBeenCalledWith(
       "admin_delete_category",
       { translationKey: "politics" },
-      { confirmed: true },
+      { confirmed: true, locale: "it" },
     );
   });
 

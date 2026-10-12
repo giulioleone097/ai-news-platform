@@ -1,6 +1,13 @@
 import type * as z from "zod/v4";
 
-import { EditorialRuleError } from "@atlasnews/core/editorial/domain/errors";
+import {
+  BatchValidationError,
+  EditorialRuleError,
+  type BatchIssue,
+  type EditorialErrorCode,
+  type RuleParams,
+} from "@atlasnews/core/editorial/domain/errors";
+import { SocialPublishingError } from "@atlasnews/core/social-publishing/domain/errors";
 
 import type { CapabilityPorts } from "./ports";
 
@@ -48,9 +55,41 @@ export function hasScopes(principal: Principal, required: readonly Scope[]) {
   return required.every((scope) => principal.scopes.includes(scope));
 }
 
-/** An anticipated failure whose message is safe to show to the caller. */
+/** Failures of the operations (outbox, newsletter) that have a stable code besides the editorial rules'. */
+export const operationErrorCodes = ["social.invalidInput", "social.notConfigured"] as const;
+export type CapabilityErrorCode = EditorialErrorCode | (typeof operationErrorCodes)[number];
+
+/** What a failure adds to its English message: a stable code for screens that write their own text, and the values it mentions. */
+export interface FailureDetail {
+  code?: CapabilityErrorCode;
+  params?: RuleParams;
+  /** Every rejected item of an all-or-nothing batch. */
+  issues?: readonly BatchIssue[];
+}
+
+/**
+ * An anticipated failure whose message is safe to show to the caller. The message is English, for
+ * agents; the Studio shows its own text for the `code` in the editor's language.
+ */
 export class CapabilityFailure extends Error {
   override readonly name = "CapabilityFailure";
+  readonly code?: CapabilityErrorCode;
+  readonly params?: RuleParams;
+  readonly issues?: readonly BatchIssue[];
+
+  constructor(message: string, detail: FailureDetail = {}) {
+    super(message);
+    this.code = detail.code;
+    this.params = detail.params;
+    this.issues = detail.issues;
+  }
+}
+
+/** The social service's own refusals that a caller can fix; a provider's error says more than a caller should read. */
+function socialFailure(error: SocialPublishingError) {
+  if (error.code === "invalid_input") return new CapabilityFailure(error.message, { code: "social.invalidInput" });
+  if (error.code === "configuration_error") return new CapabilityFailure(error.message, { code: "social.notConfigured" });
+  return null;
 }
 
 export const sourceUnavailableMessage = "The editorial source is temporarily unavailable.";
@@ -99,7 +138,8 @@ export function defineSpec<I extends z.ZodObject, O extends z.ZodObject>(
 /**
  * Attaches the handler to a spec; the adapters call `run` after scope and confirmation checks.
  * A rule broken in core (`EditorialRuleError`) reaches the caller as a `CapabilityFailure` with its
- * own message, so no handler converts errors one by one.
+ * own message and code, so no handler converts errors one by one. So do the social service's input
+ * and configuration errors.
  */
 export function implement<I extends z.ZodObject, O extends z.ZodObject>(
   spec: CapabilitySpec<I, O>,
@@ -111,7 +151,11 @@ export function implement<I extends z.ZodObject, O extends z.ZodObject>(
       try {
         return await run(ports, input, principal);
       } catch (error) {
-        if (error instanceof EditorialRuleError) throw new CapabilityFailure(error.message);
+        if (error instanceof EditorialRuleError) {
+          const issues = error instanceof BatchValidationError ? error.issues : undefined;
+          throw new CapabilityFailure(error.message, { code: error.code, params: error.params, issues });
+        }
+        if (error instanceof SocialPublishingError) throw socialFailure(error) ?? error;
         throw error;
       }
     },

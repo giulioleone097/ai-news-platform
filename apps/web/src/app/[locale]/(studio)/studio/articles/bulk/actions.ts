@@ -1,11 +1,11 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { bulkCopy } from "@/components/studio/article-bulk/copy";
 import type { BulkAction, BulkActionResult } from "@/components/studio/article-bulk/types";
 import { locales, type Locale } from "@/i18n";
-import { runEditorCapability } from "@/server/capabilities";
+import { runStudioCapability } from "@/server/studio-capability";
 import { batchLimit } from "@atlasnews/core/editorial/domain/errors";
 
 const capabilities = {
@@ -32,15 +32,19 @@ async function runBulkAction(action: BulkAction, input: { locale: Locale; ids: s
   if (ids.length === 0) return { status: "error", message: copy.noSelection };
   if (ids.length > batchLimit) return { status: "error", message: copy.tooMany(batchLimit) };
 
-  const outcome = await runEditorCapability(
-    capabilities[action],
-    { items: ids.map((id) => ({ id, locale })) },
-    { confirmed: true },
-  ).catch(() => null);
-  if (!outcome) return { status: "error", message: copy.failed };
-  // The runner is the one place that checks the session and the scopes; a signed-out person goes to the
-  // login page, as in every other Studio action, instead of reading an error they cannot act on.
-  if (!outcome.ok && outcome.status === 401) redirect(`/${locale}/login`);
+  let outcome;
+  try {
+    outcome = await runStudioCapability(
+      locale,
+      capabilities[action],
+      { items: ids.map((id) => ({ id, locale })) },
+      { confirmed: true },
+    );
+  } catch (error) {
+    // A signed-out person is sent to the login page by the runner; that is not a failure to report.
+    unstable_rethrow(error);
+    return { status: "error", message: copy.failed };
+  }
   if (!outcome.ok) return { status: "error", message: outcome.error };
 
   const count = typeof outcome.result.count === "number" ? outcome.result.count : ids.length;

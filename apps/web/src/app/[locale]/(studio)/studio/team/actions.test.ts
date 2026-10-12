@@ -32,18 +32,18 @@ describe("Studio team actions", () => {
     await expect(
       inviteMemberAction(idleInviteFormState, form({ email: "mario@example.com", name: "  ", role: "admin" })),
     ).rejects.toThrow("REDIRECT:/en/studio/team?invited=saved");
-    expect(mocks.run).toHaveBeenCalledWith("admin_invite_editor", { email: "mario@example.com", role: "admin" }, {});
+    expect(mocks.run).toHaveBeenCalledWith("admin_invite_editor", { email: "mario@example.com", role: "admin" }, { locale: "en" });
 
     mocks.run.mockResolvedValueOnce({ ok: true, result: { emailSent: true } });
     await expect(
       inviteMemberAction(idleInviteFormState, form({ locale: "it", email: "a@b.co", name: "Ada Lovelace", role: "editor" })),
     ).rejects.toThrow("REDIRECT:/it/studio/team?invited=sent");
-    expect(mocks.run).toHaveBeenLastCalledWith("admin_invite_editor", { email: "a@b.co", role: "editor", name: "Ada Lovelace" }, {});
+    expect(mocks.run).toHaveBeenLastCalledWith("admin_invite_editor", { email: "a@b.co", role: "editor", name: "Ada Lovelace" }, { locale: "it" });
   });
 
   it("treats an unknown role as the editor role, never as admin", async () => {
     await expect(inviteMemberAction(idleInviteFormState, form({ email: "a@b.co", role: "owner" }))).rejects.toThrow("REDIRECT");
-    expect(mocks.run).toHaveBeenCalledWith("admin_invite_editor", { email: "a@b.co", role: "editor" }, {});
+    expect(mocks.run).toHaveBeenCalledWith("admin_invite_editor", { email: "a@b.co", role: "editor" }, { locale: "en" });
   });
 
   it("returns the rule's message to the form with the typed values kept", async () => {
@@ -79,14 +79,14 @@ describe("Studio team actions", () => {
     await expect(changeRoleAction(idleStudioActionState, form({ id: "m1", role: "admin" }))).rejects.toThrow(
       "REDIRECT:/en/studio/team?updated=1",
     );
-    expect(mocks.run).toHaveBeenCalledWith("admin_update_editor", { id: "m1", role: "admin" }, {});
+    expect(mocks.run).toHaveBeenCalledWith("admin_update_editor", { id: "m1", role: "admin" }, { locale: "en" });
   });
 
   it("removes only with the confirmation flag the page set after asking the person", async () => {
     await expect(removeMemberAction(idleStudioActionState, form({ id: "m1" }))).rejects.toThrow(
       "REDIRECT:/en/studio/team?removed=1",
     );
-    expect(mocks.run).toHaveBeenCalledWith("admin_remove_editor", { id: "m1" }, { confirmed: true });
+    expect(mocks.run).toHaveBeenCalledWith("admin_remove_editor", { id: "m1" }, { confirmed: true, locale: "en" });
   });
 
   it("returns a refused removal (self, last admin) to the row", async () => {

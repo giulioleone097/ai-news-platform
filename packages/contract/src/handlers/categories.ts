@@ -44,7 +44,7 @@ export const categoryCapabilities = [
   implement(adminGetCategory, async (ports, { translationKey }) => {
     const { repository } = await categories(ports);
     const category = (await repository.listCategoryRecords()).find((record) => record.translationKey === translationKey);
-    if (!category) throw new CapabilityFailure("Category not found.");
+    if (!category) throw new CapabilityFailure("Category not found.", { code: "category.notFound" });
     return { category };
   }),
 

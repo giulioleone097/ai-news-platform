@@ -1,4 +1,4 @@
-import { hasExpectedImageSignature } from "../domain/editorial-image";
+import { hasExpectedImageSignature, maxMediaBytes, mediaImageTypes } from "../domain/editorial-image";
 import type { MediaRepository } from "../domain/article-repository";
 import type { MediaAsset, MediaUpload } from "../domain/editorial-operations";
 import {
@@ -31,8 +31,14 @@ export class MediaCommandService {
     await validateEach(
       uploads,
       (upload) => {
+        if (!(mediaImageTypes as readonly string[]).includes(upload.mimeType)) {
+          throw new EditorialRuleError(`Media type ${upload.mimeType} is not an accepted image type.`, "media.unsupportedType");
+        }
+        if (!upload.bytes.byteLength || upload.bytes.byteLength > maxMediaBytes) {
+          throw new EditorialRuleError(`A media file must be 1 byte to ${maxMediaBytes} bytes.`, "media.tooLarge", { megabytes: maxMediaBytes / 1_048_576 });
+        }
         if (!hasExpectedImageSignature(upload.bytes, upload.mimeType)) {
-          throw new EditorialRuleError("Media bytes do not match the declared image type.");
+          throw new EditorialRuleError("Media bytes do not match the declared image type.", "media.signatureMismatch");
         }
       },
       (upload) => upload.name,
@@ -56,9 +62,9 @@ export class MediaCommandService {
     await validateEach(
       paths,
       async (path) => {
-        if (!assets.some((asset) => asset.path === path)) throw new EditorialRuleError("Media asset not found.");
+        if (!assets.some((asset) => asset.path === path)) throw new EditorialRuleError("Media asset not found.", "media.notFound");
         if (await this.repository.isAssetReferenced(path)) {
-          throw new EditorialRuleError("Media asset is referenced by an article.");
+          throw new EditorialRuleError("Media asset is referenced by an article.", "media.referenced");
         }
       },
       (path) => path,
@@ -68,6 +74,6 @@ export class MediaCommandService {
   }
 
   private assertWritable(message: string) {
-    if (!this.repository.writable) throw new EditorialRuleError(message);
+    if (!this.repository.writable) throw new EditorialRuleError(message, "media.notWritable");
   }
 }

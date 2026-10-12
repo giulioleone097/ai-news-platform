@@ -273,6 +273,7 @@ describe("@atlasnews/contract/page", () => {
         "@atlasnews/core/editorial/domain/entity",
         "@atlasnews/core/editorial/domain/errors",
         "@atlasnews/core/comments/domain/admin-tool-definitions",
+        "@atlasnews/core/social-publishing/domain/errors",
         "@atlasnews/core/support/domain/contact-message",
         "@atlasnews/core/team/domain/team",
       ]).toContain(target);

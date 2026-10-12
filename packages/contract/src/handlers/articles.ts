@@ -26,7 +26,7 @@ async function articleCommands(ports: CapabilityPorts) {
 
 async function findOrFail(repository: Awaited<ReturnType<typeof articleCommands>>["repository"], id: string, locale: "en" | "it") {
   const article = await repository.findById(id, locale);
-  if (!article) throw new CapabilityFailure("Article not found.");
+  if (!article) throw new CapabilityFailure("Article not found.", { code: "article.notFound" });
   return article;
 }
 

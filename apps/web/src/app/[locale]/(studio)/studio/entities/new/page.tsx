@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { listEntityItems } from "@/components/studio/entities/entity-data";
 import { EntityForm } from "@/components/studio/entities/entity-form";
 import { isLocale } from "@/i18n";
@@ -17,10 +17,7 @@ export default async function NewEntityPage({
 
   await requireEditor(locale);
   const companies = await listEntityItems(locale, "company");
-  if (!companies.ok) {
-    if (companies.status === 401) redirect(`/${locale}/login`);
-    throw new Error(companies.error);
-  }
+  if (!companies.ok) throw new Error(companies.error);
 
   return <EntityForm companies={companies.items} locale={locale} />;
 }
