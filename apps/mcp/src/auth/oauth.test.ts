@@ -349,8 +349,8 @@ describe("the configured server", () => {
     expect((await call(`Bearer ${token}`)).response.status).toBe(401);
 
     const hostile = new Request("http://evil.example/.well-known/oauth-protected-resource", { headers: { host: "evil.example" } });
-    const metadata = await (await getResourceMetadata(hostile)).json();
-    expect(metadata.authorization_servers).toBeUndefined();
+    expect((await getResourceMetadata(hostile)).status).toBe(404);
+    expect((await call(`Bearer ${testApiKey}`)).payload.result.isError).not.toBe(true);
     expect((await call(`Bearer ${testApiKey}`)).payload.result.isError).not.toBe(true);
   });
 
@@ -403,12 +403,11 @@ describe("the configured server", () => {
     expect(challenge).toContain('scope="email"');
   });
 
-  it("falls back to the API key alone, and says nothing about a server, when sign-in is not configured", async () => {
+  it("falls back to the API key alone, and publishes no resource metadata, when sign-in is not configured", async () => {
     await configure();
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
-    const metadata = await getResourceMetadata(new Request("http://localhost:8787/.well-known/oauth-protected-resource")).json();
-    expect(metadata.authorization_servers).toBeUndefined();
-    expect(metadata.scopes_supported).toEqual(scopes);
+    const metadata = await getResourceMetadata(new Request("http://localhost:8787/.well-known/oauth-protected-resource"));
+    expect(metadata.status).toBe(404);
 
     const verifier = defaultAccessTokenVerifier();
     const jwtLooking = "aaa.bbb.ccc";

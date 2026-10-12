@@ -1,3 +1,4 @@
+import { getMcpOAuthEnvironment } from "@atlasnews/adapters/config/env";
 import { mcpCapabilities, scopes } from "@atlasnews/contract";
 import { defaultLocale, locales } from "@atlasnews/core/locale";
 import { mcpEventNames } from "@atlasnews/core/mcp-events/domain/events";
@@ -41,7 +42,8 @@ export function GET() {
         anonymous: "read-only tools",
         authenticated: "Authorization: Bearer <token>; every tool declares the scopes it needs",
         scopes,
-        resourceMetadata: "/.well-known/oauth-protected-resource",
+        // The route answers 404 while no OAuth server is configured, so it is not advertised then.
+        resourceMetadata: getMcpOAuthEnvironment() ? "/.well-known/oauth-protected-resource" : null,
       },
       internationalization: {
         defaultLocale,

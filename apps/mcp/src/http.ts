@@ -1,4 +1,4 @@
-import { createMcpHandler } from "@modelcontextprotocol/server";
+import { createMcpHandler, SUPPORTED_PROTOCOL_VERSIONS } from "@modelcontextprotocol/server";
 import { getAllowedMcpOrigins } from "@atlasnews/adapters/config/env";
 
 import { mcpCapabilities, type CapabilityPorts, type Scope } from "@atlasnews/contract";
@@ -13,13 +13,14 @@ import {
   type AuthenticatedPrincipal,
 } from "./auth";
 import { SubscribeRateLimiter } from "./events/subscribe-rate-limit";
+import { mcpProtocolVersion } from "./metadata";
 import { createAtlasNewsServer } from "./server";
 
+// The 2026-07-28 transport has no session id and no resumable stream, so neither header is named here.
 const baseHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "Content-Type, Accept, MCP-Protocol-Version, MCP-Method, MCP-Name, MCP-Session-Id, Last-Event-ID",
-  "Access-Control-Expose-Headers": "MCP-Protocol-Version, MCP-Session-Id, WWW-Authenticate",
+  "Access-Control-Allow-Headers": "Content-Type, Accept, MCP-Protocol-Version, MCP-Method, MCP-Name",
+  "Access-Control-Expose-Headers": "MCP-Protocol-Version, WWW-Authenticate",
   "Cache-Control": "no-store",
 } as const;
 
@@ -130,6 +131,22 @@ function scopesRequiredByCall(headers: Headers, body: Uint8Array<ArrayBuffer>): 
   return [...new Set(names.flatMap((name) => (typeof name === "string" ? scopesByTool.get(name) ?? [] : [])))];
 }
 
+/**
+ * The 2026-07-28 transport requires `MCP-Protocol-Version` on every POST. The SDK already refuses a
+ * 2026-07-28 request that omits it (it compares the header with the body envelope) and a wrong value; this
+ * covers the 2025-era request that omits it. The one request that cannot carry it is `initialize`, which
+ * opens the connection that fixes the version.
+ */
+function lacksProtocolVersion(headers: Headers, body: Uint8Array<ArrayBuffer>) {
+  if (headers.has("mcp-protocol-version")) return false;
+  try {
+    const message: unknown = JSON.parse(new TextDecoder().decode(body));
+    return (message as { method?: unknown } | null)?.method !== "initialize";
+  } catch {
+    return true;
+  }
+}
+
 /** Whether the body calls `events/subscribe` (a batch is read message by message). */
 function callsEventSubscribe(headers: Headers, body: Uint8Array<ArrayBuffer>) {
   if (headers.get("mcp-method") === "events/subscribe") return true;
@@ -228,6 +245,11 @@ export async function handleMcpRequest(request: Request, deps: McpEndpointDepend
     return jsonRpcError(400, -32700, "Invalid request body.", request, cors);
   }
   if (!body) return jsonRpcError(413, -32001, "Request body too large.", request, cors);
+
+  if (lacksProtocolVersion(request.headers, body)) {
+    const supported = [mcpProtocolVersion, ...SUPPORTED_PROTOCOL_VERSIONS].join(", ");
+    return jsonRpcError(400, -32000, `Bad Request: Missing MCP-Protocol-Version header (supported versions: ${supported})`, request, cors);
+  }
 
   if (principal.kind === "anonymous") {
     const required = scopesRequiredByCall(request.headers, body);

@@ -26,6 +26,16 @@ export function defaultMcpAppsOptions(): McpAppsOptions {
   };
 }
 
+/**
+ * How long a 2026-07-28 client may reuse a list result (2025-era responses never carry these). The tool list
+ * changes only with a deployment and is the same for every caller, but `private` keeps it out of shared
+ * caches; the resource list follows the published articles, so it is kept short.
+ */
+const cacheHints = {
+  "tools/list": { ttlMs: 300_000, cacheScope: "private" },
+  "resources/list": { ttlMs: 60_000, cacheScope: "private" },
+} as const;
+
 export interface AtlasNewsServerOptions {
   ports: CapabilityPorts;
   principal: Principal;
@@ -53,7 +63,7 @@ export function createAtlasNewsServer({
     version: mcpServerVersion,
     websiteUrl: apps.siteUrl.origin,
     icons: [icon],
-  });
+  }, { cacheHints });
 
   registerCapabilities(server, mcpCapabilities, { ports, principal, challenge });
   registerMcpApps(server, ports.articles, apps, [icon]);
