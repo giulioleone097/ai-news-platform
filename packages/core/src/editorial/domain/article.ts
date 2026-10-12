@@ -1,6 +1,6 @@
 import type { Locale } from "../../locale";
 import type { EntityKind } from "./entity";
-import { EditorialRuleError } from "./errors";
+import { EditorialRuleError, type EditorialErrorCode } from "./errors";
 
 export const articleStatuses = [
   "draft",
@@ -51,6 +51,15 @@ export interface EntityLink {
   slug: string;
   isPrimary: boolean;
 }
+
+/** How long the text fields of an article may be: core checks them, the capability schemas and the Studio form read them. */
+export const articleLimits = {
+  title: { min: 8, max: 180 },
+  excerpt: { min: 20, max: 360 },
+  content: { min: 20, max: 100_000 },
+  slug: { max: 96 },
+  coverAlt: { min: 3, max: 240 },
+} as const;
 
 export const storyLimits = {
   keyPoints: { count: 3, min: 3, max: 140 },
@@ -125,8 +134,14 @@ export interface ArticleDraftInput {
   entities?: Array<{ slug: string; isPrimary?: boolean }>;
 }
 
-/** A new story. It cannot be published on creation; `status` defaults to `draft`. */
-export type ArticleCreate = Omit<ArticleDraftInput, "id" | "status"> & { status?: DraftStatus };
+/**
+ * A new story. It cannot be published on creation; `status` defaults to `draft`.
+ * `translationOf` is the slug of the same story in the other language: the new article joins its translation group.
+ */
+export type ArticleCreate = Omit<ArticleDraftInput, "id" | "status"> & {
+  status?: DraftStatus;
+  translationOf?: string;
+};
 
 /**
  * A partial update: every field is optional and an omitted one keeps its stored value. What an
@@ -136,7 +151,11 @@ export type ArticleCreate = Omit<ArticleDraftInput, "id" | "status"> & { status?
  * The status can move between the draft statuses only; publishing is a separate use case.
  */
 export type ArticlePatch = Partial<Omit<ArticleDraftInput, "id" | "locale" | "translationKey" | "status">>
-  & { status?: DraftStatus };
+  & {
+    status?: DraftStatus;
+    /** The slug of the same story in the other language; `null` unlinks the two. */
+    translationOf?: string | null;
+  };
 
 /** The filters of the editor's article list; all optional. */
 export interface StudioArticleFilter {
@@ -205,7 +224,7 @@ export function slugify(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 96);
+    .slice(0, articleLimits.slug.max);
 }
 
 export function estimateReadingMinutes(content: string) {
@@ -247,12 +266,19 @@ const storyFieldMessages: Record<StoryField, string> = {
   entities: "Invalid entities",
 };
 
+const storyFieldCodes = {
+  claimStatus: "article.invalidClaimStatus",
+  keyPoints: "article.invalidKeyPoints",
+  sources: "article.invalidSources",
+  entities: "article.invalidEntities",
+} as const satisfies Record<StoryField, EditorialErrorCode>;
+
 /** Names the invalid story field so that a form can mark it. */
 export class StoryFieldError extends EditorialRuleError {
   override readonly name = "StoryFieldError";
 
   constructor(readonly field: StoryField) {
-    super(storyFieldMessages[field]);
+    super(storyFieldMessages[field], storyFieldCodes[field]);
   }
 }
 

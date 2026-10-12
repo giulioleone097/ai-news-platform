@@ -180,6 +180,14 @@ export class MemoryEditorialRepository
     );
   }
 
+  async findByTranslationKey(translationKey: string, locale: Locale) {
+    return structuredClone(
+      this.articles.find(
+        (article) => article.locale === locale && article.translationKey === translationKey,
+      ) ?? null,
+    );
+  }
+
   async listCategories(locale: Locale) {
     return structuredClone(
       this.categories
@@ -220,8 +228,9 @@ export class MemoryEditorialRepository
     const timestamp = new Date().toISOString();
     const status = input.status;
     const slug = slugify(input.slug || input.title);
+    // A key the caller names links the article to its translation; without one the article keeps its own.
     const translationKey =
-      existing?.translationKey ?? input.translationKey ?? crypto.randomUUID();
+      input.translationKey ?? existing?.translationKey ?? crypto.randomUUID();
     const duplicate = this.articles.find(
       (article) =>
         article.id !== existing?.id &&

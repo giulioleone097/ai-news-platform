@@ -446,6 +446,11 @@ export class D1EditorialRepository
     return article ?? null;
   }
 
+  async findByTranslationKey(translationKey: string, locale: Locale) {
+    const [article] = await this.queryArticles(new Where().add("a.locale = ?", locale).add("a.translation_key = ?", translationKey));
+    return article ?? null;
+  }
+
   /** The articles that exist among `ids`, by id. */
   private async articlesById(ids: string[]) {
     if (!ids.length) return new Map<string, Article>();
@@ -494,7 +499,8 @@ export class D1EditorialRepository
     timestamp: string,
   ) {
     return {
-      translation_key: existing?.translationKey ?? input.translationKey ?? crypto.randomUUID(),
+      // A key the caller names links the article to its translation; without one the article keeps its own.
+      translation_key: input.translationKey ?? existing?.translationKey ?? crypto.randomUUID(),
       locale: input.locale,
       slug: slugify(input.slug || input.title),
       title: input.title.trim(),

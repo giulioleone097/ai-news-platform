@@ -437,6 +437,17 @@ export class SupabaseEditorialRepository
     return data ? mapArticle(data) : null;
   }
 
+  async findByTranslationKey(translationKey: string, locale: Locale) {
+    const { data, error } = await this.client
+      .from("articles")
+      .select(this.articleSelect)
+      .eq("locale", locale)
+      .eq("translation_key", translationKey)
+      .maybeSingle();
+    throwIfError(error, "Unable to read article");
+    return data ? mapArticle(data) : null;
+  }
+
   async listCategories(locale: Locale) {
     const { data, error } = await this.client
       .from("categories")
@@ -467,7 +478,8 @@ export class SupabaseEditorialRepository
     const status = input.status;
     return {
       id: input.id ?? null,
-      translation_key: existing?.translationKey ?? input.translationKey ?? crypto.randomUUID(),
+      // A key the caller names links the article to its translation; without one the article keeps its own.
+      translation_key: input.translationKey ?? existing?.translationKey ?? crypto.randomUUID(),
       locale: input.locale,
       slug: slugify(input.slug || input.title),
       title: input.title.trim(),

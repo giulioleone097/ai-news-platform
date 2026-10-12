@@ -25,6 +25,8 @@ export interface ArticleRepository {
   listForStudio(locale: Locale, filter?: StudioArticleFilter): Promise<Article[]>;
   findBySlug(slug: string, locale: Locale): Promise<Article | null>;
   findById(id: string, locale: Locale): Promise<Article | null>;
+  /** The article of a translation group in one language, whatever its status. */
+  findByTranslationKey(translationKey: string, locale: Locale): Promise<Article | null>;
   listCategories(locale: Locale): Promise<Category[]>;
   save(input: ArticleDraftInput): Promise<Article>;
   /** One transaction: every article is written, or none. Returns them in input order. */

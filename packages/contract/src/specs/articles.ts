@@ -1,6 +1,7 @@
 import * as z from "zod/v4";
 
 import {
+  articleLimits,
   articleStatuses,
   draftStatuses,
   socialChannels,
@@ -55,10 +56,10 @@ const storyFields = {
 
 /** The fields of a story that create and patch share. The status is not among them: see below. */
 const articleFields = {
-  title: z.string().trim().min(8).max(180),
+  title: z.string().trim().min(articleLimits.title.min).max(articleLimits.title.max),
   slug: slugSchema.optional(),
-  excerpt: z.string().trim().min(20).max(360),
-  content: z.string().trim().min(20).max(100_000).describe(
+  excerpt: z.string().trim().min(articleLimits.excerpt.min).max(articleLimits.excerpt.max),
+  content: z.string().trim().min(articleLimits.content.min).max(articleLimits.content.max).describe(
     "Article body in Markdown (GFM). Raw HTML is dropped. Beyond GFM: fenced code with a language (ts, js, json, bash, "
     + "python, sql, yaml, html, css, diff, go, rust) is highlighted; > [!NOTE], [!TIP], [!IMPORTANT], [!WARNING] or "
     + "[!CAUTION] on the first line of a quote makes a callout; a paragraph holding only a YouTube or X status URL "
@@ -69,17 +70,24 @@ const articleFields = {
   coverImage: z.string().trim().min(1).max(2_048)
     .refine(isAllowedEditorialImageSource, "Use bundled media or the configured editorial bucket")
     .optional(),
-  coverAlt: z.string().trim().min(3).max(240).optional(),
+  coverAlt: z.string().trim().min(articleLimits.coverAlt.min).max(articleLimits.coverAlt.max).optional(),
   scheduledFor: z.string().datetime().nullable().optional(),
   distribution: z.array(channelSchema).max(socialChannels.length).optional(),
   ...storyFields,
 } as const;
+
+/** The same story in the other language is named by its slug; the translation key behind it is not something callers know. */
+const translationOf = slugSchema.describe(
+  "Slug of the same story in the other language (en and it). The two articles become translations of each other, "
+  + "so the site links them. The slug must exist in the other language, which must not have a translation of that story yet.",
+);
 
 /** Create and patch can set the draft statuses only; going live and back is publish and unpublish. */
 const createItem = z.object({
   locale: localeSchema,
   ...articleFields,
   status: draftStatusSchema.default("draft"),
+  translationOf: translationOf.optional(),
 });
 
 const patchItem = z.object({
@@ -96,6 +104,7 @@ const patchItem = z.object({
   coverAlt: articleFields.coverAlt,
   scheduledFor: articleFields.scheduledFor,
   distribution: articleFields.distribution,
+  translationOf: translationOf.nullable().optional(),
   ...storyFields,
 });
 
@@ -103,7 +112,7 @@ const refItem = z.object({ id: idSchema, locale: localeSchema });
 
 export const newsroomArticleSchema = z.object({
   id: z.string(),
-  translationKey: z.string(),
+  translationKey: z.string().describe("Shared by an article and its translation. Set it with translationOf, not directly."),
   locale: localeSchema,
   slug: z.string(),
   title: z.string(),
@@ -139,7 +148,8 @@ const patchSemantics =
   `${patchNote} Clearing: scheduledFor null removes the date (only while the status is not scheduled); `
   + "an empty distribution, keyPoints, sources or entities list empties it. Title, slug, excerpt, content, categorySlug, "
   + "coverImage, coverAlt and claimStatus cannot be cleared, only replaced. status moves between draft, review and "
-  + "scheduled; a published article keeps its status here.";
+  + "scheduled; a published article keeps its status here. translationOf links the article to its translation (the "
+  + "slug of the same story in the other language); null removes the link.";
 const cannotPublish =
   " This tool cannot publish or unpublish: use admin_publish_article and admin_unpublish_article, which need the publish permission and ask for confirmation.";
 const batchCannotPublish =
