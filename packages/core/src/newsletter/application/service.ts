@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUuid } from "../../crypto";
 import { z } from "zod";
 import { EditorialRuleError } from "../../editorial/domain/errors";
 import {
@@ -162,7 +162,7 @@ export class NewsletterDeliveryService {
   }
 
   async processOutboxBatch(input: { limit?: number; leaseSeconds?: number } = {}) {
-    const workerId = `newsletter-${randomUUID()}`;
+    const workerId = `newsletter-${randomUuid()}`;
     const deliveries = await this.repository.claimOutbox({
       limit: Math.min(50, Math.max(1, input.limit ?? 9)),
       workerId,

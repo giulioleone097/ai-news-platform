@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { sha256Hex } from "../../crypto";
 
 import { SocialPublishingError } from "../domain/errors";
 import {
@@ -63,10 +63,7 @@ export function normalizeSocialPayload(
 }
 
 function defaultIdempotencyKey(publicationId: string, provider: SocialProvider) {
-  const digest = createHash("sha256")
-    .update(`${provider}:${publicationId}`, "utf8")
-    .digest("hex")
-    .slice(0, 32);
+  const digest = sha256Hex(`${provider}:${publicationId}`).slice(0, 32);
   return `social:${provider}:${digest}`;
 }
 

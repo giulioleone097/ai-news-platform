@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUuid } from "../../crypto";
 
 import { WebhookTransportError } from "../domain/errors";
 import type { McpEventsRepository, WebhookClient } from "../domain/ports";
@@ -33,7 +33,7 @@ export class DeliveryDispatcher {
     private readonly repository: McpEventsRepository,
     private readonly client: WebhookClient,
     private readonly clock: () => Date = () => new Date(),
-    private readonly newToken: () => string = randomUUID,
+    private readonly newToken: () => string = randomUuid,
   ) {}
 
   async run(): Promise<DispatchSummary> {

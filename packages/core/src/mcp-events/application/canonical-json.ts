@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { sha256Hex } from "../../crypto";
 
 /** JSON with recursively sorted object keys; `undefined` object members are omitted. */
 export function canonicalJson(value: unknown): string {
@@ -13,10 +13,6 @@ export function canonicalJson(value: unknown): string {
     return `{${members.join(",")}}`;
   }
   return JSON.stringify(value) ?? "null";
-}
-
-export function sha256Hex(value: string) {
-  return createHash("sha256").update(value).digest("hex");
 }
 
 /** Deterministic id from the identity of a subscription. */

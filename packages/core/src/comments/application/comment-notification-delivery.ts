@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUuid } from "../../crypto";
 import type {
   CommentNotificationOutbox,
   CommentNotificationProvider,
@@ -12,7 +12,7 @@ export class CommentNotificationDeliveryService {
 
   async processBatch(input: { limit?: number } = {}) {
     const limit = Math.min(50, Math.max(1, input.limit ?? 10));
-    const workerId = `comment-${randomUUID()}`;
+    const workerId = `comment-${randomUuid()}`;
     const events = await this.outbox.claim(workerId, limit);
     const results: Array<"sent" | "failed" | "skipped"> = [];
 

@@ -1,4 +1,10 @@
-import { isIP } from "node:net";
+const ipv4Pattern = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+
+function isIpAddress(host: string) {
+  const parts = ipv4Pattern.exec(host);
+  if (parts) return parts.slice(1).every((part) => Number(part) <= 255);
+  return host.includes(":");
+}
 
 // Second-level labels that countries use below their two-letter code (example.co.uk, example.com.au).
 const countrySecondLevel = new Set(["ac", "co", "com", "edu", "gov", "net", "org"]);
@@ -13,7 +19,7 @@ const countrySecondLevel = new Set(["ac", "co", "com", "edu", "gov", "net", "org
  */
 export function registrableDomain(hostname: string) {
   const host = hostname.toLowerCase().replace(/\.$/, "");
-  if (isIP(host.replace(/^\[|\]$/g, "")) || !host.includes(".")) return host;
+  if (isIpAddress(host.replace(/^\[|\]$/g, "")) || !host.includes(".")) return host;
   const labels = host.split(".");
   const keep = labels.at(-1)!.length === 2 && countrySecondLevel.has(labels.at(-2)!) ? 3 : 2;
   return labels.slice(-keep).join(".");

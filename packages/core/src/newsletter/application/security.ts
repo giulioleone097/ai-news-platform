@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { hmacSha256, randomBytes, sha256Hex, timingSafeEqualBytes, toHex } from "../../crypto";
 import { z } from "zod";
 
 const unsubscribePayloadSchema = z.object({
@@ -7,28 +7,20 @@ const unsubscribePayloadSchema = z.object({
   version: z.literal(1),
 });
 
-function safeEqual(left: Buffer, right: Buffer) {
-  return left.byteLength === right.byteLength && timingSafeEqual(left, right);
-}
-
 export function hashNewsletterValue(value: string) {
-  return createHash("sha256").update(value).digest("hex");
+  return sha256Hex(value);
 }
 
 export function hashNewsletterEmail(email: string, secret: string) {
-  return createHmac("sha256", secret)
-    .update(`newsletter-email:${email.trim().toLowerCase()}`)
-    .digest("hex");
+  return toHex(hmacSha256(secret, `newsletter-email:${email.trim().toLowerCase()}`));
 }
 
 export function hashNewsletterRequestFingerprint(requester: string, secret: string) {
-  return createHmac("sha256", secret)
-    .update(`newsletter-requester:v1:${requester.trim().toLowerCase()}`)
-    .digest("hex");
+  return toHex(hmacSha256(secret, `newsletter-requester:v1:${requester.trim().toLowerCase()}`));
 }
 
 export function createConfirmationChallenge() {
-  const secret = randomBytes(32).toString("base64url");
+  const secret = Buffer.from(randomBytes(32)).toString("base64url");
   return {
     hash: hashNewsletterValue(secret),
     secret,
@@ -52,9 +44,8 @@ export function createUnsubscribeToken(
   secret: string,
 ) {
   const payload = Buffer.from(JSON.stringify({ ...input, version: 1 })).toString("base64url");
-  const signature = createHmac("sha256", secret)
-    .update(`newsletter-unsubscribe:v1.${payload}`)
-    .digest("base64url");
+  const signature = Buffer.from(hmacSha256(secret, `newsletter-unsubscribe:v1.${payload}`))
+    .toString("base64url");
   return `v1.${payload}.${signature}`;
 }
 
@@ -63,16 +54,14 @@ export function verifyUnsubscribeToken(token: string, secret: string) {
   const [version, payload, signature, extra] = token.split(".");
   if (version !== "v1" || !payload || !signature || extra) return null;
 
-  const expected = createHmac("sha256", secret)
-    .update(`newsletter-unsubscribe:v1.${payload}`)
-    .digest();
+  const expected = hmacSha256(secret, `newsletter-unsubscribe:v1.${payload}`);
   let received: Buffer;
   try {
     received = Buffer.from(signature, "base64url");
   } catch {
     return null;
   }
-  if (!safeEqual(expected, received)) return null;
+  if (!timingSafeEqualBytes(expected, received)) return null;
 
   try {
     return unsubscribePayloadSchema.parse(JSON.parse(Buffer.from(payload, "base64url").toString("utf8")));
@@ -106,16 +95,14 @@ export function verifySvixWebhook(input: {
   }
   if (!key.byteLength) return false;
 
-  const expected = createHmac("sha256", key)
-    .update(`${input.id}.${input.timestamp}.${input.body}`)
-    .digest();
+  const expected = hmacSha256(key, `${input.id}.${input.timestamp}.${input.body}`);
   return input.signature
     .split(/\s+/)
     .map((part) => part.split(",", 2))
     .some(([version, signature]) => {
       if (version !== "v1" || !signature) return false;
       try {
-        return safeEqual(expected, Buffer.from(signature, "base64"));
+        return timingSafeEqualBytes(expected, Buffer.from(signature, "base64"));
       } catch {
         return false;
       }
