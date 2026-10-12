@@ -153,6 +153,21 @@ describe("capability catalogue", () => {
     }
   });
 
+  it("announces sends, cancellations and replaced payloads as destructive, and leaves reversible writes alone", () => {
+    const destructiveOf = (name: string) => capabilities.find((capability) => capability.name === name)!.annotations.destructiveHint;
+    for (const name of [
+      "admin_newsletter_send_campaign", "admin_newsletter_cancel_campaign", "admin_newsletter_erase_subscription",
+      "admin_newsletter_process_outbox", "admin_comment_process_notifications", "admin_social_cancel", "admin_social_requeue",
+      "admin_social_process_outbox", "admin_delete_media", "admin_delete_contact_message",
+    ]) expect(destructiveOf(name), name).toBe(true);
+    // Publishing and unpublishing can be undone, an upload gets a new path and never overwrites, scheduling can be cancelled.
+    for (const name of [
+      "admin_publish_article", "admin_unpublish_article", "admin_publish_articles", "admin_unpublish_articles",
+      "admin_upload_media", "admin_upload_media_assets", "admin_newsletter_schedule_campaign", "admin_social_enqueue",
+      "admin_newsletter_request_subscription", "admin_invite_editor",
+    ]) expect(destructiveOf(name), name).toBe(false);
+  });
+
   it("requires a scope for every capability except the public reads", () => {
     const anonymous = capabilities.filter((capability) => capability.scopes.length === 0).map((capability) => capability.name);
     expect(anonymous.sort()).toEqual([

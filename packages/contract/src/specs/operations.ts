@@ -2,7 +2,7 @@ import * as z from "zod/v4";
 
 import { commentAdminToolDefinitions } from "@atlasnews/core/comments/domain/admin-tool-definitions";
 
-import { enqueue, externalWrite, readOnly } from "../annotations";
+import { dispatch, enqueue, externalWrite, irreversible, readOnly } from "../annotations";
 import { defineSpec } from "../capability";
 import { contentTrustSchema, untrustedDescription } from "../untrusted";
 
@@ -101,7 +101,7 @@ export const adminCommentProcessNotifications = defineSpec({
   description: "Process one leased notification batch through the configured real email provider. This sends email.",
   input: z.object({ limit: z.number().int().min(1).max(50).default(10) }),
   output: z.object({ batch: looseResult }),
-  annotations: externalWrite,
+  annotations: dispatch,
   scopes: ["newsroom.publish"],
   confirmation: { question: ({ limit }) => `Send up to ${limit} queued comment notification emails now?` },
 });
@@ -161,7 +161,7 @@ export const adminNewsletterSendCampaign = defineSpec({
   description: "Freeze recipients and idempotently queue a draft campaign for delivery. It never sends inline.",
   input: z.object({ id: idSchema }),
   output: z.object({ campaign: record }),
-  annotations: enqueue,
+  annotations: irreversible,
   scopes: ["newsroom.publish"],
   confirmation: { question: ({ id }) => `Queue newsletter campaign ${id} for delivery to its audience now?` },
 });
@@ -185,7 +185,7 @@ export const adminNewsletterCancelCampaign = defineSpec({
   description: "Cancel a scheduled or queued campaign before delivery.",
   input: z.object({ id: idSchema }),
   output: z.object({ campaign: record }),
-  annotations: enqueue,
+  annotations: irreversible,
   scopes: ["newsroom.write"],
   confirmation: { question: ({ id }) => `Cancel newsletter campaign ${id}?` },
 });
@@ -214,7 +214,7 @@ export const adminNewsletterEraseSubscription = defineSpec({
     "Pseudonymize one newsletter subscriber while preserving required suppression and audit records.",
   input: z.object({ subscriptionId: idSchema }),
   output: z.object({ erased: z.unknown() }),
-  annotations: { ...externalWrite, destructiveHint: true },
+  annotations: irreversible,
   scopes: ["newsroom.publish"],
   confirmation: { question: ({ subscriptionId }) => `Erase the personal data of newsletter subscriber ${subscriptionId}?` },
 });
@@ -229,7 +229,7 @@ export const adminNewsletterProcessOutbox = defineSpec({
     leaseSeconds: z.number().int().min(30).max(900).default(120),
   }),
   output: z.object({ batch: z.unknown() }),
-  annotations: externalWrite,
+  annotations: dispatch,
   scopes: ["newsroom.publish"],
   confirmation: { question: ({ limit }) => `Send up to ${limit} queued newsletter emails now?` },
 });
@@ -273,7 +273,7 @@ export const adminSocialRequeue = defineSpec({
     maxAttempts: socialEnqueueFields.maxAttempts,
   }),
   output: z.object({ job: looseResult }),
-  annotations: enqueue,
+  annotations: irreversible,
   scopes: ["newsroom.write"],
   confirmation: { question: ({ id, provider }) => `Replace the payload of social job ${id} and requeue it for ${provider}?` },
 });
@@ -315,7 +315,7 @@ export const adminSocialCancel = defineSpec({
   description: "Cancel a pending publication that has never been dispatched.",
   input: z.object({ id: idSchema }),
   output: z.object({ job: looseResult }),
-  annotations: enqueue,
+  annotations: irreversible,
   scopes: ["newsroom.write"],
   confirmation: { question: ({ id }) => `Cancel queued social job ${id}?` },
 });
@@ -339,7 +339,7 @@ export const adminSocialProcessOutbox = defineSpec({
   description: "Process one leased batch through configured real providers. This can publish externally.",
   input: z.object({}),
   output: z.object({ batch: looseResult }),
-  annotations: externalWrite,
+  annotations: dispatch,
   scopes: ["newsroom.publish"],
   confirmation: { question: () => "Publish the queued social posts through the live providers now?" },
 });
