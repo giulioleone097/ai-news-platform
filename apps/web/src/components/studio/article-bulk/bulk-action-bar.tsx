@@ -1,7 +1,8 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useRef, useState } from "react";
 import { batchLimit } from "@atlasnews/core/editorial/domain/errors";
+import { ConfirmDialog, splitQuestion } from "@/components/studio/confirm-dialog";
 import type { Locale } from "@/i18n";
 import { bulkCopy } from "./copy";
 import styles from "./bulk.module.css";
@@ -30,6 +31,8 @@ export function BulkActionBar({
   const copy = bulkCopy[locale];
   const limitId = useId();
   const overLimit = exceedsBatchLimit(count, batchLimit);
+  const [asking, setAsking] = useState<BulkAction | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
 
   return (
     <div className={styles.bar}>
@@ -41,8 +44,9 @@ export function BulkActionBar({
             aria-describedby={overLimit ? limitId : undefined}
             className={buttonClass[action]}
             disabled={disabled || overLimit}
-            onClick={() => {
-              if (window.confirm(copy.confirm[action](count))) onRun(action);
+            onClick={(event) => {
+              trigger.current = event.currentTarget;
+              setAsking(action);
             }}
             type="button"
           >
@@ -55,6 +59,20 @@ export function BulkActionBar({
           </p>
         ) : null}
       </div>
+      {asking ? (
+        <ConfirmDialog
+          {...splitQuestion(copy.confirm[asking](count))}
+          confirmLabel={copy.labels[asking]}
+          onCancel={() => setAsking(null)}
+          onConfirm={() => {
+            setAsking(null);
+            onRun(asking);
+          }}
+          open
+          tone={asking === "delete" ? "danger" : "primary"}
+          triggerRef={trigger}
+        />
+      ) : null}
     </div>
   );
 }

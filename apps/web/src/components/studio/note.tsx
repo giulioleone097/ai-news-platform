@@ -18,3 +18,13 @@ export function Note({
     </p>
   );
 }
+
+/** A feature that is not switched on: what it is, what it does and the next step, in one neutral note. */
+export function OffNote({ title, body, next }: { title: string; body: string; next: string }) {
+  return (
+    <Note>
+      <strong className="studio-note__title">{title}</strong>
+      {body} {next}
+    </Note>
+  );
+}

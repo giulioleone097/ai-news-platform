@@ -19,6 +19,7 @@ import {
   Strikethrough,
 } from "lucide-react";
 import {
+  Fragment,
   type ClipboardEvent,
   type DragEvent,
   type KeyboardEvent,
@@ -119,17 +120,19 @@ const toolbarItems: Array<{
     | "image"
   >;
   shortcut?: string;
+  /** Starts a new group: a thin divider is drawn before it. */
+  groupStart?: boolean;
 }> = [
   { command: "heading", icon: Heading2, label: "heading" },
   { command: "bold", icon: Bold, label: "bold", shortcut: "Ctrl/⌘B" },
   { command: "italic", icon: Italic, label: "italic", shortcut: "Ctrl/⌘I" },
   { command: "strike", icon: Strikethrough, label: "strike" },
-  { command: "link", icon: Link2, label: "link", shortcut: "Ctrl/⌘K" },
+  { command: "link", icon: Link2, label: "link", shortcut: "Ctrl/⌘K", groupStart: true },
   { command: "quote", icon: Quote, label: "quote" },
-  { command: "bullets", icon: List, label: "bullets" },
+  { command: "bullets", icon: List, label: "bullets", groupStart: true },
   { command: "numbered", icon: ListOrdered, label: "numbered" },
   { command: "checklist", icon: CheckSquare, label: "checklist" },
-  { command: "code", icon: Code2, label: "code" },
+  { command: "code", icon: Code2, label: "code", groupStart: true },
   // Opens the media picker instead of the bare `![image description](https://)` snippet.
   { command: "image", icon: ImageIcon, label: "image" },
 ];
@@ -409,6 +412,7 @@ export function MarkdownEditor({
           {modes.map(({ value, icon: Icon, label: labelKey }) => (
             <button
               aria-pressed={mode === value}
+              className={value === "split" ? "studio-markdown__split" : undefined}
               key={value}
               onClick={() => changeMode(value)}
               type="button"
@@ -428,22 +432,24 @@ export function MarkdownEditor({
             aria-label={copy.toolbar}
             onKeyDown={handleToolbarKeyDown}
           >
-            {toolbarItems.map(({ command, icon: Icon, label: labelKey, shortcut }, index) => {
+            {toolbarItems.map(({ command, icon: Icon, label: labelKey, shortcut, groupStart }, index) => {
               const buttonLabel = copy[labelKey];
               return (
-                <button
-                  aria-label={buttonLabel}
-                  className="studio-icon-button"
-                  key={command}
-                  onClick={() => (command === "image" && images ? openImagePicker() : runCommand(command))}
-                  onFocus={() => setActiveToolIndex(index)}
-                  tabIndex={activeToolIndex === index ? 0 : -1}
-                  title={shortcut ? `${buttonLabel} (${shortcut})` : buttonLabel}
-                  type="button"
-                >
-                  <Icon aria-hidden="true" />
-                  <span className="sr-only">{buttonLabel}</span>
-                </button>
+                <Fragment key={command}>
+                  {groupStart ? <span aria-hidden="true" className="studio-markdown__divider" /> : null}
+                  <button
+                    aria-label={buttonLabel}
+                    className="studio-icon-button"
+                    onClick={() => (command === "image" && images ? openImagePicker() : runCommand(command))}
+                    onFocus={() => setActiveToolIndex(index)}
+                    tabIndex={activeToolIndex === index ? 0 : -1}
+                    title={shortcut ? `${buttonLabel} (${shortcut})` : buttonLabel}
+                    type="button"
+                  >
+                    <Icon aria-hidden="true" />
+                    <span className="sr-only">{buttonLabel}</span>
+                  </button>
+                </Fragment>
               );
             })}
           </div>
@@ -511,8 +517,7 @@ export function MarkdownEditor({
         <p className="sr-only" role="status">{uploadNotice}</p>
 
         <div className="studio-markdown__footer">
-          <small id={helpId}>{help}</small>
-          {images ? <small className="studio-markdown__drop-hint">{images.dropHint}</small> : null}
+          <small id={helpId}>{images ? `${help} ${images.dropHint}` : help}</small>
           <output>
             {stats.words} {copy.words} · {stats.characters} {copy.characters}
           </output>

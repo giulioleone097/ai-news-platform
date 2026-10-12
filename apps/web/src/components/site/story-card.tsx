@@ -3,9 +3,9 @@ import { localizedPath, type Locale } from "@atlasnews/core/locale";
 import type { Article } from "@atlasnews/core/editorial/domain/article";
 import { toFeedItem } from "./feed-item";
 import { StoryMeta, type StatusLabels } from "./feed-row";
-import { plateTone, StoryCover } from "./story-cover";
+import { StoryCover } from "./story-cover";
 
-/** A story with its cover and deck. `showImage` is false when the picture already appears higher on the page. */
+/** A story with its deck, and its picture when `showImage` is set: the home passes it only for a picture the story owns and the page has not shown yet. */
 export function StoryCard({
   article,
   locale,
@@ -17,17 +17,10 @@ export function StoryCard({
   statusLabels: StatusLabels;
   showImage: boolean;
 }) {
-  const item = toFeedItem(article);
   return (
     <article className="story-card">
-      <StoryCover
-        image={showImage && article.coverImage ? { src: article.coverImage, alt: "" } : null}
-        label={item.entity?.name ?? item.category.name}
-        status={article.claimStatus}
-        tone={plateTone(article.category.translationKey)}
-        sizes="(max-width: 47.99rem) 100vw, 26rem"
-      />
-      <StoryMeta item={item} locale={locale} statusLabels={statusLabels} stamp="time" />
+      {showImage ? <StoryCover src={article.coverImage} alt="" sizes="(max-width: 47.99rem) 100vw, 26rem" /> : null}
+      <StoryMeta item={toFeedItem(article)} locale={locale} statusLabels={statusLabels} stamp="time" size="card" />
       <h2 className="story-card__title">
         <Link href={localizedPath(`/articles/${article.slug}`, locale)} prefetch={false}>
           {article.title}

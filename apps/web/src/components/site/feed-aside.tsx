@@ -3,13 +3,21 @@ import { getCachedEntities } from "@/lib/editorial-queries";
 import { EntityLeaderboard } from "./entity-leaderboard";
 import { StatusLegend } from "./status-legend";
 
-/** The side column of a list page: what the status meter means, then the most covered products. */
-export async function FeedAside({ locale, className = "feed-aside" }: { locale: Locale; className?: string }) {
+/** The side column of a list page: the most covered products, and what the status meter means where the page is about it. */
+export async function FeedAside({
+  locale,
+  className = "feed-aside",
+  legend = false,
+}: {
+  locale: Locale;
+  className?: string;
+  legend?: boolean;
+}) {
   const entities = await getCachedEntities(locale);
 
   return (
     <aside className={className}>
-      <StatusLegend locale={locale} />
+      {legend ? <StatusLegend locale={locale} /> : null}
       <EntityLeaderboard entities={entities.slice(0, 6)} locale={locale} />
     </aside>
   );

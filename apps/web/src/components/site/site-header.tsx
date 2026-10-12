@@ -9,13 +9,18 @@ import {
 } from "@/i18n";
 import { getCachedEntities } from "@/lib/editorial-queries";
 import { BrandMark } from "./brand-mark";
-import { LocaleSwitcher } from "./locale-switcher";
+import { HeaderNav, type NavItem } from "./locale-switcher";
 
-const navigationEntities = 6;
+const navigationProducts = 5;
 
 export async function SiteHeader({ locale }: { locale: Locale }) {
   const messages = getMessages(locale);
-  const entities = (await getCachedEntities(locale)).slice(0, navigationEntities);
+  const products = (await getCachedEntities(locale)).filter((entity) => entity.kind === "product").slice(0, navigationProducts);
+  const items: NavItem[] = [
+    { href: localizedPath("/latest", locale), label: messages.latest.title, kind: "lead" },
+    ...products.map((entity) => ({ href: localizedPath(`/entities/${entity.slug}`, locale), label: entity.name })),
+    { href: localizedPath("/entities", locale), label: messages.navigation.allEntities, kind: "more" },
+  ];
 
   return (
     <>
@@ -25,29 +30,23 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           <Link className="brand" href={localizedPath("/", locale)} aria-label={messages.navigation.homeLabel} prefetch={false}>
             <BrandMark name={messages.common.brandName} />
           </Link>
-          <nav className="product-nav" aria-label={messages.navigation.primaryLabel}>
-            {entities.map((entity) => (
-              <Link href={localizedPath(`/entities/${entity.slug}`, locale)} key={entity.slug} prefetch={false}>
-                {entity.name}
+          <HeaderNav
+            activeLocale={locale}
+            items={items}
+            navLabel={messages.navigation.primaryLabel}
+            languageLabel={messages.navigation.languageLabel}
+            languages={locales.map((code) => ({ code, label: localeLabels[code] }))}
+            before={
+              <Link className="icon-link" href={localizedPath("/search", locale)} aria-label={messages.navigation.search} prefetch={false}>
+                <Search aria-hidden="true" />
               </Link>
-            ))}
-            <Link className="product-nav__more" href={localizedPath("/entities", locale)} prefetch={false}>
-              {messages.navigation.allEntities}
-            </Link>
-          </nav>
-          <div className="site-header__actions">
-            <Link className="icon-link" href={localizedPath("/search", locale)} aria-label={messages.navigation.search} prefetch={false}>
-              <Search aria-hidden="true" />
-            </Link>
-            <LocaleSwitcher
-              activeLocale={locale}
-              label={messages.navigation.languageLabel}
-              options={locales.map((code) => ({ code, label: localeLabels[code] }))}
-            />
-            <Link className="button button--primary button--small" href={`${localizedPath("/", locale)}#newsletter`} prefetch={false}>
-              {messages.newsletter.submit}
-            </Link>
-          </div>
+            }
+            after={
+              <Link className="button button--primary button--small" href="#newsletter" prefetch={false}>
+                {messages.newsletter.submit}
+              </Link>
+            }
+          />
         </div>
       </header>
     </>

@@ -16,7 +16,7 @@ export function CategoryList({ categories, locale }: { categories: CategoryRecor
           <tr>
             <th>{copy.english}</th>
             <th>{copy.italian}</th>
-            <th>{copy.position}</th>
+            <th className="studio-num">{copy.position}</th>
             <th>
               <span className="sr-only">{copy.actions}</span>
             </th>
@@ -41,7 +41,7 @@ export function CategoryList({ categories, locale }: { categories: CategoryRecor
                     <small>/{italian?.slug ?? "—"}</small>
                   </span>
                 </td>
-                <td data-label={copy.position}>{category.position}</td>
+                <td className="studio-num" data-label={copy.position}>{category.position}</td>
                 <td className="studio-table__actions">
                   <span className="studio-actions">
                     <Link

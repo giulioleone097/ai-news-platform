@@ -30,36 +30,34 @@ export default async function SearchPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; category?: string }>;
 }) {
-  const [{ locale }, { q = "" }] = await Promise.all([params, searchParams]);
+  const [{ locale }, { q = "", category }] = await Promise.all([params, searchParams]);
   if (!isLocale(locale)) notFound();
 
   const messages = getMessages(locale);
   const normalizedQuery = q.trim().slice(0, 120);
-  const [page, categories] = await Promise.all([
-    normalizedQuery
-      ? searchPublishedArticles({
-          locale,
-          query: normalizedQuery,
-          limit: feedPageSize,
-        })
-      : Promise.resolve({ items: [], nextCursor: null }),
-    getPublicCategories(locale),
-  ]);
-  const title = normalizedQuery
-    ? `${messages.search.resultsTitle}: “${normalizedQuery}”`
-    : messages.search.title;
+  const categories = await getPublicCategories(locale);
+  const activeCategory = categories.find((item) => item.slug === category)?.slug;
+  const page = normalizedQuery
+    ? await searchPublishedArticles({
+        locale,
+        query: normalizedQuery,
+        category: activeCategory,
+        limit: feedPageSize,
+      })
+    : { items: [], nextCursor: null };
 
   return (
     <main id="main-content" className="site-shell archive-main">
       <ArticleArchive
-        title={title}
+        title={messages.search.title}
         description={messages.search.description}
         articles={page.items}
         categories={categories}
         locale={locale}
         query={normalizedQuery}
+        activeCategory={activeCategory}
         nextCursor={page.nextCursor}
         searchPage
       />

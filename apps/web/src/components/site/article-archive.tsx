@@ -7,10 +7,12 @@ import "@/styles/site/lists.css";
 import { FeedAside } from "./feed-aside";
 import { toFeedItem } from "./feed-item";
 import { InfiniteArticleList } from "./infinite-article-list";
+import { TopicRail } from "./topic-rail";
 
 /**
- * Latest, a topic and search share one page: heading, search field, category filter, then the
- * stream beside the status legend. `searchPage` makes the field the point of the page.
+ * Latest, a topic and search share one page: heading, search field and topic filter, then the
+ * stream, with the most covered products in a side column that starts level with the heading.
+ * `searchPage` makes the field the point of the page and lets the topic filter keep the query.
  */
 export function ArticleArchive({
   title,
@@ -34,8 +36,15 @@ export function ArticleArchive({
   searchPage?: boolean;
 }) {
   const messages = getMessages(locale);
-  // Search with nothing typed yet has no results to show: offer the other ways in.
+  // A search with nothing typed yet has no results to show: offer the topics and the products instead.
   const idle = searchPage && !query;
+  const keepQuery = searchPage && Boolean(query);
+  const topicHref = (slug?: string) => {
+    if (!keepQuery) return localizedPath(slug ? `/categories/${slug}` : "/latest", locale);
+    const params = new URLSearchParams({ q: query });
+    if (slug) params.set("category", slug);
+    return `${localizedPath("/search", locale)}?${params}`;
+  };
 
   return (
     <div className="archive">
@@ -59,25 +68,22 @@ export function ArticleArchive({
             defaultValue={query}
             placeholder={messages.search.placeholder}
           />
-          <button className={searchPage ? "button button--primary" : "button"} type="submit">
+          {keepQuery && activeCategory ? <input type="hidden" name="category" value={activeCategory} /> : null}
+          <button className="button" type="submit">
             <Search aria-hidden="true" />
             {messages.search.submit}
           </button>
         </form>
 
         <nav className="status-filter" aria-label={messages.search.filterLabel}>
-          <Link
-            aria-current={!activeCategory && !searchPage ? "page" : undefined}
-            href={localizedPath("/latest", locale)}
-            prefetch={false}
-          >
+          <Link aria-current={activeCategory ? undefined : "page"} href={topicHref()} prefetch={false}>
             {messages.search.allCategories}
           </Link>
           {categories.map((category) => (
             <Link
               aria-current={activeCategory === category.slug ? "page" : undefined}
               key={category.id}
-              href={localizedPath(`/categories/${category.slug}`, locale)}
+              href={topicHref(category.slug)}
               prefetch={false}
             >
               {category.name}
@@ -86,32 +92,39 @@ export function ArticleArchive({
         </nav>
       </div>
 
-      {idle ? (
-        <FeedAside className="archive-suggest" locale={locale} />
-      ) : (
-        <div className="feed-layout">
-          <section className="feed" aria-label={title}>
-            {articles.length ? (
-              <InfiniteArticleList
-                initialItems={articles.map(toFeedItem)}
-                initialNextCursor={encodeArticleCursor(nextCursor)}
-                locale={locale}
-                filters={{ category: activeCategory, query: query || undefined }}
-                copy={messages.latest}
-                dayCopy={messages.feed.day}
-                statusLabels={messages.story.claimStatus}
-              />
-            ) : (
+      <section className="feed" aria-label={title}>
+        {articles.length ? (
+          <>
+            {keepQuery ? (
+              <p className="archive__count" role="status">
+                {articles.length}{nextCursor ? "+" : ""} {articles.length === 1 && !nextCursor ? messages.search.resultOne : messages.search.resultMany}
+              </p>
+            ) : null}
+            <InfiniteArticleList
+              initialItems={articles.map(toFeedItem)}
+              initialNextCursor={encodeArticleCursor(nextCursor)}
+              locale={locale}
+              filters={{ category: activeCategory, query: query || undefined }}
+              copy={messages.latest}
+              feedCopy={messages.feed}
+              statusLabels={messages.story.claimStatus}
+            />
+          </>
+        ) : (
+          <>
+            {idle ? null : (
               <div className="empty-state">
                 <h2>{messages.search.noResultsTitle}</h2>
                 <p>{messages.search.noResultsDescription}</p>
                 <Link className="button" href={localizedPath("/latest", locale)}>{messages.search.viewLatest}</Link>
               </div>
             )}
-          </section>
-          <FeedAside locale={locale} />
-        </div>
-      )}
+            <TopicRail categories={categories} locale={locale} />
+          </>
+        )}
+      </section>
+
+      <FeedAside locale={locale} />
     </div>
   );
 }

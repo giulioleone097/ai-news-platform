@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArticleArchive } from "@/components/site/article-archive";
-import { NewsletterForm } from "@/components/site/newsletter-form";
 import { getAlternates, getMessages, isLocale } from "@/i18n";
 import {
   getPublicCategories,
@@ -50,7 +49,6 @@ export default async function LatestPage({
         locale={locale}
         nextCursor={page.nextCursor}
       />
-      <NewsletterForm locale={locale} copy={messages.newsletter} source={`latest-${locale}`} />
     </main>
   );
 }

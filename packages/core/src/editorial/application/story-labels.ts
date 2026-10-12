@@ -13,7 +13,7 @@ export const storyLabels = {
     sources: "Sources",
   },
   it: {
-    claimStatus: { confirmed: "Confermato", rollout: "In rilascio", test: "In test", rumour: "Rumor", analysis: "Analisi" },
+    claimStatus: { confirmed: "Confermato", rollout: "In rilascio", test: "In test", rumour: "Indiscrezione", analysis: "Analisi" },
     entityKind: { company: "Azienda", model: "Modello", product: "Prodotto" },
     keyPoints: "Punti chiave",
     sources: "Fonti",

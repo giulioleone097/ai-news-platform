@@ -21,12 +21,16 @@ export function StudioSiteTools({ locale, isAdmin }: { locale: Locale; isAdmin: 
     let dispose: (() => void) | undefined;
     import("./start")
       .then(({ startStudioSiteTools }) => {
-        if (!cancelled) dispose = startStudioSiteTools(context, { locale, isAdmin, refresh: () => router.refresh() });
+        if (cancelled) return;
+        dispose = startStudioSiteTools(context, { locale, isAdmin, refresh: () => router.refresh() });
+        // The shell's "Agent tools ready" status reads this; it stays hidden until the tools are registered.
+        document.documentElement.dataset.studioAgents = "ready";
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
       dispose?.();
+      delete document.documentElement.dataset.studioAgents;
     };
   }, [router, locale, isAdmin]);
 

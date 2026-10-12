@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { localizedPath, type Locale } from "@/i18n";
+import { tags } from "../feed-format";
 import { PageSections } from "./page-sections";
 import { privacyCopy, supportCopy, termsCopy, type LegalCopy } from "./support-copy";
 import styles from "./support.module.css";
@@ -18,7 +19,7 @@ export function LegalPage({ copy, locale, other }: { copy: LegalCopy; locale: Lo
           <p className={styles.updated}>
             {copy.updatedLabel}{" "}
             <time dateTime={copy.updated}>
-              {new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(new Date(copy.updated))}
+              {new Intl.DateTimeFormat(tags[locale], { dateStyle: "long", timeZone: "UTC" }).format(new Date(copy.updated))}
             </time>
           </p>
         </header>

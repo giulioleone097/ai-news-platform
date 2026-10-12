@@ -65,7 +65,7 @@ export const teamCopy: Record<Locale, TeamCopy> = {
     removing: "Removing…",
     removeConfirmation: (email) => `Remove ${email} from the team? They lose access to the Studio at once. Their articles stay.`,
     sitesListNote:
-      "An address listed in ATLASNEWS_ADMIN_EMAILS or ATLASNEWS_EDITOR_EMAILS joins again at its next sign-in, so removing someone who is listed there also needs the list edited.",
+      "Someone who is on the site’s admin or editor email list joins again at their next sign-in, so removing them also needs that list edited.",
     invitationSent: "Invitation sent by email.",
     invitationSaved: "Invitation saved. No email is sent on this site: ask them to sign in with that address.",
     roleUpdated: "Role updated.",
@@ -85,8 +85,8 @@ export const teamCopy: Record<Locale, TeamCopy> = {
     name: "Nome visualizzato (facoltativo)",
     nameHelp: "Appare sui suoi articoli. Senza nome si usa la parte dell’indirizzo prima della @.",
     role: "Ruolo",
-    roleEditor: "Editor",
-    roleAdmin: "Admin",
+    roleEditor: "Redattore",
+    roleAdmin: "Amministratore",
     invite: "Invita",
     inviting: "Invito in corso…",
     members: "Membri del team",
@@ -102,7 +102,7 @@ export const teamCopy: Record<Locale, TeamCopy> = {
     removing: "Rimozione…",
     removeConfirmation: (email) => `Rimuovere ${email} dal team? Perde subito l’accesso allo Studio. I suoi articoli restano.`,
     sitesListNote:
-      "Un indirizzo elencato in ATLASNEWS_ADMIN_EMAILS o ATLASNEWS_EDITOR_EMAILS rientra al prossimo accesso: per rimuovere chi è in quell’elenco va modificato anche l’elenco.",
+      "Chi è nell’elenco email degli admin o degli editor del sito rientra al prossimo accesso: per rimuoverlo va modificato anche l’elenco.",
     invitationSent: "Invito inviato via email.",
     invitationSaved: "Invito salvato. Su questo sito non viene inviata alcuna email: chiedi alla persona di accedere con quell’indirizzo.",
     roleUpdated: "Ruolo aggiornato.",

@@ -24,6 +24,7 @@ function LocaleFields({
   language: Locale;
   values: CategoryTextValues;
 }) {
+  const optional = <span className="studio-field__optional"> ({copy.optional})</span>;
   return (
     <fieldset className="studio-section">
       <legend>{label}</legend>
@@ -32,17 +33,12 @@ function LocaleFields({
         <input defaultValue={values.name} maxLength={categoryLimits.name.max} name={`${language}.name`} required />
       </label>
       <label className="studio-field">
-        <span>{copy.slug}</span>
-        <input
-          defaultValue={values.slug}
-          maxLength={categoryLimits.slug.max}
-          name={`${language}.slug`}
-          placeholder={editing ? undefined : copy.slugPlaceholder}
-        />
-        {editing ? <small>{copy.slugKeepHelp}</small> : null}
+        <span>{copy.slug}{optional}</span>
+        <input defaultValue={values.slug} maxLength={categoryLimits.slug.max} name={`${language}.slug`} />
+        <small className="studio-field__hint">{editing ? copy.slugKeepHelp : copy.slugNewHelp}</small>
       </label>
       <label className="studio-field">
-        <span>{copy.description}</span>
+        <span>{copy.description}{optional}</span>
         <textarea
           defaultValue={values.description}
           maxLength={categoryLimits.description.max}
@@ -76,21 +72,21 @@ export function CategoryForm({ locale, category }: { locale: Locale; category?: 
       <div className="studio-columns">
         <LocaleFields copy={copy} editing={editing} label={copy.english} language="en" values={values.en} />
         <LocaleFields copy={copy} editing={editing} label={copy.italian} language="it" values={values.it} />
+        {/* A third grid item: it takes the first column's width, not the whole row's. */}
+        <label className="studio-field">
+          <span>{copy.position}<span className="studio-field__optional"> ({copy.optional})</span></span>
+          <input
+            defaultValue={values.position}
+            inputMode="numeric"
+            max={categoryLimits.position.max}
+            min={0}
+            name="position"
+            step={1}
+            type="number"
+          />
+          <small className="studio-field__hint">{copy.positionHelp}</small>
+        </label>
       </div>
-
-      <label className="studio-field studio-form-width">
-        <span>{copy.position}</span>
-        <input
-          defaultValue={values.position}
-          inputMode="numeric"
-          max={categoryLimits.position.max}
-          min={0}
-          name="position"
-          step={1}
-          type="number"
-        />
-        <small>{copy.positionHelp}</small>
-      </label>
     </form>
   );
 }

@@ -39,8 +39,12 @@ export default async function SupportPage({
           <h1>{copy.title}</h1>
           <p>{copy.description}</p>
         </header>
-        <PageSections sections={copy.faq} />
         <ContactForm copy={copy.contact} locale={locale} privacyHref={localizedPath("/privacy", locale)} />
+        <PageSections sections={copy.faq} />
+        <section aria-labelledby="editors-title" className={styles.section}>
+          <h2 id="editors-title">{copy.editorsHeading}</h2>
+          <PageSections sections={copy.editors} nested />
+        </section>
         <nav aria-label={copy.relatedLabel} className={styles.related}>
           <Link href={localizedPath("/privacy", locale)} prefetch={false}>{copy.privacy}</Link>
           <Link href={localizedPath("/terms", locale)} prefetch={false}>{copy.terms}</Link>

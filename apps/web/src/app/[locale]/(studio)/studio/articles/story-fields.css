@@ -1,4 +1,4 @@
-/* The story fields of the article form: status, key points, sources and linked entities. */
+/* The story fields of the article form: key points, sources and linked entities. */
 .story-fieldset {
   display: grid;
   min-width: 0;
@@ -58,23 +58,14 @@
   border-bottom: 1px solid var(--line);
 }
 
-.story-entity .studio-check {
+.story-entity > .studio-check:first-child {
   flex: 1 1 12rem;
 }
 
+/* "Main" sits in the row's right corner; the shared check primitive draws the radio. */
 .story-entity__primary {
-  display: inline-flex;
   min-height: 2.25rem;
-  align-items: center;
-  gap: 0.5rem;
   font-size: 0.875rem;
-}
-
-.story-entity__primary input {
-  width: 1.125rem;
-  height: 1.125rem;
-  margin: 0;
-  accent-color: var(--fg);
 }
 
 .story-entity__primary:has(input:disabled) {

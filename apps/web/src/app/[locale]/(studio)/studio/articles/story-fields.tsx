@@ -4,10 +4,8 @@ import { useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import type { Messages } from "@/i18n";
 import {
-  claimStatuses,
   storyLimits,
   type Article,
-  type ClaimStatus,
 } from "@atlasnews/core/editorial/domain/article";
 import { entityKinds, type EntitySummary } from "@atlasnews/core/editorial/domain/entity";
 import "./story-fields.css";
@@ -19,21 +17,23 @@ interface SourceRow {
   supports: string;
 }
 
-/** The story fields of the article form: status, key points, sources and linked entities. */
+/** The story fields of the article form: key points, sources and linked entities. */
 export function StoryFields({
   article,
   entities,
   errors,
   messages,
+  optional,
 }: {
   article?: Article;
   entities: EntitySummary[];
   errors?: Record<string, string[]>;
   messages: Messages;
+  /** The word that marks these three lists as optional. */
+  optional: string;
 }) {
   const copy = messages.studio;
   const addButton = useRef<HTMLButtonElement>(null);
-  const [claimStatus, setClaimStatus] = useState<ClaimStatus>(article?.claimStatus ?? "analysis");
   const [keyPoints, setKeyPoints] = useState(() =>
     Array.from({ length: storyLimits.keyPoints.count }, (_, index) => article?.keyPoints[index] ?? ""),
   );
@@ -70,25 +70,11 @@ export function StoryFields({
     <section className="studio-section" aria-labelledby="story-fields-title">
       <h2 className="studio-section__title" id="story-fields-title">{copy.storyPanel}</h2>
 
-      <label className="studio-field">
-        <span>{copy.claimStatusLabel}</span>
-        <select
-          aria-describedby="story-claim-status-help"
-          name="claimStatus"
-          onChange={(event) => setClaimStatus(event.target.value as ClaimStatus)}
-          value={claimStatus}
-        >
-          {claimStatuses.map((status) => (
-            <option key={status} value={status}>
-              {messages.story.claimStatus[status]}
-            </option>
-          ))}
-        </select>
-        <small id="story-claim-status-help">{copy.claimStatusHelp}</small>
-      </label>
-
       <fieldset className="story-fieldset" aria-describedby={describedBy("keyPoints")}>
-        <legend>{copy.keyPointsLabel}</legend>
+        <legend>
+          {copy.keyPointsLabel}
+          <span className="studio-field__optional"> ({optional})</span>
+        </legend>
         <p className="studio-muted">{copy.keyPointsHelp}</p>
         {keyPoints.map((point, index) => (
           <label className="studio-field" key={index}>
@@ -108,7 +94,10 @@ export function StoryFields({
       </fieldset>
 
       <fieldset className="story-fieldset" aria-describedby={describedBy("sources")}>
-        <legend>{copy.sourcesLabel}</legend>
+        <legend>
+          {copy.sourcesLabel}
+          <span className="studio-field__optional"> ({optional})</span>
+        </legend>
         <p className="studio-muted">{copy.sourcesHelp}</p>
         {sources.map((source, index) => (
           <div className="story-source" key={source.key} role="group" aria-label={`${copy.sourceNumber} ${index + 1}`}>
@@ -181,7 +170,10 @@ export function StoryFields({
       </fieldset>
 
       <fieldset className="story-fieldset" aria-describedby={describedBy("entities")}>
-        <legend>{copy.entitiesLabel}</legend>
+        <legend>
+          {copy.entitiesLabel}
+          <span className="studio-field__optional"> ({optional})</span>
+        </legend>
         <p className="studio-muted">{copy.entitiesHelp}</p>
         {entities.length ? null : <p className="studio-muted">{copy.noEntities}</p>}
         {entityKinds.map((kind) => {
@@ -206,7 +198,7 @@ export function StoryFields({
                       {entity.name}
                       {entity.parent ? <small>{` · ${entity.parent.name}`}</small> : null}
                     </label>
-                    <label className="story-entity__primary">
+                    <label className="studio-check story-entity__primary">
                       <input
                         aria-label={`${copy.entityPrimaryLabel}: ${entity.name}`}
                         checked={primary === entity.slug}

@@ -6,12 +6,15 @@ import type { ReactNode } from "react";
 export function PageHead({
   title,
   description,
+  scope,
   back,
   badge,
   children,
 }: {
   title: string;
   description?: string;
+  /** For a list that is per language: "English articles". */
+  scope?: string;
   back?: { href: string; label: string };
   badge?: ReactNode;
   /** The view's actions, on the right. One primary button at most. */
@@ -31,6 +34,7 @@ export function PageHead({
           {badge}
         </h1>
         {description ? <p>{description}</p> : null}
+        {scope ? <p className="studio-head__scope">{scope}</p> : null}
       </div>
       {children ? <div className="studio-head__actions">{children}</div> : null}
     </header>

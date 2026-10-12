@@ -50,6 +50,7 @@ export interface SocialDistributionCopy {
   recipient: string;
   recipientHelp: string;
   schedule: string;
+  optional: string;
   scheduleHelp: string;
   confirm: string;
   preview: string;
@@ -69,7 +70,6 @@ export interface SocialDistributionCopy {
   emptyQueue: string;
   allProviders: string;
   allStatuses: string;
-  filter: string;
   scheduledAt: string;
   attempted: string;
   delivery: string;

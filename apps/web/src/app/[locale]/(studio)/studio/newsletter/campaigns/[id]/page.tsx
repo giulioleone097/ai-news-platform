@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { MarkdownRenderer } from "@/components/markdown/markdown-renderer";
 import { NewsletterCampaignForm } from "@/components/studio/newsletter-campaigns/campaign-form";
-import { Badge, sentenceCase } from "@/components/studio/badge";
+import { Badge } from "@/components/studio/badge";
 import {
+  campaignStatusLabels,
   campaignStatusTone,
+  deliveryStatusLabels,
   deliveryStatusTone,
 } from "@/components/studio/newsletter-campaigns/campaign-status";
 import { PageHead } from "@/components/studio/page-head";
@@ -42,7 +44,7 @@ export default async function NewsletterCampaignPage({
     <>
       <PageHead
         back={{ href: `/${locale}/studio/newsletter/campaigns`, label: labels.campaigns }}
-        badge={<Badge tone={campaignStatusTone(campaign.status)}>{sentenceCase(campaign.status)}</Badge>}
+        badge={<Badge tone={campaignStatusTone(campaign.status)}>{campaignStatusLabels[locale][campaign.status]}</Badge>}
         title={campaign.subject}
       />
 
@@ -86,7 +88,7 @@ export default async function NewsletterCampaignPage({
                       </div>
                     </td>
                     <td data-label={recipientLabels.status}>
-                      <Badge tone={deliveryStatusTone(recipient.deliveryStatus)}>{sentenceCase(recipient.deliveryStatus)}</Badge>
+                      <Badge tone={deliveryStatusTone(recipient.deliveryStatus)}>{deliveryStatusLabels[locale][recipient.deliveryStatus]}</Badge>
                     </td>
                   </tr>
                 ))}

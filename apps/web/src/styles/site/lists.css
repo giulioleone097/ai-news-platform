@@ -48,7 +48,44 @@
   stroke-width: 1.75;
 }
 
-/* Search field and category filter above a stream. */
+/* Latest, a topic, search and a status: heading, tools and stream in one column, and the side
+   column beside all three, level with the heading. On a phone the side column follows the stream. */
+.archive {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.archive > .feed {
+  padding-top: 1.5rem;
+}
+
+.archive > .feed-aside {
+  margin-top: 3rem;
+}
+
+@media (min-width: 60rem) {
+  .archive {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    grid-template-rows: auto auto 1fr;
+    column-gap: 4rem;
+    align-items: start;
+  }
+
+  .archive > .page-head,
+  .archive > .archive__tools,
+  .archive > .feed {
+    grid-column: 1;
+  }
+
+  /* Its top margin is the heading's top padding, so the first rule of the column and the title share a line. */
+  .archive > .feed-aside {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    margin-top: 2.5rem;
+  }
+}
+
+/* Search field and topic filter above a stream. */
 .archive__tools {
   display: grid;
   gap: 1rem;
@@ -70,6 +107,11 @@
   flex: none;
 }
 
+/* The field and its button are one control: one radius. */
+.archive-search :is(.input, .button) {
+  border-radius: var(--radius-sm);
+}
+
 /* On the search page the field is the point of the page. */
 .archive-search--large .input,
 .archive-search--large .button {
@@ -80,27 +122,16 @@
   font-size: 1.125rem;
 }
 
-/* A search with nothing typed yet: the two ways into the archive, side by side. */
-.archive-suggest {
-  display: grid;
-  gap: 2.5rem;
-  padding-top: 1.5rem;
+.archive__count {
+  padding-bottom: 0.75rem;
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
 }
 
-.archive-suggest .side-module {
-  min-width: 0;
-}
-
-@media (min-width: 48rem) {
-  .archive-suggest {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4rem;
-  }
-}
-
-/* The status chip leading a status page. */
-.list-filter {
-  padding-bottom: 0.5rem;
+/* An empty search or a search with no result leads into the topics. */
+.archive .topic-section {
+  margin-top: 2.5rem;
 }
 
 /* Products index: groups of dense rows, two or three columns on wide screens. */
@@ -134,13 +165,6 @@
   border-bottom: 1px solid var(--line);
 }
 
-.entity-row__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
 .entity-row__name {
   font-size: 1.0625rem;
   letter-spacing: -0.01em;
@@ -164,16 +188,11 @@
   content: "";
 }
 
-.entity-row__count,
 .entity-row__maker {
   color: var(--fg-muted);
   font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1.3;
-}
-
-.entity-row__count {
-  flex: none;
 }
 
 .entity-row__description {

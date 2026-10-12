@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Check, Copy, Share2 } from "lucide-react";
 import type { Messages } from "@/i18n";
 import { buildSocialLinks } from "@/lib/social-links";
+
+const noSubscription = () => () => {};
+const hasWebShare = () => typeof navigator.share === "function";
+const noWebShare = () => false;
 
 /** Share and copy-link controls: quiet icon buttons that sit on the article byline row. */
 export function ShareActions({
@@ -17,13 +21,15 @@ export function ShareActions({
 }) {
   const [copied, setCopied] = useState(false);
   const links = buildSocialLinks({ url, title });
+  // The system share sheet only where the browser has one; elsewhere "Copy link" is the same action.
+  const canShare = useSyncExternalStore(noSubscription, hasWebShare, noWebShare);
 
   async function share() {
-    if (navigator.share) {
+    try {
       await navigator.share({ title, url });
-      return;
+    } catch {
+      // The reader closed the sheet.
     }
-    await copy();
   }
 
   async function copy() {
@@ -34,9 +40,11 @@ export function ShareActions({
 
   return (
     <div className="article-actions__group" role="group" aria-label={labels.groupLabel}>
-      <button className="article-action" type="button" onClick={share} aria-label={labels.action} title={labels.action}>
-        <Share2 aria-hidden="true" />
-      </button>
+      {canShare ? (
+        <button className="article-action" type="button" onClick={() => void share()} aria-label={labels.action} title={labels.action}>
+          <Share2 aria-hidden="true" />
+        </button>
+      ) : null}
       <a className="article-action" href={links.linkedin} target="_blank" rel="noreferrer" aria-label={labels.linkedInLabel} title={labels.linkedInLabel}>
         <span className="article-action__brand" aria-hidden="true">in</span>
       </a>

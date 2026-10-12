@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-const bundledHero = "/media/neura-agents-hero.webp";
+export const bundledHero = "/media/neura-agents-hero.webp";
 
 type EditorialCoverProps = {
   src: string;

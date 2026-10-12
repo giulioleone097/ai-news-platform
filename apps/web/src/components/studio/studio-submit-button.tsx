@@ -1,7 +1,8 @@
 "use client";
 
-import type { MouseEventHandler, ReactNode } from "react";
+import { type MouseEventHandler, type ReactNode, useRef } from "react";
 import { useFormStatus } from "react-dom";
+import { type ConfirmCopy, useConfirmedSubmit } from "./confirm-dialog";
 
 export function StudioSubmitButton({
   idleLabel,
@@ -11,6 +12,7 @@ export function StudioSubmitButton({
   formAction,
   icon,
   onClick,
+  confirm,
 }: {
   idleLabel: string;
   pendingLabel: string;
@@ -21,28 +23,39 @@ export function StudioSubmitButton({
   /** Shows this icon instead of the label, which stays available to assistive technology. */
   icon?: ReactNode;
   onClick?: MouseEventHandler<HTMLButtonElement>;
+  /** Asks in a dialog before submitting. */
+  confirm?: ConfirmCopy;
 }) {
   const { pending } = useFormStatus();
   const label = pending ? pendingLabel : idleLabel;
+  const ref = useRef<HTMLButtonElement>(null);
+  const confirmation = useConfirmedSubmit(ref, confirm, idleLabel);
 
   return (
-    <button
-      aria-label={ariaLabel}
-      className={className}
-      disabled={pending}
-      formAction={formAction}
-      onClick={onClick}
-      title={icon ? idleLabel : undefined}
-      type="submit"
-    >
-      {icon ? (
-        <>
-          {icon}
-          <span className="sr-only">{label}</span>
-        </>
-      ) : (
-        label
-      )}
-    </button>
+    <>
+      <button
+        aria-label={ariaLabel}
+        className={className}
+        disabled={pending}
+        formAction={formAction}
+        onClick={(event) => {
+          onClick?.(event);
+          confirmation.onClick(event);
+        }}
+        ref={ref}
+        title={icon ? idleLabel : undefined}
+        type="submit"
+      >
+        {icon ? (
+          <>
+            {icon}
+            <span className="sr-only">{label}</span>
+          </>
+        ) : (
+          label
+        )}
+      </button>
+      {confirmation.dialog}
+    </>
   );
 }
