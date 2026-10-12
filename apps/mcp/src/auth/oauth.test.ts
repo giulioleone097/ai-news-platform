@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import { exportJWK, generateKeyPair, SignJWT, type JWK, type CryptoKey } from "jose";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { getMcpOAuthEnvironment } from "@atlasnews/adapters/config/env";
 import { scopes, scopesForRole } from "@atlasnews/contract";
 
 import {
@@ -125,7 +126,7 @@ async function supabase() {
 }
 
 const verifierFor = (double: Double, audience: string | null = null) =>
-  createAccessTokenVerifier({ issuer: double.issuer, jwksUrl: double.jwksUrl, audience, jwksCooldownMs: 0 });
+  createAccessTokenVerifier({ issuer: double.issuer, jwksUrl: double.jwksUrl, audience, jwksCooldownMs: 0, clientIds: [clientId] });
 
 describe("Supabase access tokens", () => {
   it("accepts a token that Supabase issued to an OAuth client", async () => {
@@ -167,17 +168,16 @@ describe("Supabase access tokens", () => {
     }
   });
 
-  it("accepts only the listed OAuth clients when a client allowlist is set", async () => {
+  it("accepts only the listed OAuth clients, and nobody when the list is empty", async () => {
     const double = await supabase();
     const issuer = double.issuer;
-    const verify = (clientIds: string[] | null) => createAccessTokenVerifier({
+    const verify = (clientIds: string[]) => createAccessTokenVerifier({
       issuer, jwksUrl: double.jwksUrl, audience: null, jwksCooldownMs: 0, clientIds,
     });
     const token = await mint({ signer, issuer });
     await expect(verify([clientId])(token)).resolves.toMatchObject({ subject: editorId, clientId });
     await expect(verify(["11111111-2222-4333-8444-555555555555"])(token)).resolves.toBeNull();
-    // Unset: any client of the project, the behaviour before the allowlist existed.
-    await expect(verify(null)(token)).resolves.toMatchObject({ clientId });
+    await expect(verify([])(token)).resolves.toBeNull();
   });
 
   it("can require the MCP resource as audience", async () => {
@@ -206,7 +206,7 @@ describe("Supabase access tokens", () => {
 
   it("does not reload the key set for every token with an unknown key id", async () => {
     const double = await supabase();
-    const verify = createAccessTokenVerifier({ issuer: double.issuer, jwksUrl: double.jwksUrl, audience: null });
+    const verify = createAccessTokenVerifier({ issuer: double.issuer, jwksUrl: double.jwksUrl, audience: null, clientIds: [clientId] });
     const stranger = await newSigner("key-stranger");
     for (let attempt = 0; attempt < 5; attempt += 1) {
       await expect(verify(await mint({ signer: stranger, issuer: double.issuer }))).resolves.toBeNull();
@@ -225,7 +225,7 @@ describe("editors", () => {
   async function bearer(double: Double, subject: string) {
     const editors = supabaseEditorDirectory({ url: double.origin, serviceRoleKey });
     const verifier = supabaseOAuthVerifier(
-      { issuer: double.issuer, jwksUrl: double.jwksUrl, audience: null, jwksCooldownMs: 0 },
+      { issuer: double.issuer, jwksUrl: double.jwksUrl, audience: null, jwksCooldownMs: 0, clientIds: [clientId] },
       editors,
     );
     return verifier.verify(await mint({ signer, issuer: double.issuer, subject }), { resource: "http://localhost/mcp" });
@@ -288,6 +288,7 @@ describe("the configured server", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey);
     vi.stubEnv("NEXT_PUBLIC_MCP_URL", "http://localhost:8787");
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", clientId);
     vi.stubEnv("ATLASNEWS_MCP_ADMIN_API_KEY", testApiKey);
     vi.stubEnv("ATLASNEWS_CONTENT_MODE", "demo");
     return double;
@@ -351,6 +352,17 @@ describe("the configured server", () => {
     const hostile = new Request("http://evil.example/.well-known/oauth-protected-resource", { headers: { host: "evil.example" } });
     expect((await getResourceMetadata(hostile)).status).toBe(404);
     expect((await call(`Bearer ${testApiKey}`)).payload.result.isError).not.toBe(true);
+  });
+
+  it("offers no sign-in without a client allow list, rather than accept every client of the project", async () => {
+    const double = await configure();
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "");
+    expect(getMcpOAuthEnvironment()).toBeNull();
+    const refused = await call(`Bearer ${await mint({ signer, issuer: double.issuer })}`);
+    expect(refused.response.status).toBe(401);
+    // No document to discover and nothing to point at, but the API key still works.
+    expect(refused.response.headers.get("www-authenticate")).not.toContain("resource_metadata");
+    expect((await getResourceMetadata(new Request("http://localhost:8787/.well-known/oauth-protected-resource"))).status).toBe(404);
     expect((await call(`Bearer ${testApiKey}`)).payload.result.isError).not.toBe(true);
   });
 

@@ -216,9 +216,16 @@ describe("Studio environment boundary", () => {
     vi.stubEnv("NEXT_PUBLIC_MCP_URL", "");
     expect(getMcpOAuthEnvironment()).toBeNull();
     vi.stubEnv("NEXT_PUBLIC_MCP_URL", "https://mcp.news.example.com");
+    // Fail closed: the generic `authenticated` audience binds a token to no client, so a list is required.
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "");
+    expect(getMcpOAuthEnvironment()).toBeNull();
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", " , ,");
+    expect(getMcpOAuthEnvironment()).toBeNull();
+
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "abc");
     expect(getMcpOAuthEnvironment()).toMatchObject({
       issuer: "https://project.supabase.co/auth/v1",
-      clientIds: null,
+      clientIds: ["abc"],
       jwksUrl: new URL("https://project.supabase.co/auth/v1/.well-known/jwks.json"),
       audience: null,
       scopes: ["email"],
@@ -233,6 +240,48 @@ describe("Studio environment boundary", () => {
       issuer: "https://auth.news.example.com/auth/v1",
       audience: "https://mcp.news.example.com/mcp",
     });
+  });
+
+  it("names the missing client list when it is the reason admin MCP is not available", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "supabase");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://news.example.com");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "public-key");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "s".repeat(40));
+    vi.stubEnv("NEXT_PUBLIC_MCP_URL", "https://mcp.news.example.com");
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "");
+    vi.stubEnv("ATLASNEWS_MCP_ADMIN_API_KEY", "");
+    expect(getOperationalCapabilities().adminMcp).toBe(false);
+    expect(getProductionReadiness().issues).toEqual(expect.arrayContaining(["capability-adminMcp", "mcp-oauth-client-ids"]));
+
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "abc");
+    expect(getOperationalCapabilities().adminMcp).toBe(true);
+    expect(getProductionReadiness().issues).not.toContain("mcp-oauth-client-ids");
+
+    // The API key covers admin MCP without sign-in, so a missing list is not a reason to fail.
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "");
+    vi.stubEnv("ATLASNEWS_MCP_ADMIN_API_KEY", "m".repeat(40));
+    vi.stubEnv("ATLASNEWS_MCP_ADMIN_AUTHOR_ID", "9f25cab8-80d6-4f34-b7d0-6dad0524a860");
+    expect(getOperationalCapabilities().adminMcp).toBe(true);
+    expect(getProductionReadiness().issues).not.toContain("mcp-oauth-client-ids");
+  });
+
+  it("offers no MCP sign-in on Sites, where the platform signs people in", () => {
+    setSitesBindings({ DB: {}, BUCKET: {} });
+    try {
+      vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
+      vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "public-key");
+      vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "s".repeat(40));
+      vi.stubEnv("NEXT_PUBLIC_MCP_URL", "https://mcp.news.example.com");
+      vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "abc");
+      vi.stubEnv("ATLASNEWS_CONTENT_MODE", "sites");
+      expect(getMcpOAuthEnvironment()).toBeNull();
+      vi.stubEnv("ATLASNEWS_CONTENT_MODE", "supabase");
+      expect(getMcpOAuthEnvironment()).not.toBeNull();
+    } finally {
+      setSitesBindings(null);
+    }
   });
 
   it("only trusts an explicitly configured public MCP URL", () => {

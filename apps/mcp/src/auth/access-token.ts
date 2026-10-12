@@ -14,11 +14,11 @@ export interface AccessTokenVerifierOptions {
   /** Required audience; Supabase's own is `authenticated`. */
   audience: string | null;
   /**
-   * OAuth client ids whose tokens are accepted. With dynamic client registration open anyone can
-   * register a client and ask an editor to approve it, so a deployment can name the clients it trusts.
-   * Null accepts every client of the project.
+   * OAuth client ids whose tokens are accepted. The token's audience is Supabase's generic
+   * `authenticated`, so the client is what ties a token to this server: with dynamic client registration
+   * open anyone can register a client and ask an editor to approve it. An empty list accepts nobody.
    */
-  clientIds?: readonly string[] | null;
+  clientIds: readonly string[];
   /** Seconds of clock skew tolerated on `exp` and `nbf`. */
   clockToleranceSeconds?: number;
   /** Minimum time between key-set reloads triggered by an unknown `kid`. */
@@ -67,7 +67,7 @@ export function createAccessTokenVerifier(options: AccessTokenVerifierOptions) {
       // OAuth server, with the user's consent for a client, may drive the newsroom.
       if (typeof payload.sub !== "string" || !uuid.test(payload.sub)) return null;
       if (typeof payload.client_id !== "string" || !payload.client_id) return null;
-      if (options.clientIds && !options.clientIds.includes(payload.client_id)) return null;
+      if (!options.clientIds.includes(payload.client_id)) return null;
       if (payload.is_anonymous === true) return null;
       return { subject: payload.sub, clientId: payload.client_id };
     } catch (error) {

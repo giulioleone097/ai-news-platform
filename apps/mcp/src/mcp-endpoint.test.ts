@@ -22,6 +22,7 @@ function configureSignIn() {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
   vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "s".repeat(40));
   vi.stubEnv("NEXT_PUBLIC_MCP_URL", "http://localhost:8787");
+  vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "9a8b7c6d-5e4f-4a2b-9c0d-9e8f7a6b5c4d");
 }
 
 type Tool = {
