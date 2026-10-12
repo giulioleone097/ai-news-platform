@@ -15,6 +15,7 @@ import type {
   NewsletterCampaignPage,
   NewsletterDeliveryRepository,
 } from "@atlasnews/core/newsletter/domain/ports";
+import { throwIfError } from "../supabase/errors";
 
 const campaignColumns = [
   "id",
@@ -134,10 +135,6 @@ function mapCampaign(row: z.infer<typeof campaignRowSchema>): NewsletterCampaign
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-}
-
-function throwIfError(error: { message: string } | null, operation: string) {
-  if (error) throw new Error(`${operation}: ${error.message}`);
 }
 
 export class SupabaseNewsletterDeliveryRepository implements NewsletterDeliveryRepository {

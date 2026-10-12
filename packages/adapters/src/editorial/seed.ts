@@ -1,11 +1,12 @@
-import type {
-  Article,
-  ArticleStatus,
-  Author,
-  Category,
-  ClaimStatus,
-  SocialChannel,
-  SourceNote,
+import {
+  defaultCoverImage,
+  type Article,
+  type ArticleStatus,
+  type Author,
+  type Category,
+  type ClaimStatus,
+  type SocialChannel,
+  type SourceNote,
 } from "@atlasnews/core/editorial/domain/article";
 import type { Entity } from "@atlasnews/core/editorial/domain/entity";
 import { locales, type Locale } from "@atlasnews/core/locale";
@@ -282,7 +283,7 @@ const storyNotes: Record<
   },
 };
 
-const hero = "/media/neura-agents-hero.webp";
+const hero = defaultCoverImage;
 
 const stories: ArticleSeed[] = [
   {

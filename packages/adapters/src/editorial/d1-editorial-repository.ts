@@ -1,4 +1,5 @@
 import {
+  defaultCoverImage,
   estimateReadingMinutes,
   normalizeStoryFields,
   orderEntityRefs,
@@ -506,7 +507,7 @@ export class D1EditorialRepository
       title: input.title.trim(),
       excerpt: input.excerpt.trim(),
       content: input.content.trim(),
-      cover_image: input.coverImage || existing?.coverImage || "/media/neura-agents-hero.webp",
+      cover_image: input.coverImage || existing?.coverImage || defaultCoverImage,
       cover_alt:
         input.coverAlt
         || existing?.coverAlt

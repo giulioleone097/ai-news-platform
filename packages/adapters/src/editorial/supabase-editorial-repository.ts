@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   articleStatuses,
   claimStatuses,
+  defaultCoverImage,
   estimateReadingMinutes,
   normalizeStoryFields,
   orderEntityRefs,
@@ -47,6 +48,7 @@ import {
   type NewsletterStatus,
 } from "@atlasnews/core/editorial/domain/editorial-operations";
 import { locales, type Locale } from "@atlasnews/core/locale";
+import { throwIfError } from "../supabase/errors";
 
 const categorySchema = z.object({
   id: z.string(),
@@ -305,10 +307,6 @@ function mapPublication(value: unknown): DistributionPublication {
   };
 }
 
-function throwIfError(error: { message: string } | null, context: string): asserts error is null {
-  if (error) throw new Error(`${context}: ${error.message}`);
-}
-
 export type EditorialRepositoryOptions = {
   /** `public` serves the anonymous site and omits editor-only data; `editorial` serves Studio and admin MCP. */
   audience: "public" | "editorial";
@@ -500,7 +498,7 @@ export class SupabaseEditorialRepository
       title: input.title.trim(),
       excerpt: input.excerpt.trim(),
       content: input.content.trim(),
-      cover_image: input.coverImage || existing?.coverImage || "/media/neura-agents-hero.webp",
+      cover_image: input.coverImage || existing?.coverImage || defaultCoverImage,
       cover_alt:
         input.coverAlt ||
         existing?.coverAlt ||

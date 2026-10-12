@@ -9,6 +9,7 @@ import {
   type ContactMessageStatus,
 } from "@atlasnews/core/support/domain/contact-message";
 import type { ContactMessageRepository } from "@atlasnews/core/support/domain/ports";
+import { throwIfError } from "../supabase/errors";
 
 const columns = "id, locale, name, email, subject, body, status, created_at";
 
@@ -22,10 +23,6 @@ const rowSchema = z.object({
   status: z.enum(contactMessageStatuses),
   created_at: z.string(),
 });
-
-function throwIfError(error: { message: string } | null, operation: string) {
-  if (error) throw new Error(`${operation}: ${error.message}`);
-}
 
 function toMessage(row: z.output<typeof rowSchema>): ContactMessage {
   return {

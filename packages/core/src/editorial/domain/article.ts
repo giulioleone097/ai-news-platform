@@ -61,6 +61,9 @@ export const articleLimits = {
   coverAlt: { min: 3, max: 240 },
 } as const;
 
+/** The cover of an article that has none of its own: the image bundled with the site (`apps/web/public/media`). */
+export const defaultCoverImage = "/media/neura-agents-hero.webp";
+
 export const storyLimits = {
   keyPoints: { count: 3, min: 3, max: 140 },
   sources: { count: 10, titleMin: 3, titleMax: 160, supportsMin: 3, supportsMax: 240, urlMax: 2048 },

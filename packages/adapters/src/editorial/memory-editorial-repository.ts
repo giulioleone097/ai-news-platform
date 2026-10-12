@@ -1,4 +1,5 @@
 import {
+  defaultCoverImage,
   estimateReadingMinutes,
   normalizeStoryFields,
   orderEntityRefs,
@@ -249,7 +250,7 @@ export class MemoryEditorialRepository
       title: input.title.trim(),
       excerpt: input.excerpt.trim(),
       content: input.content.trim(),
-      coverImage: input.coverImage || existing?.coverImage || "/media/neura-agents-hero.webp",
+      coverImage: input.coverImage || existing?.coverImage || defaultCoverImage,
       coverAlt:
         input.coverAlt ||
         existing?.coverAlt ||
@@ -656,9 +657,9 @@ export class MemoryEditorialRepository
 
   async listAssets() {
     return [{
-      path: "media/neura-agents-hero.webp",
-      url: "/media/neura-agents-hero.webp",
-      name: "neura-agents-hero.webp",
+      path: defaultCoverImage.slice(1),
+      url: defaultCoverImage,
+      name: defaultCoverImage.split("/").at(-1) ?? defaultCoverImage,
       mimeType: "image/webp",
       size: 129_262,
       createdAt: seedArticles.at(-1)?.createdAt ?? new Date(0).toISOString(),

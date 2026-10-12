@@ -1,6 +1,5 @@
 import Image from "next/image";
-
-export const bundledHero = "/media/neura-agents-hero.webp";
+import { defaultCoverImage } from "@atlasnews/core/editorial/domain/article";
 
 type EditorialCoverProps = {
   src: string;
@@ -10,7 +9,7 @@ type EditorialCoverProps = {
 };
 
 export function EditorialCover({ src, alt, sizes, quality }: EditorialCoverProps) {
-  if (src !== bundledHero) {
+  if (src !== defaultCoverImage) {
     return (
       <Image
         src={src}
