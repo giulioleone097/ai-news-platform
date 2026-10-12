@@ -1,4 +1,7 @@
 import { storyLabels } from "@atlasnews/core/editorial/application/story-labels";
+import { boundaryMessages } from "./boundary";
+
+const boundary = boundaryMessages.en;
 
 export const en = {
   common: {
@@ -8,8 +11,8 @@ export const en = {
     back: "Back",
     viewAll: "View all",
     readMore: "Read more",
-    loading: "Loading…",
-    retry: "Try again",
+    loading: boundary.loading,
+    retry: boundary.retry,
     cancel: "Cancel",
     save: "Save",
     delete: "Delete",
@@ -163,12 +166,12 @@ export const en = {
     copyright: "© 2026 AtlasNews",
   },
   errors: {
-    notFoundTitle: "Page not found",
-    notFoundDescription: "The link may be wrong, or the page may have moved.",
-    backHome: "Back to home",
-    latestStories: "Latest stories",
-    genericTitle: "Something went wrong.",
-    genericDescription: "We could not complete the request. Please try again.",
+    notFoundTitle: boundary.notFoundTitle,
+    notFoundDescription: boundary.notFoundDescription,
+    backHome: boundary.backHome,
+    latestStories: boundary.latestStories,
+    genericTitle: boundary.genericTitle,
+    genericDescription: boundary.genericDescription,
     unauthorizedTitle: "Sign-in required",
     unauthorizedDescription: "Sign in with an editor account to continue.",
     forbiddenTitle: "Access denied",
@@ -230,7 +233,7 @@ export const en = {
   studio: {
     name: "AtlasNews Studio",
     navigationLabel: "Studio navigation",
-    dashboard: "Dashboard",
+    dashboard: boundary.dashboard,
     articles: "Articles",
     newArticle: "New article",
     media: "Media",
