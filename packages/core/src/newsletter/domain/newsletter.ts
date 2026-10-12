@@ -106,6 +106,26 @@ export type NewsletterCampaignSummary = Pick<
   | "updatedAt"
 >;
 
+/** What a list shows of a campaign: its state and counters, not the body or the sender. */
+export function summarizeNewsletterCampaign(campaign: NewsletterCampaignSummary): NewsletterCampaignSummary {
+  return {
+    id: campaign.id,
+    locale: campaign.locale,
+    status: campaign.status,
+    subject: campaign.subject,
+    scheduledFor: campaign.scheduledFor,
+    sentAt: campaign.sentAt,
+    recipientCount: campaign.recipientCount,
+    sentCount: campaign.sentCount,
+    deliveredCount: campaign.deliveredCount,
+    bounceCount: campaign.bounceCount,
+    complaintCount: campaign.complaintCount,
+    failureCount: campaign.failureCount,
+    createdAt: campaign.createdAt,
+    updatedAt: campaign.updatedAt,
+  };
+}
+
 export type NewsletterCampaignRecipient = {
   id: string;
   email: string;

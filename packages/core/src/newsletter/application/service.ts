@@ -5,6 +5,7 @@ import {
   NewsletterDeliveryConfigurationError,
   NewsletterDeliveryProviderError,
   newsletterCampaignInputSchema,
+  summarizeNewsletterCampaign,
   type NewsletterCampaignInput,
   type NewsletterCampaignPatch,
   type NewsletterOutboxDelivery,
@@ -52,8 +53,10 @@ export class NewsletterCampaignService {
     return { fromEmail: this.config.fromEmail, replyTo: this.config.replyTo };
   }
 
-  listCampaigns(input: { locale: "en" | "it"; limit?: number; offset?: number }) {
-    return this.repository.listCampaigns(input);
+  async listCampaigns(input: { locale: "en" | "it"; limit?: number; offset?: number }) {
+    const page = await this.repository.listCampaigns(input);
+    // The adapters read whole campaigns, the body and its HTML included; a list answers the summary it declares.
+    return { ...page, items: page.items.map(summarizeNewsletterCampaign) };
   }
 
   getCampaign(id: string) {

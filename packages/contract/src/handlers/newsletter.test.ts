@@ -26,14 +26,8 @@ function ports(stored: NewsletterCampaign | null = draft) {
     getCampaign: vi.fn(async () => stored),
     saveDraft: vi.fn(async (input) => ({ ...draft, ...input })),
     deleteDraft: vi.fn(async () => true),
-    listCampaigns: vi.fn(async () => ({
-      items: [{
-        id: draft.id, locale: draft.locale, status: draft.status, subject: draft.subject, scheduledFor: draft.scheduledFor,
-        sentAt: draft.sentAt, recipientCount: 0, sentCount: 0, deliveredCount: 0, bounceCount: 0, complaintCount: 0,
-        failureCount: 0, createdAt: draft.createdAt, updatedAt: draft.updatedAt,
-      }],
-      total: 1,
-    })),
+    // The D1 and Supabase adapters read whole campaigns, body included, for a list too.
+    listCampaigns: vi.fn(async () => ({ items: [draft], total: 1 })),
   } as unknown as NewsletterDeliveryRepository;
   const campaign = new NewsletterCampaignService(repository, {
     fromEmail: "briefing@example.com", replyTo: null, suppressionSecret: "newsletter-test-secret-with-32-characters",
