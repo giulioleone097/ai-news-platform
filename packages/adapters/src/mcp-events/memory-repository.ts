@@ -57,6 +57,14 @@ export class MemoryMcpEventsRepository implements McpEventsRepository {
     ).length;
   }
 
+  async countLiveForPrincipal(principal: string, excludingId: string, now: Date) {
+    return [...this.subscriptions.values()].filter(
+      (subscription) => subscription.principal === principal
+        && subscription.id !== excludingId
+        && isSubscriptionLive(subscription, now),
+    ).length;
+  }
+
   async countLive(now: Date) {
     return [...this.subscriptions.values()].filter((subscription) => isSubscriptionLive(subscription, now)).length;
   }

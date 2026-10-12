@@ -78,6 +78,7 @@ async function configure() {
   vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey);
   vi.stubEnv("ATLASNEWS_CONTENT_MODE", "supabase");
   vi.stubEnv("NEXT_PUBLIC_MCP_URL", "http://localhost:8787");
+  vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", clientId);
   vi.stubEnv("ATLASNEWS_MCP_ADMIN_API_KEY", testApiKey);
   vi.stubEnv("ATLASNEWS_MCP_ADMIN_AUTHOR_ID", apiKeyAuthorId);
   return double;

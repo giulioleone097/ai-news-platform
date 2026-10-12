@@ -3,7 +3,6 @@ import {
   articlePublishedArgumentsSchema,
   isMcpEventName,
   listMcpEventDefinitions,
-  mcpEventPrincipal,
   type ArticlePublishedArguments,
   type McpEventDefinition,
   type McpEventName,
@@ -17,6 +16,8 @@ import { registrableDomain } from "./registrable-domain";
 import { decodeSigningSecret } from "./signing-secret";
 import { grantSubscriptionTtl } from "./subscription-ttl";
 
+/** Per signed-in caller: one account cannot fill the table for everyone else. */
+export const maximumSubscriptionsPerPrincipal = 20;
 export const maximumSubscriptionsPerHost = 25;
 /** Across all subdomains of one registrable domain: wildcard DNS makes hostnames free. */
 export const maximumSubscriptionsPerDomain = 100;
@@ -29,12 +30,15 @@ export const verificationCacheMs = 24 * 60 * 60 * 1000;
 export const secretRotationWindowMs = 60 * 60 * 1000;
 
 export interface McpEventsLimits {
+  perPrincipal: number;
   perHost: number;
   perDomain: number;
   total: number;
 }
 
 export interface SubscribeInput {
+  /** The signed-in caller; the subscription belongs to it alone. */
+  principal: string;
   name: string;
   arguments?: Record<string, unknown>;
   delivery: { mode: string; url: string; secret: string };
@@ -42,6 +46,8 @@ export interface SubscribeInput {
 }
 
 export interface UnsubscribeInput {
+  /** The signed-in caller; only its own subscription can be ended. */
+  principal: string;
   name: string;
   arguments?: Record<string, unknown>;
   delivery: { mode: string; url: string };
@@ -86,6 +92,7 @@ export class DefaultMcpEventsService implements McpEventsService {
     limits: Partial<McpEventsLimits> = {},
   ) {
     this.limits = {
+      perPrincipal: limits.perPrincipal ?? maximumSubscriptionsPerPrincipal,
       perHost: limits.perHost ?? maximumSubscriptionsPerHost,
       perDomain: limits.perDomain ?? maximumSubscriptionsPerDomain,
       total: limits.total ?? maximumLiveSubscriptions,
@@ -108,24 +115,21 @@ export class DefaultMcpEventsService implements McpEventsService {
     }
     const url = parseCallbackUrl(input.delivery.url);
     const now = this.clock();
-    const id = deriveSubscriptionId({
-      principal: mcpEventPrincipal,
-      url: url.href,
-      name,
-      arguments: args,
-    });
+    const id = deriveSubscriptionId({ principal: input.principal, url: url.href, name, arguments: args });
 
     const existing = await this.repository.find(id);
     const wasLive = existing !== null && existing.status === "active"
       && Date.parse(existing.expiresAt) > now.getTime();
-    if (!wasLive) await this.requireCapacity(url.hostname, id, now);
+    if (!wasLive) await this.requireCapacity(input.principal, url.hostname, id, now);
 
     // A new secret on a live subscription is always proven again by the callback, never taken from the
     // verification cache: the cache would otherwise let a previously used secret be put back unchecked.
     const rotating = wasLive && existing !== null && existing.secret !== secret;
-    const verifiedAt = await this.verifiedAt({ url: url.href, id, secret, now, cached: !rotating });
+    const verifiedAt = await this.verifiedAt({ principal: input.principal, url: url.href, id, secret, now, cached: !rotating });
     const expiresAt = new Date(now.getTime() + grantSubscriptionTtl(input.ttlMs)).toISOString();
-    await this.repository.save(this.merge({ existing, wasLive, id, name, args, url, secret, expiresAt, verifiedAt, now }));
+    await this.repository.save(this.merge({
+      principal: input.principal, existing, wasLive, id, name, args, url, secret, expiresAt, verifiedAt, now,
+    }));
     return { id, refreshBefore: expiresAt, cursor: null, truncated: false };
   }
 
@@ -135,16 +139,19 @@ export class DefaultMcpEventsService implements McpEventsService {
     requireWebhook(input.delivery.mode);
     const url = parseCallbackUrl(input.delivery.url);
     await this.repository.deactivate(
-      deriveSubscriptionId({ principal: mcpEventPrincipal, url: url.href, name, arguments: args }),
+      deriveSubscriptionId({ principal: input.principal, url: url.href, name, arguments: args }),
       "unsubscribed",
     );
     return {};
   }
 
-  private async requireCapacity(hostname: string, id: string, now: Date) {
+  private async requireCapacity(principal: string, hostname: string, id: string, now: Date) {
     const full = (message: string) => invalidParams(message, "subscription_limit");
     if (await this.repository.countLive(now) >= this.limits.total) {
       throw full("The server has reached its limit of active subscriptions.");
+    }
+    if (await this.repository.countLiveForPrincipal(principal, id, now) >= this.limits.perPrincipal) {
+      throw full("Too many active subscriptions for this account.");
     }
     if (await this.repository.countLiveForHost(hostname, id, now) >= this.limits.perHost) {
       throw full(`Too many active subscriptions for ${hostname}.`);
@@ -155,10 +162,17 @@ export class DefaultMcpEventsService implements McpEventsService {
     }
   }
 
-  private async verifiedAt(input: { url: string; id: string; secret: string; now: Date; cached: boolean }) {
+  private async verifiedAt(input: {
+    principal: string;
+    url: string;
+    id: string;
+    secret: string;
+    now: Date;
+    cached: boolean;
+  }) {
     const cached = input.cached
       ? await this.repository.findVerifiedAt({
-        principal: mcpEventPrincipal,
+        principal: input.principal,
         url: input.url,
         secret: input.secret,
         since: new Date(input.now.getTime() - verificationCacheMs),
@@ -170,6 +184,7 @@ export class DefaultMcpEventsService implements McpEventsService {
   }
 
   private merge(input: {
+    principal: string;
     existing: EventSubscription | null;
     wasLive: boolean;
     id: string;
@@ -187,7 +202,7 @@ export class DefaultMcpEventsService implements McpEventsService {
       && Date.parse(existing.previousSecretExpiresAt) > now.getTime();
     return {
       id: input.id,
-      principal: mcpEventPrincipal,
+      principal: input.principal,
       eventName: input.name,
       arguments: input.args,
       url: input.url.href,

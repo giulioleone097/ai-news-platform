@@ -10,6 +10,7 @@ import {
   DefaultMcpEventsService,
   maximumSubscriptionsPerDomain,
   maximumSubscriptionsPerHost,
+  maximumSubscriptionsPerPrincipal,
   secretRotationWindowMs,
   verificationCacheMs,
 } from "@atlasnews/core/mcp-events/application/mcp-events-service";
@@ -23,6 +24,7 @@ let service: DefaultMcpEventsService;
 
 const delivery = (overrides = {}) => ({ mode: "webhook", url: callbackUrl, secret: testSecret, ...overrides });
 const subscribe = (overrides: Record<string, unknown> = {}) => service.subscribe({
+  principal: "reader-1",
   name: "article.published",
   arguments: { locale: "en" },
   delivery: delivery(),
@@ -89,7 +91,7 @@ describe.each(repositoryHarnesses)("%s repository", (_name, createHarness) => {
       const result = await subscribe();
 
       const id = deriveSubscriptionId({
-        principal: "public",
+        principal: "reader-1",
         url: callbackUrl,
         name: "article.published",
         arguments: { locale: "en" },
@@ -243,8 +245,9 @@ describe.each(repositoryHarnesses)("%s repository", (_name, createHarness) => {
     });
 
     it("limits live subscriptions per callback hostname", async () => {
+      // Other accounts each: one account is capped lower than one callback host.
       for (let index = 0; index < maximumSubscriptionsPerHost; index += 1) {
-        await subscribe({ delivery: delivery({ url: `https://receiver.example.com/cb/${index}` }) });
+        await subscribe({ principal: `reader-${index}`, delivery: delivery({ url: `https://receiver.example.com/cb/${index}` }) });
       }
       await expectError(
         subscribe({ delivery: delivery({ url: "https://receiver.example.com/cb/extra" }) }),
@@ -252,7 +255,7 @@ describe.each(repositoryHarnesses)("%s repository", (_name, createHarness) => {
         "subscription_limit",
       );
       // Refreshing an existing one still works, and other hosts are unaffected.
-      await subscribe({ delivery: delivery({ url: "https://receiver.example.com/cb/0" }) });
+      await subscribe({ principal: "reader-0", delivery: delivery({ url: "https://receiver.example.com/cb/0" }) });
       await subscribe({ delivery: delivery({ url: "https://another.example.org/cb" }) });
     });
   });
@@ -262,13 +265,39 @@ describe.each(repositoryHarnesses)("%s repository", (_name, createHarness) => {
 
     it("counts every subdomain of one registrable domain together", async () => {
       for (let index = 0; index < maximumSubscriptionsPerDomain; index += 1) {
-        await subscribe({ delivery: at(`h${index}.attacker.example`) });
+        await subscribe({ principal: `reader-${index}`, delivery: at(`h${index}.attacker.example`) });
       }
       await expectError(subscribe({ delivery: at("fresh.attacker.example") }), "invalid_params", "subscription_limit");
       await expectError(subscribe({ delivery: at("attacker.example") }), "invalid_params", "subscription_limit");
       // A different domain, and a country-code domain that merely shares a suffix, are separate.
       await subscribe({ delivery: at("a.other.example") });
       await subscribe({ delivery: at("a.attacker.co.uk") });
+    });
+
+    it("caps live subscriptions per account, leaves other accounts alone and frees the place of a lapsed one", async () => {
+      for (let index = 0; index < maximumSubscriptionsPerPrincipal; index += 1) {
+        await subscribe({ delivery: at(`h${index}.receiver${index}.example`) });
+      }
+      await expectError(subscribe({ delivery: at("h.fresh.example") }), "invalid_params", "subscription_limit");
+      // Refreshing one of its own still works, and another account has its own allowance.
+      await subscribe({ delivery: at("h0.receiver0.example") });
+      await subscribe({ principal: "reader-2", delivery: at("h.fresh.example") });
+
+      now = new Date(now.getTime() + 8 * 24 * hour);
+      await subscribe({ delivery: at("h.fresh.example") });
+    });
+
+    it("keeps the same subscription of two accounts apart, so one cannot end or reuse the other's", async () => {
+      const first = await subscribe();
+      const second = await subscribe({ principal: "reader-2" });
+      expect(second.id).not.toBe(first.id);
+      // The verification of the first account is not reused for the second.
+      expect(client.requests).toHaveLength(2);
+
+      const params = { name: "article.published", arguments: { locale: "en" }, delivery: { mode: "webhook", url: callbackUrl } };
+      await service.unsubscribe({ ...params, principal: "reader-2" });
+      expect((await harness.subscription(first.id))!.status).toBe("active");
+      expect((await harness.subscription(second.id))!.status).toBe("unsubscribed");
     });
 
     it("stops new subscriptions at the global cap but still refreshes live ones", async () => {
@@ -286,7 +315,12 @@ describe.each(repositoryHarnesses)("%s repository", (_name, createHarness) => {
   describe("events/unsubscribe", () => {
     it("deactivates the matching subscription and is idempotent", async () => {
       const { id } = await subscribe();
-      const params = { name: "article.published", arguments: { locale: "en" }, delivery: { mode: "webhook", url: callbackUrl } };
+      const params = {
+        principal: "reader-1",
+        name: "article.published",
+        arguments: { locale: "en" },
+        delivery: { mode: "webhook", url: callbackUrl },
+      };
 
       await expect(service.unsubscribe(params)).resolves.toEqual({});
       expect((await harness.subscription(id))!.status).toBe("unsubscribed");
@@ -297,7 +331,12 @@ describe.each(repositoryHarnesses)("%s repository", (_name, createHarness) => {
 
     it("can be re-subscribed afterwards", async () => {
       const { id } = await subscribe();
-      await service.unsubscribe({ name: "article.published", arguments: { locale: "en" }, delivery: { mode: "webhook", url: callbackUrl } });
+      await service.unsubscribe({
+        principal: "reader-1",
+        name: "article.published",
+        arguments: { locale: "en" },
+        delivery: { mode: "webhook", url: callbackUrl },
+      });
       await subscribe();
       expect((await harness.subscription(id))!.status).toBe("active");
     });

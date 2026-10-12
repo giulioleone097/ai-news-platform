@@ -166,8 +166,8 @@ export function bearerChallenge(
   detail: { error: "invalid_token" | "insufficient_scope"; description: string; scope?: readonly Scope[] },
 ) {
   const parameters = [
-    // On Sites the platform owns sign-in and this server publishes no resource metadata.
-    ...(getContentMode() === "sites" ? [] : [`resource_metadata="${protectedResourceMetadataUrl(request)}"`]),
+    // The metadata exists only where Supabase Auth is the authorization server (not on Sites, not with the API key alone).
+    ...(getMcpOAuthEnvironment() ? [`resource_metadata="${protectedResourceMetadataUrl(request)}"`] : []),
     `error="${detail.error}"`,
     `error_description="${detail.description}"`,
     ...(detail.scope?.length ? [`scope="${hostScopes(detail.scope).join(" ")}"`] : []),

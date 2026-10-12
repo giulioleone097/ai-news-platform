@@ -1,5 +1,6 @@
 import { oauthProviderIds, type OAuthCredentials, type OAuthProviderId } from "../auth/oauth";
 import { getSitesBindings } from "../sites/bindings";
+import { getClientAddressHeader } from "./client-address";
 import {
   isLocalHostname,
   isSecureProductionOrigin,
@@ -53,6 +54,17 @@ export function getContentMode(): ContentMode {
 }
 
 /**
+ * Whether the `oai-authenticated-*` headers of ChatGPT Sites identify people (`sites` mode only; the
+ * callers check the mode). On unless `ATLASNEWS_CHATGPT_SIGN_IN` is `off`: the owner's switch to ignore
+ * them everywhere (Studio, `/api/capabilities/*`, `/mcp`) should the platform not replace the copies a
+ * client sends. `readSitesIdentity` is the one reader.
+ */
+export function isChatGptSignInEnabled() {
+  const configured = process.env.ATLASNEWS_CHATGPT_SIGN_IN?.trim().toLowerCase();
+  return !(configured && ["off", "false", "0", "no"].includes(configured));
+}
+
+/**
  * Whether the server can write records that outlive the process: the Sites D1 binding, or Supabase with
  * the service-role key. Comments, newsletter delivery, the outboxes and MCP Events need it.
  */
@@ -97,11 +109,14 @@ export function getSupabaseEnvironment() {
   };
 }
 
+/**
+ * Browser origins that may call the MCP route: `MCP_ALLOWED_ORIGINS` when it is set, otherwise the site's
+ * own origin and the two hosts that run the supported clients. A caller that is not a browser (a server,
+ * a CLI) sends no `Origin` and needs no entry.
+ */
 export function getAllowedMcpOrigins() {
-  return (process.env.MCP_ALLOWED_ORIGINS || "")
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  return listValue("MCP_ALLOWED_ORIGINS")
+    ?? [...new Set([getPublicSiteUrl().origin, "https://chatgpt.com", "https://claude.ai"])];
 }
 
 export function getMcpAdminApiKey() {
@@ -151,15 +166,29 @@ export function getMcpUiDomain() {
 }
 
 /**
- * Supabase Auth as the OAuth authorization server for the MCP endpoint. Present only when the
- * project URL, the service-role key (used to read the editor's profile) and the public origin of the
- * MCP server are configured. Without `NEXT_PUBLIC_MCP_URL` the resource URL in the sign-in challenge
- * and in the (publicly cached) resource metadata would come from the request's Host header, which a
- * caller chooses, so sign-in stays off rather than trust it.
+ * The Supabase project and the public MCP origin that turn MCP sign-in on; null when either is missing, and
+ * on Sites, where the platform is the authorization server. Without `NEXT_PUBLIC_MCP_URL` the resource URL
+ * in the sign-in challenge and in the (publicly cached) resource metadata would come from the request's
+ * Host header, which a caller chooses, so sign-in stays off rather than trust it.
+ */
+function mcpOAuthProject() {
+  if (getContentMode() === "sites") return null;
+  const service = getSupabaseServiceEnvironment();
+  return service && getConfiguredMcpUrl() ? service : null;
+}
+
+/**
+ * Supabase Auth as the OAuth authorization server for the MCP endpoint. Present only when the project
+ * URL, the service-role key (used to read the editor's profile), the public origin of the MCP server and
+ * `ATLASNEWS_MCP_OAUTH_CLIENT_IDS` are configured. Without the client list sign-in stays off (fail
+ * closed): the access token carries Supabase's generic `authenticated` audience, so the OAuth client is
+ * the only thing that binds a token to this server, and with dynamic registration open anyone can register
+ * a client and ask an editor to approve it. `getProductionReadiness` names the missing list.
  */
 export function getMcpOAuthEnvironment() {
-  const service = getSupabaseServiceEnvironment();
-  if (!service || !getConfiguredMcpUrl()) return null;
+  const service = mcpOAuthProject();
+  const clientIds = listValue("ATLASNEWS_MCP_OAUTH_CLIENT_IDS");
+  if (!service || !clientIds) return null;
 
   const base = new URL(service.url);
   if (!base.pathname.endsWith("/")) base.pathname += "/";
@@ -172,11 +201,8 @@ export function getMcpOAuthEnvironment() {
     jwksUrl: new URL(`${issuer}/.well-known/jwks.json`),
     /** Required `aud`; null accepts Supabase's own `authenticated` audience. */
     audience,
-    /**
-     * OAuth client ids whose tokens are accepted; null accepts any client of this project, which is what
-     * dynamic client registration needs and is not recommended in production.
-     */
-    clientIds: listValue("ATLASNEWS_MCP_OAUTH_CLIENT_IDS"),
+    /** OAuth client ids whose tokens are accepted: the pre-registered clients of the hosts in use. */
+    clientIds,
     scopes: supabaseOAuthScopes as readonly string[],
     profiles: { url: service.url, serviceRoleKey: service.serviceRoleKey },
   };
@@ -205,13 +231,14 @@ export function getSupabaseServiceEnvironment() {
  */
 export function getMcpEventsLimits() {
   return {
+    perPrincipal: positiveInteger("ATLASNEWS_MCP_EVENTS_MAX_PER_PRINCIPAL"),
     perHost: positiveInteger("ATLASNEWS_MCP_EVENTS_MAX_PER_HOST"),
     perDomain: positiveInteger("ATLASNEWS_MCP_EVENTS_MAX_PER_DOMAIN"),
     total: positiveInteger("ATLASNEWS_MCP_EVENTS_MAX_SUBSCRIPTIONS"),
   };
 }
 
-/** Accepted `events/subscribe` calls per minute for one client network (all clients, when no client address header is trusted). */
+/** Accepted `events/subscribe` calls per minute for one signed-in caller. */
 export function getMcpEventsSubscribeRate() {
   return positiveInteger("ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE") ?? 30;
 }
@@ -359,12 +386,17 @@ export function getSocialProfiles() {
   };
 }
 
+/**
+ * `issues` block readiness (the health route answers 503); `warnings` name a protection that is weaker than
+ * it should be while the site still works, so they do not.
+ */
 export function getProductionReadiness() {
   const mode = getContentMode();
   const siteUrl = getPublicSiteUrl();
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   const supabaseUrl = parseHttpUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const issues: string[] = [];
+  const warnings: string[] = [];
   const capabilities = getOperationalCapabilities();
   if (mode === "supabase" && !hasSupabaseEnvironment()) issues.push("supabase-environment");
   if (mode === "sites" && !getSitesBindings()) issues.push("sites-bindings");
@@ -379,6 +411,10 @@ export function getProductionReadiness() {
     for (const [capability, configured] of Object.entries(capabilities)) {
       if (!configured) issues.push(`capability-${capability}`);
     }
+    // The per-network limits of comments and newsletter requests bind only behind the one header the edge sets.
+    if (mode === "sites" && !getClientAddressHeader()) warnings.push("client-address-header");
+    // Why sign-in is off although its Supabase variables are set, when nothing else covers admin MCP.
+    if (!capabilities.adminMcp && mcpOAuthProject() && !getMcpOAuthEnvironment()) issues.push("mcp-oauth-client-ids");
   }
-  return { ready: issues.length === 0, mode, siteUrl, capabilities, issues };
+  return { ready: issues.length === 0, mode, siteUrl, capabilities, issues, warnings };
 }

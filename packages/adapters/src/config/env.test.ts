@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { setSitesBindings } from "../sites/bindings";
 import {
+  getAllowedMcpOrigins,
   getConfiguredMcpUrl,
   getContentMode,
   getMcpOAuthEnvironment,
   getOperationalCapabilities,
   getProductionReadiness,
+  isChatGptSignInEnabled,
   isDemoStudioEnabled,
   isStudioAvailable,
 } from "./env";
@@ -18,6 +21,19 @@ function disableSupabase() {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
 }
+
+describe("ChatGPT sign-in switch", () => {
+  it("is on unless the owner turns it off", () => {
+    for (const value of [undefined, "", "on", "true", "anything else"]) {
+      vi.stubEnv("ATLASNEWS_CHATGPT_SIGN_IN", value);
+      expect(isChatGptSignInEnabled(), String(value)).toBe(true);
+    }
+    for (const value of ["off", " OFF ", "false", "0", "no"]) {
+      vi.stubEnv("ATLASNEWS_CHATGPT_SIGN_IN", value);
+      expect(isChatGptSignInEnabled(), value).toBe(false);
+    }
+  });
+});
 
 describe("Studio environment boundary", () => {
   it("keeps the zero-config Studio available during local development", () => {
@@ -153,6 +169,42 @@ describe("Studio environment boundary", () => {
     expect(getProductionReadiness().issues).toContain("capability-commentNotifications");
   });
 
+  it("warns on Sites, without failing readiness, while no client address header is configured", () => {
+    setSitesBindings({ DB: {}, BUCKET: {} });
+    try {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("ATLASNEWS_CONTENT_MODE", "sites");
+      vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://news.example.com");
+      vi.stubEnv("ATLASNEWS_CLIENT_IP_HEADER", "");
+      const without = getProductionReadiness();
+      expect(without.warnings).toEqual(["client-address-header"]);
+      expect(without.issues).not.toContain("client-address-header");
+
+      vi.stubEnv("ATLASNEWS_CLIENT_IP_HEADER", "cf-connecting-ip");
+      const configured = getProductionReadiness();
+      expect(configured.warnings).toEqual([]);
+      // A warning never decides readiness.
+      expect(configured.ready).toBe(without.ready);
+      expect(configured.issues).toEqual(without.issues);
+
+      vi.stubEnv("ATLASNEWS_CLIENT_IP_HEADER", "");
+      vi.stubEnv("ATLASNEWS_CONTENT_MODE", "supabase");
+      expect(getProductionReadiness().warnings).toEqual([]);
+    } finally {
+      setSitesBindings(null);
+    }
+  });
+
+  it("allows this site, chatgpt.com and claude.ai to call MCP from a browser unless the operator lists origins", () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://news.example.com/");
+    vi.stubEnv("MCP_ALLOWED_ORIGINS", "");
+    expect(getAllowedMcpOrigins()).toEqual(["https://news.example.com", "https://chatgpt.com", "https://claude.ai"]);
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://claude.ai");
+    expect(getAllowedMcpOrigins()).toEqual(["https://claude.ai", "https://chatgpt.com"]);
+    vi.stubEnv("MCP_ALLOWED_ORIGINS", " https://reader.example , ,https://other.example");
+    expect(getAllowedMcpOrigins()).toEqual(["https://reader.example", "https://other.example"]);
+  });
+
   it("derives the MCP sign-in server from the Supabase project and fails closed without the service key", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "public-key");
@@ -164,9 +216,16 @@ describe("Studio environment boundary", () => {
     vi.stubEnv("NEXT_PUBLIC_MCP_URL", "");
     expect(getMcpOAuthEnvironment()).toBeNull();
     vi.stubEnv("NEXT_PUBLIC_MCP_URL", "https://mcp.news.example.com");
+    // Fail closed: the generic `authenticated` audience binds a token to no client, so a list is required.
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "");
+    expect(getMcpOAuthEnvironment()).toBeNull();
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", " , ,");
+    expect(getMcpOAuthEnvironment()).toBeNull();
+
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "abc");
     expect(getMcpOAuthEnvironment()).toMatchObject({
       issuer: "https://project.supabase.co/auth/v1",
-      clientIds: null,
+      clientIds: ["abc"],
       jwksUrl: new URL("https://project.supabase.co/auth/v1/.well-known/jwks.json"),
       audience: null,
       scopes: ["email"],
@@ -181,6 +240,48 @@ describe("Studio environment boundary", () => {
       issuer: "https://auth.news.example.com/auth/v1",
       audience: "https://mcp.news.example.com/mcp",
     });
+  });
+
+  it("names the missing client list when it is the reason admin MCP is not available", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ATLASNEWS_CONTENT_MODE", "supabase");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://news.example.com");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "public-key");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "s".repeat(40));
+    vi.stubEnv("NEXT_PUBLIC_MCP_URL", "https://mcp.news.example.com");
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "");
+    vi.stubEnv("ATLASNEWS_MCP_ADMIN_API_KEY", "");
+    expect(getOperationalCapabilities().adminMcp).toBe(false);
+    expect(getProductionReadiness().issues).toEqual(expect.arrayContaining(["capability-adminMcp", "mcp-oauth-client-ids"]));
+
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "abc");
+    expect(getOperationalCapabilities().adminMcp).toBe(true);
+    expect(getProductionReadiness().issues).not.toContain("mcp-oauth-client-ids");
+
+    // The API key covers admin MCP without sign-in, so a missing list is not a reason to fail.
+    vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "");
+    vi.stubEnv("ATLASNEWS_MCP_ADMIN_API_KEY", "m".repeat(40));
+    vi.stubEnv("ATLASNEWS_MCP_ADMIN_AUTHOR_ID", "9f25cab8-80d6-4f34-b7d0-6dad0524a860");
+    expect(getOperationalCapabilities().adminMcp).toBe(true);
+    expect(getProductionReadiness().issues).not.toContain("mcp-oauth-client-ids");
+  });
+
+  it("offers no MCP sign-in on Sites, where the platform signs people in", () => {
+    setSitesBindings({ DB: {}, BUCKET: {} });
+    try {
+      vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
+      vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "public-key");
+      vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "s".repeat(40));
+      vi.stubEnv("NEXT_PUBLIC_MCP_URL", "https://mcp.news.example.com");
+      vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "abc");
+      vi.stubEnv("ATLASNEWS_CONTENT_MODE", "sites");
+      expect(getMcpOAuthEnvironment()).toBeNull();
+      vi.stubEnv("ATLASNEWS_CONTENT_MODE", "supabase");
+      expect(getMcpOAuthEnvironment()).not.toBeNull();
+    } finally {
+      setSitesBindings(null);
+    }
   });
 
   it("only trusts an explicitly configured public MCP URL", () => {

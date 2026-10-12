@@ -152,6 +152,18 @@ export class SupabaseMcpEventsRepository implements McpEventsRepository {
     return count ?? 0;
   }
 
+  async countLiveForPrincipal(principal: string, excludingId: string, now: Date) {
+    const { count, error } = await this.client
+      .from(subscriptions)
+      .select("id", { count: "exact", head: true })
+      .eq("principal", principal)
+      .eq("status", "active")
+      .gt("expires_at", now.toISOString())
+      .neq("id", excludingId);
+    ensure(error);
+    return count ?? 0;
+  }
+
   async countLive(now: Date) {
     const { count, error } = await this.client
       .from(subscriptions)

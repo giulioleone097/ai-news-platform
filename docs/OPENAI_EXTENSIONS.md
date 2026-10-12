@@ -30,7 +30,7 @@ The app calls only the server's public catalogue tools (`list_articles`, `search
 ## MCP Events
 
 - `server/discover` advertises `events: {}` only when `SUPABASE_SERVICE_ROLE_KEY` is configured; otherwise no event methods are registered.
-- Subscriptions are public data on an anonymous server, so identity is `sha256(canonical {principal: "public", url, name, arguments})`. Anonymous subscriptions are a product decision: they are what lets ChatGPT's documented flow work without an account here, and nothing below asks ChatGPT for more than the guide describes (a `whsec_` secret, a callback that answers the signed challenge, `ttlMs`, a refresh before `refreshBefore`). Abuse limits: HTTPS callbacks only, DNS resolved and checked against private, loopback, link-local, CGNAT, multicast and documentation ranges at connect time, no redirects, 5 s verification and 10 s delivery timeouts, 256 KiB bodies, TTL 1 h to 30 days (7 days default, never unlimited), and the caps in [Abuse limits](#abuse-limits).
+- Subscribing makes this server call an address the caller chose, so it needs a signed-in caller (any account, not only an editor): an anonymous `events/subscribe` is answered `401` with a Bearer challenge, which is what starts account linking in ChatGPT. Listing the events stays anonymous. Identity is `sha256(canonical {principal: <subject>, url, name, arguments})`, so two accounts never share a subscription, and nothing below asks ChatGPT for more than the guide describes (a `whsec_` secret, a callback that answers the signed challenge, `ttlMs`, a refresh before `refreshBefore`). Abuse limits: HTTPS callbacks only, DNS resolved and checked against private, loopback, link-local, CGNAT, multicast and documentation ranges at connect time, no redirects, 5 s verification and 10 s delivery timeouts, 256 KiB bodies, TTL 1 h to 30 days (7 days default, never unlimited), and the caps in [Abuse limits](#abuse-limits).
 - Every new or re-pointed subscription must echo a signed, single-use verification challenge before activation; successful verification is cached for 24 h per callback URL and secret.
 - The `/internal/mcp-events` worker (`apps/jobs`) (every minute) enqueues articles published after each subscription's checkpoint (never backfills), then sends due deliveries with leases, stable `evt_` IDs, fresh signatures per attempt, exponential backoff, no retry on 410/413, and deactivation on 410.
 - No replay: `cursor` is always `null` and `truncated` is `false`.
@@ -40,21 +40,22 @@ The app calls only the server's public catalogue tools (`list_articles`, `search
 
 | Limit | Default | Setting | What it stops |
 | --- | --- | --- | --- |
+| Live subscriptions per signed-in account | 20 | `ATLASNEWS_MCP_EVENTS_MAX_PER_PRINCIPAL` | one account filling the table (counted in the store, so it holds across Worker isolates) |
 | Live subscriptions per callback hostname | 25 | `ATLASNEWS_MCP_EVENTS_MAX_PER_HOST` | one receiver filling the table |
 | Live subscriptions per registrable domain (the last two labels, three below `co.uk`-style suffixes; not the Public Suffix List) | 100 | `ATLASNEWS_MCP_EVENTS_MAX_PER_DOMAIN` | wildcard DNS, which gives one owner unlimited hostnames |
 | Live subscriptions in total | 1000 | `ATLASNEWS_MCP_EVENTS_MAX_SUBSCRIPTIONS` | exhausting the delivery capacity of the worker |
-| `events/subscribe` calls per minute per client network | 30 | `ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE` | using the server as a generator of outbound verification requests; HTTP 429 with `Retry-After` |
+| `events/subscribe` calls per minute per signed-in account | 30 | `ATLASNEWS_MCP_EVENTS_SUBSCRIBES_PER_MINUTE` | using the server as a generator of outbound verification requests; HTTP 429 with `Retry-After` |
 
-A refresh of a live subscription does not count against the three caps, so ChatGPT's renewals keep working when the table is full. The subscribe limit counts every call. It is keyed by the address in `ATLASNEWS_CLIENT_IP_HEADER`; without that variable all callers share one window ([DEPLOYMENT.md](DEPLOYMENT.md#client-address-and-rate-limits)). Its counters are in memory, per `apps/mcp` process. **ChatGPT may call from a few shared addresses and may deliver every callback from one host**: if real subscriptions are refused (`subscription_limit` or 429), raise the settings rather than disable them.
+A refresh of a live subscription does not count against the four caps, so ChatGPT's renewals keep working when the table is full. The subscribe limit counts every call, including those whose verification fails (which store nothing, so the caps cannot see them). It is keyed by the account, not by the network, so it needs no `ATLASNEWS_CLIENT_IP_HEADER`. Its counters are in memory, per `apps/mcp` process. **ChatGPT may call from a few shared addresses and may deliver every callback from one host**: if real subscriptions are refused (`subscription_limit` or 429), raise the settings rather than disable them.
 
 Delivery order: each minute the worker serves the 100 live subscriptions with the oldest checkpoint, and serving one moves its checkpoint forward, so with up to 1000 subscriptions each is reached within ten minutes (the previous order, by creation time, served the same first 100 forever). Concurrent subscribes can overshoot a cap by a few.
 
 ### Ownership and re-keying
 
-Subscriptions have no owner: the server is anonymous for events, and the guide's `events/unsubscribe` carries only the event name, arguments and callback URL. The callback URL is therefore the capability. What is enforced:
+A subscription belongs to the account that created it: `events/unsubscribe` carries only the event name, arguments and callback URL, and is resolved under the caller's own account, so another account cannot stop it. What is enforced:
 
 - A subscription can only be created or refreshed by presenting a callback that answers a verification challenge signed with the presented secret. A caller who knows a victim's URL but not the receiver's secret cannot create or re-key anything for it, and a new secret on a live subscription is always verified again (never taken from the 24-hour verification cache), so an old or leaked secret cannot be put back unchecked. The previous secret signs deliveries for one more hour, as the guide asks for rotation.
-- Residual risk: anyone who learns the callback URL, event name and arguments can unsubscribe it. ChatGPT's callback URLs carry an unguessable id, so this needs a leak of the URL, and the loss is a stopped subscription that ChatGPT re-creates when it refreshes.
+- Residual risk: an account that learns the callback URL, event name and arguments of another account's subscription cannot unsubscribe it, but can create its own subscription for the same callback. That still needs the receiver's secret to answer the verification challenge.
 
 ## Testing in ChatGPT
 

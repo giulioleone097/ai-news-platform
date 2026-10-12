@@ -11,6 +11,7 @@ export function GET() {
       canonicalOrigin: readiness.siteUrl.origin,
       capabilities: readiness.capabilities,
       checks: readiness.issues,
+      warnings: readiness.warnings,
     },
     {
       status: readiness.ready ? 200 : 503,

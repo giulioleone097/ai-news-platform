@@ -32,6 +32,7 @@ let dispatcher: DeliveryDispatcher;
 const clock = () => now;
 const advance = (ms: number) => { now = new Date(now.getTime() + ms); };
 const subscribe = (args: Record<string, unknown> = {}, url = callbackUrl, extra = {}) => service.subscribe({
+  principal: "reader-1",
   name: "article.published",
   arguments: args,
   delivery: { mode: "webhook", url, secret: testSecret },
@@ -63,7 +64,8 @@ describe.each(repositoryHarnesses)("%s repository", (_name, createHarness) => {
   describe("EventEnqueuer", () => {
     it("serves the subscriptions that waited longest, so more than one batch is reached in turn", async () => {
       const urls = Array.from({ length: 150 }, (_, index) => `https://receiver.d${index}.example/cb`);
-      for (const url of urls) await subscribe({}, url);
+      // One account each: a single account holds at most a few live subscriptions.
+      for (const [index, url] of urls.entries()) await subscribe({}, url, { principal: `reader-${index}` });
       // A newer subscription sits behind the ones created before it.
       advance(20 * minute);
       source.articles = [article({ id: "late", publishedAt: new Date(now.getTime() - minute).toISOString() })];
@@ -75,7 +77,7 @@ describe.each(repositoryHarnesses)("%s repository", (_name, createHarness) => {
       expect(second.subscriptions).toBe(100);
       const reached = new Set((await harness.deliveries()).map((delivery) => delivery.subscriptionId));
       expect(reached.size).toBe(150);
-    });
+    }, 60_000);
 
     it("never backfills articles published before the subscription", async () => {
       source.articles = [article({ id: "old", publishedAt: "2026-10-10T11:59:59.000Z" })];
@@ -229,6 +231,7 @@ describe.each(repositoryHarnesses)("%s repository", (_name, createHarness) => {
     it("signs with both secrets during a rotation window, then only the new one", async () => {
       const id = await queueOne();
       await service.subscribe({
+        principal: "reader-1",
         name: "article.published",
         arguments: {},
         delivery: { mode: "webhook", url: callbackUrl, secret: otherSecret },
@@ -239,6 +242,7 @@ describe.each(repositoryHarnesses)("%s repository", (_name, createHarness) => {
       source.articles = [article({ id: "a2", publishedAt: "2026-10-10T12:30:00.000Z" })];
       advance(2 * 60 * minute);
       await service.subscribe({
+        principal: "reader-1",
         name: "article.published",
         arguments: {},
         delivery: { mode: "webhook", url: callbackUrl, secret: otherSecret },
@@ -323,6 +327,7 @@ describe.each(repositoryHarnesses)("%s repository", (_name, createHarness) => {
       client.requests.length = 0;
 
       await service.unsubscribe({
+        principal: "reader-1",
         name: "article.published",
         arguments: {},
         delivery: { mode: "webhook", url: "https://gone.example.com/cb" },

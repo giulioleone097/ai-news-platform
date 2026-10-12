@@ -1,4 +1,5 @@
 import type { Author } from "@atlasnews/core/editorial/domain/article";
+import { isChatGptSignInEnabled } from "../config/env";
 import type { D1Database } from "./cloudflare";
 
 /**
@@ -7,7 +8,8 @@ import type { D1Database } from "./cloudflare";
  *
  * For ChatGPT the platform owns sign-in (`/signin-with-chatgpt`) and injects the `oai-authenticated-*`
  * headers on every request of a signed-in visitor, replacing any the client sent; an anonymous request
- * carries none. They are trusted only in `sites` mode, behind that platform.
+ * carries none. They are trusted only in `sites` mode, behind that platform (both callers check the
+ * mode), and not at all while `ATLASNEWS_CHATGPT_SIGN_IN=off`.
  */
 export interface SitesIdentity {
   /** Stable for one person at one provider: the `oai-authenticated-user-id`, or `google:<sub>` / `github:<id>`. */
@@ -18,6 +20,7 @@ export interface SitesIdentity {
 }
 
 export function readSitesIdentity(headers: Headers): SitesIdentity | null {
+  if (!isChatGptSignInEnabled()) return null;
   const userId = headers.get("oai-authenticated-user-id")?.trim();
   const email = headers.get("oai-authenticated-user-email")?.trim();
   if (!userId || !email) return null;

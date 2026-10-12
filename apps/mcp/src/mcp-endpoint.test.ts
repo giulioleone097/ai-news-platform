@@ -6,18 +6,24 @@ import { listPublishedArticleComments, mcpCapabilities, scopes } from "@atlasnew
 
 import { appToolNames } from "./apps";
 import { apiKeyVerifier, resolvePrincipal } from "./auth";
-import { handleMcpRequest, mcpOptionsResponse } from "./http";
+import { handleMcpRequest, mcpMethodNotAllowedResponse, mcpOptionsResponse } from "./http";
 import { mcpProtocolVersion } from "./metadata";
 import { memoryPorts, modernParams, rpcRequest, sendRpc, testApiKey } from "./mcp-test-client";
 import { GET as getMcpInfo } from "./routes/info";
 import { GET as getResourceMetadata } from "./routes/oauth-metadata";
 
-const originalAllowedOrigins = process.env.MCP_ALLOWED_ORIGINS;
-
 afterEach(() => {
-  if (originalAllowedOrigins === undefined) delete process.env.MCP_ALLOWED_ORIGINS;
-  else process.env.MCP_ALLOWED_ORIGINS = originalAllowedOrigins;
+  vi.unstubAllEnvs();
 });
+
+/** Supabase Auth as the authorization server, so the challenges point at the resource metadata. */
+function configureSignIn() {
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
+  vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "s".repeat(40));
+  vi.stubEnv("NEXT_PUBLIC_MCP_URL", "http://localhost:8787");
+  vi.stubEnv("ATLASNEWS_MCP_OAUTH_CLIENT_IDS", "9a8b7c6d-5e4f-4a2b-9c0d-9e8f7a6b5c4d");
+}
 
 type Tool = {
   name: string;
@@ -33,6 +39,19 @@ const call = (name: string, args: Record<string, unknown>, authorization?: strin
     method: "tools/call",
     params: modernParams({ name, arguments: args }),
   }, mcpProtocolVersion, { authorization });
+
+const deps = { verifier: apiKeyVerifier(() => testApiKey), createPorts: () => memoryPorts() };
+const listArticlesRequest = (authorization?: string) => rpcRequest({
+  jsonrpc: "2.0",
+  id: 1,
+  method: "tools/call",
+  params: modernParams({ name: "list_articles", arguments: { locale: "en" } }),
+}, mcpProtocolVersion, authorization);
+
+function withOrigin(request: Request, origin: string) {
+  request.headers.set("Origin", origin);
+  return request;
+}
 
 describe("MCP endpoint", () => {
   it("discovers the latest protocol under the AtlasNews server name", async () => {
@@ -149,6 +168,7 @@ describe("MCP endpoint", () => {
   });
 
   it("answers a scoped tool called anonymously with 401 and a challenge, before anything runs", async () => {
+    configureSignIn();
     const repository = new MemoryEditorialRepository();
     const before = (await repository.listForStudio("en")).length;
     const ports = memoryPorts(repository);
@@ -175,7 +195,8 @@ describe("MCP endpoint", () => {
     expect(challenge).toMatch(/^Bearer /);
     expect(challenge).toContain('resource_metadata="http://localhost:8787/.well-known/oauth-protected-resource"');
     expect(challenge).toContain('error="invalid_token"');
-    expect(challenge).toContain('scope="newsroom.write"');
+    // With Supabase Auth as the server the host may only ask for the scopes it can grant.
+    expect(challenge).toContain('scope="email"');
     expect(response.headers.get("access-control-expose-headers")).toContain("WWW-Authenticate");
     expect((await repository.listForStudio("en")).length).toBe(before);
   });
@@ -249,7 +270,7 @@ describe("MCP endpoint", () => {
       for (const [label, request] of cases) {
         const response = await send(request);
         expect(response.status, label).toBe(401);
-        expect(response.headers.get("www-authenticate"), label).toContain("resource_metadata=");
+        expect(response.headers.get("www-authenticate"), label).toContain('Bearer realm="atlasnews"');
       }
     });
 
@@ -311,8 +332,20 @@ describe("MCP endpoint", () => {
     expect(created.response.headers.get("cache-control")).toBe("no-store");
     expect(created.response.headers.get("access-control-allow-origin")).toBeNull();
 
+    // A server-to-server read sends no Origin and gets no CORS header; a browser on an allowed origin gets its own back.
     const anonymousRead = await call("list_articles", { locale: "en" });
-    expect(anonymousRead.response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(anonymousRead.response.headers.get("access-control-allow-origin")).toBeNull();
+    const fromBrowser = await handleMcpRequest(withOrigin(listArticlesRequest(), "https://claude.ai"), deps);
+    expect(fromBrowser.headers.get("access-control-allow-origin")).toBe("https://claude.ai");
+    expect(fromBrowser.headers.get("vary")).toContain("Origin");
+  });
+
+  it("names no resource metadata in the challenge while no authorization server is configured", async () => {
+    const { response } = await call("admin_list_articles", { locale: "en" });
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toBe(
+      'Bearer realm="atlasnews", error="invalid_token", error_description="Authentication required for this tool", scope="newsroom.read"',
+    );
   });
 
   it("rejects an invalid bearer token with 401 and a Bearer challenge", async () => {
@@ -354,29 +387,137 @@ describe("MCP endpoint", () => {
     expect(payload.capabilities.tools.anonymous).toEqual(expect.arrayContaining(["list_articles", "search"]));
     expect(payload.capabilities.tools.scoped).not.toContain("list_articles");
 
-    const metadata = await getResourceMetadata(new Request("https://mcp.example.com/.well-known/oauth-protected-resource")).json();
-    expect(metadata).toMatchObject({ resource: "https://mcp.example.com/mcp", scopes_supported: scopes });
+    // No authorization server (the API key alone, or Sites): there is no metadata document to discover.
+    const metadata = getResourceMetadata(new Request("https://mcp.example.com/.well-known/oauth-protected-resource"));
+    expect(metadata.status).toBe(404);
+    expect(payload.access.resourceMetadata).toBeNull();
+
+    configureSignIn();
+    expect((await getMcpInfo().json()).access.resourceMetadata).toBe("/.well-known/oauth-protected-resource");
   });
 
-  it("enforces the optional browser origin allow-list", async () => {
-    process.env.MCP_ALLOWED_ORIGINS = "https://reader.example";
-    const allowed = mcpOptionsResponse(new Request("http://localhost/mcp", {
+  describe("browser origins", () => {
+    const preflight = (origin: string) => mcpOptionsResponse(new Request("http://localhost/mcp", {
       method: "OPTIONS",
-      headers: { Origin: "https://reader.example" },
-    }));
-    const denied = mcpOptionsResponse(new Request("http://localhost/mcp", {
-      method: "OPTIONS",
-      headers: { Origin: "https://untrusted.example" },
+      headers: { Origin: origin },
     }));
 
-    expect(allowed.status).toBe(204);
-    expect(allowed.headers.get("access-control-allow-origin")).toBe("https://reader.example");
-    expect(denied.status).toBe(403);
-    expect(denied.headers.get("access-control-allow-origin")).toBeNull();
+    it("validates Origin on every POST and refuses a foreign one with 403 before anything runs", async () => {
+      vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://news.example.com");
+      const createPorts = vi.fn(() => memoryPorts());
+      for (const origin of ["https://untrusted.example", "http://localhost:3000", "null"]) {
+        const response = await handleMcpRequest(withOrigin(listArticlesRequest(), origin), { ...deps, createPorts });
+        expect(response.status, origin).toBe(403);
+        expect((await response.json()).error.code, origin).toBe(-32003);
+        expect(response.headers.get("access-control-allow-origin"), origin).toBeNull();
+      }
+      // A signed-in caller is held to it as well, with the API key included.
+      const signedIn = await handleMcpRequest(
+        withOrigin(listArticlesRequest(`Bearer ${testApiKey}`), "https://untrusted.example"),
+        { ...deps, createPorts },
+      );
+      expect(signedIn.status).toBe(403);
+      expect(createPorts).not.toHaveBeenCalled();
+      expect(mcpMethodNotAllowedResponse(withOrigin(new Request("http://localhost/mcp"), "https://untrusted.example")).status).toBe(403);
+    });
+
+    it("allows the site's own origin, chatgpt.com and claude.ai by default and echoes the one that called", async () => {
+      vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://news.example.com");
+      for (const origin of ["https://news.example.com", "https://chatgpt.com", "https://claude.ai"]) {
+        const response = await handleMcpRequest(withOrigin(listArticlesRequest(), origin), deps);
+        expect(response.status, origin).toBe(200);
+        expect(response.headers.get("access-control-allow-origin"), origin).toBe(origin);
+        expect(response.headers.get("vary"), origin).toContain("Origin");
+        expect(preflight(origin).status, origin).toBe(204);
+      }
+      expect(preflight("http://localhost:3000").status).toBe(403);
+    });
+
+    it("lets a caller that sends no Origin through, without a CORS header", async () => {
+      const response = await handleMcpRequest(listArticlesRequest(), deps);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    });
+
+    it("replaces the default with MCP_ALLOWED_ORIGINS when it is set", async () => {
+      vi.stubEnv("MCP_ALLOWED_ORIGINS", "https://reader.example");
+      const allowed = preflight("https://reader.example");
+      expect(allowed.status).toBe(204);
+      expect(allowed.headers.get("access-control-allow-origin")).toBe("https://reader.example");
+      const denied = preflight("https://chatgpt.com");
+      expect(denied.status).toBe(403);
+      expect(denied.headers.get("access-control-allow-origin")).toBeNull();
+      expect((await handleMcpRequest(withOrigin(listArticlesRequest(), "https://chatgpt.com"), deps)).status).toBe(403);
+    });
+
+    it("lists only the headers the 2026-07-28 transport uses", () => {
+      const response = preflight("https://claude.ai");
+      const allowed = response.headers.get("access-control-allow-headers")!;
+      expect(allowed).toBe("Content-Type, Accept, MCP-Protocol-Version, MCP-Method, MCP-Name");
+      expect(response.headers.get("access-control-expose-headers")).toBe("MCP-Protocol-Version, WWW-Authenticate");
+    });
+  });
+
+  describe("protocol version header", () => {
+    const post = (body: unknown, headers: Record<string, string> = {}) => handleMcpRequest(new Request("http://localhost:8787/mcp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", ...headers },
+      body: JSON.stringify(body),
+    }), deps);
+    const toolsList = { jsonrpc: "2.0", id: 1, method: "tools/list" };
+
+    it("rejects a POST that names no version, the way the SDK rejects a wrong one", async () => {
+      const missing = await post(toolsList);
+      const wrong = await post(toolsList, { "MCP-Protocol-Version": "1999-01-01" });
+      expect(missing.status).toBe(400);
+      expect(wrong.status).toBe(400);
+      const error = (await missing.json()).error;
+      expect(error.code).toBe(-32000);
+      expect(error.message).toContain("MCP-Protocol-Version");
+      expect(error.message).toContain(mcpProtocolVersion);
+      expect((await wrong.json()).error.code).toBe(-32000);
+      // The same for a call that would be refused as unauthorized: the protocol is checked first.
+      const scoped = await post({ ...toolsList, method: "tools/call", params: { name: "admin_list_articles", arguments: {} } });
+      expect(scoped.status).toBe(400);
+    });
+
+    it("rejects a 2026-07-28 request without the header and a batch without it", async () => {
+      const modern = await post({ ...toolsList, params: modernParams() }, { "MCP-Method": "tools/list" });
+      expect(modern.status).toBe(400);
+      expect((await post([toolsList])).status).toBe(400);
+      expect((await post({})).status).toBe(400);
+    });
+
+    it("lets initialize through without it, because the connection has no version yet", async () => {
+      const initialized = await post({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "legacy", version: "1" } },
+      });
+      expect(initialized.status).toBe(200);
+      expect((await initialized.text())).toContain("2025-11-25");
+      expect((await post(toolsList, { "MCP-Protocol-Version": "2025-11-25" })).status).toBe(200);
+    });
+  });
+
+  describe("cache hints", () => {
+    it("tells a 2026-07-28 client how long it may reuse the tool and resource lists", async () => {
+      const tools = await sendRpc({ jsonrpc: "2.0", id: 1, method: "tools/list", params: modernParams() });
+      expect(tools.payload.result).toMatchObject({ ttlMs: 300_000, cacheScope: "private" });
+      const resources = await sendRpc({ jsonrpc: "2.0", id: 2, method: "resources/list", params: modernParams() });
+      expect(resources.payload.result).toMatchObject({ ttlMs: 60_000, cacheScope: "private" });
+    });
+
+    it("leaves 2025-era list results as they were", async () => {
+      const legacy = await sendRpc({ jsonrpc: "2.0", id: 1, method: "tools/list" }, "2025-11-25");
+      expect(legacy.payload.result.tools.length).toBeGreaterThan(0);
+      expect(legacy.payload.result).not.toHaveProperty("ttlMs");
+      expect(legacy.payload.result).not.toHaveProperty("cacheScope");
+    });
   });
 
   it("rejects oversized request bodies before protocol parsing", async () => {
-    const deps = { verifier: apiKeyVerifier(() => testApiKey), createPorts: () => memoryPorts() };
     const declared = await handleMcpRequest(new Request("http://localhost:8787/mcp", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Content-Length": "262145" },
