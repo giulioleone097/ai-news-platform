@@ -392,6 +392,88 @@ describe("D1CommentRepository moderation", () => {
     expect(events[1]).toMatchObject({ actorKind: "moderator", actorLabel: null });
   });
 
+  it("reads one comment as the queue shows it, with its open reports, and nothing for an unknown id", async () => {
+    const created = await createComment(guest(), { body: "A remark that gets reported." });
+    await approve(created.id);
+    await repository.report({ commentId: created.id, reason: "spam", details: "Looks like an advert.", actor: guest() });
+
+    expect(await repository.getModeration(created.id)).toMatchObject({
+      id: created.id, articleId, locale: "en", parentId: null, body: "A remark that gets reported.", displayName: "Ada",
+      authorKind: "guest", status: "approved", reportCount: 1, editedAt: null,
+    });
+    expect(await repository.getModeration(crypto.randomUUID())).toBeNull();
+  });
+
+  describe("several comments at once", () => {
+    const statusOf = async (id: string) =>
+      (await database.prepare("SELECT status FROM comments WHERE id = ?").bind(id).first<{ status: string }>())!.status;
+    const auditOf = (id: string) => count("SELECT count(*) AS n FROM comment_moderation_audit WHERE comment_id = ?", id);
+
+    it("gives every comment the status, with its own audit row and its reports resolved", async () => {
+      const first = await createComment(guest(), { body: "First remark of the batch." });
+      const second = await createComment(guest(), { body: "Second remark of the batch." });
+      await approve(second.id);
+      await repository.report({ commentId: second.id, reason: "spam", details: null, actor: guest() });
+      const before = [await auditOf(first.id), await auditOf(second.id)];
+
+      await repository.moderateMany({ ids: [first.id, second.id], status: "spam", reason: "Advertising.", actor: moderator });
+
+      expect([await statusOf(first.id), await statusOf(second.id)]).toEqual(["spam", "spam"]);
+      expect([await auditOf(first.id), await auditOf(second.id)]).toEqual([before[0] + 1, before[1] + 1]);
+      const events = (await repository.listAudit({ beforeId: null, limit: 100 })).items.filter((event) => event.commentId === second.id);
+      expect(events[0]).toMatchObject({ action: "marked_spam", previousStatus: "approved", nextStatus: "spam", reason: "Advertising.", actorKind: "moderator" });
+      expect(await count("SELECT count(*) AS n FROM comment_reports WHERE comment_id = ? AND status = 'open'", second.id)).toBe(0);
+      expect((await repository.getModeration(second.id))?.reportCount).toBe(0);
+    });
+
+    it("tombstones every deleted comment, like a single deletion", async () => {
+      const ids = [(await createComment(guest())).id, (await createComment(guest())).id];
+      await repository.moderateMany({ ids, status: "deleted", reason: "Removed by moderator.", actor: moderator });
+      for (const id of ids) {
+        expect(await database.prepare("SELECT body, author_display_name, status FROM comments WHERE id = ?").bind(id).first())
+          .toMatchObject({ body: "[deleted]", author_display_name: "Deleted user", status: "deleted" });
+      }
+    });
+
+    it("changes nothing when one comment cannot take the status any more: no status, no audit row", async () => {
+      const kept = await createComment(guest(), { body: "Stays pending." });
+      const gone = await createComment(guest(), { body: "Deleted meanwhile." });
+      await repository.moderate({ id: gone.id, status: "deleted", reason: "Removed already.", actor: moderator });
+      const audits = [await auditOf(kept.id), await auditOf(gone.id)];
+
+      // The service checks first; this is the repository's own guard for a change that raced it.
+      await expectCode(repository.moderateMany({ ids: [kept.id, gone.id], status: "spam", reason: "Advertising.", actor: moderator }), "operation_not_allowed");
+      expect(await statusOf(kept.id)).toBe("pending");
+      expect(await statusOf(gone.id)).toBe("deleted");
+      expect([await auditOf(kept.id), await auditOf(gone.id)]).toEqual(audits);
+    });
+
+    it("approves a reply only under a parent that is approved before the batch, and leaves the parent alone otherwise", async () => {
+      const parent = await createComment(guest(), { body: "A parent that is approved first." });
+      await approve(parent.id);
+      const reply = await createComment(guest(), { parentId: parent.id, body: "A reply to it." });
+      await repository.moderate({ id: parent.id, status: "rejected", reason: "Changed my mind.", actor: moderator });
+      await expectCode(repository.moderateMany({ ids: [reply.id], status: "approved", reason: "Fine.", actor: moderator }), "operation_not_allowed");
+      await expectCode(repository.moderateMany({ ids: [parent.id, reply.id], status: "approved", reason: "Both fine.", actor: moderator }), "operation_not_allowed");
+      expect([await statusOf(parent.id), await statusOf(reply.id)]).toEqual(["rejected", "pending"]);
+
+      await approve(parent.id);
+      await repository.moderateMany({ ids: [reply.id], status: "approved", reason: "Fine.", actor: moderator });
+      expect(await statusOf(reply.id)).toBe("approved");
+      // Rejecting the parent and the reply together does not depend on either.
+      await repository.moderateMany({ ids: [parent.id, reply.id], status: "rejected", reason: "Off topic.", actor: moderator });
+      expect([await statusOf(parent.id), await statusOf(reply.id)]).toEqual(["rejected", "rejected"]);
+    });
+
+    it("reports an unknown id before it writes anything, and checks the reason and the actor like a single change", async () => {
+      const existing = await createComment(guest());
+      await expectCode(repository.moderateMany({ ids: [existing.id, crypto.randomUUID()], status: "spam", reason: "Advertising.", actor: moderator }), "not_found");
+      await expectCode(repository.moderateMany({ ids: [existing.id], status: "spam", reason: "x", actor: moderator }), "invalid_request");
+      await expectCode(repository.moderateMany({ ids: [existing.id], status: "spam", reason: "Bad actor.", actor: { kind: "system", userId: null, label: "no spaces allowed" } }), "operation_not_allowed");
+      expect(await statusOf(existing.id)).toBe("pending");
+    });
+  });
+
   it("queues moderation and reply notifications once for verified subscribers, never for the same author", async () => {
     const parentPreference = notificationPreference();
     const parentAuthor = guest();

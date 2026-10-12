@@ -14,7 +14,7 @@ export function previewSocialPublication(
     idempotencyKey: normalized.idempotencyKey,
     text: composeProviderText(normalized.payload),
     articleUrl: normalized.payload.articleUrl ?? null,
-    recipient: normalized.payload.recipient ? "[redacted]" : null,
+    recipient: normalized.payload.recipient ? ("[redacted]" as const) : null,
     scheduledFor: normalized.scheduledFor,
     maxAttempts: normalized.maxAttempts,
     valid: true as const,

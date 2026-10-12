@@ -50,19 +50,21 @@ const emailShape = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** The lowercase address, or a rule error when it cannot be one. */
 export function normalizeTeamEmail(value: string) {
   const email = value.trim().toLowerCase();
-  if (email.length > teamLimits.email.max || !emailShape.test(email)) throw new TeamRuleError(teamMessages.invalidEmail);
+  if (email.length > teamLimits.email.max || !emailShape.test(email)) throw new TeamRuleError(teamMessages.invalidEmail, "team.invalidEmail");
   return email;
 }
 
 export function assertTeamRole(value: string): asserts value is TeamRole {
-  if (!(teamRoles as readonly string[]).includes(value)) throw new TeamRuleError(teamMessages.invalidRole);
+  if (!(teamRoles as readonly string[]).includes(value)) throw new TeamRuleError(teamMessages.invalidRole, "team.invalidRole");
 }
 
 /** The author name of a new member: the display name when given, else the part of the email before the @. */
 export function memberDisplayName(email: string, name?: string) {
   const given = name?.trim();
   if (given) {
-    if (given.length < teamLimits.name.min || given.length > teamLimits.name.max) throw new TeamRuleError(teamMessages.invalidName);
+    if (given.length < teamLimits.name.min || given.length > teamLimits.name.max) {
+      throw new TeamRuleError(teamMessages.invalidName, "team.invalidName", teamLimits.name);
+    }
     return given;
   }
   const local = (email.split("@")[0] ?? "").trim().slice(0, teamLimits.name.max);

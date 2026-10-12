@@ -20,28 +20,42 @@ import {
 
 const httpsUrl = /^https:\/\/[^\s]+$/;
 
+const notFound = (slug: string) => new EditorialRuleError(`Entity "${slug}" not found.`, "entity.notFound", { slug });
+
 /** The slug, kind and parent of every entity as the batch would leave it, so later items see earlier ones. */
 type Shape = Map<string, { kind: EntityKind; parentSlug: string | null }>;
 
 function normalize(write: EntityWrite): EntityWrite {
   const name = write.name.trim();
-  if (!entityKinds.includes(write.kind)) throw new EditorialRuleError(`Unknown entity kind "${write.kind}".`);
+  if (!entityKinds.includes(write.kind)) throw new EditorialRuleError(`Unknown entity kind "${write.kind}".`, "entity.unknownKind", { kind: write.kind });
   if (name.length < entityLimits.name.min || name.length > entityLimits.name.max) {
-    throw new EditorialRuleError(`Entity name must be ${entityLimits.name.min}-${entityLimits.name.max} characters.`);
+    throw new EditorialRuleError(
+      `Entity name must be ${entityLimits.name.min}-${entityLimits.name.max} characters.`,
+      "entity.invalidName",
+      entityLimits.name,
+    );
   }
   if (!write.slug || write.slug.length > entityLimits.slug.max || !slugPattern.test(write.slug)) {
-    throw new EditorialRuleError(`Entity slug must be lowercase letters, numbers and hyphens, at most ${entityLimits.slug.max} characters.`);
+    throw new EditorialRuleError(
+      `Entity slug must be lowercase letters, numbers and hyphens, at most ${entityLimits.slug.max} characters.`,
+      "entity.invalidSlug",
+      entityLimits.slug,
+    );
   }
   const officialUrl = write.officialUrl?.trim() || null;
   if (officialUrl && (officialUrl.length > entityLimits.officialUrl.max || !httpsUrl.test(officialUrl))) {
-    throw new EditorialRuleError("officialUrl must be an https URL.");
+    throw new EditorialRuleError("officialUrl must be an https URL.", "entity.invalidUrl");
   }
   const descriptions: EntityWrite["descriptions"] = {};
   for (const locale of locales) {
     const text = write.descriptions[locale]?.trim();
     if (text === undefined) continue;
     if (text.length < entityLimits.description.min || text.length > entityLimits.description.max) {
-      throw new EditorialRuleError(`Description (${locale}) must be ${entityLimits.description.min}-${entityLimits.description.max} characters; send null to remove it.`);
+      throw new EditorialRuleError(
+        `Description (${locale}) must be ${entityLimits.description.min}-${entityLimits.description.max} characters; send null to remove it.`,
+        "entity.invalidDescription",
+        { locale, ...entityLimits.description },
+      );
     }
     descriptions[locale] = text;
   }
@@ -51,10 +65,12 @@ function normalize(write: EntityWrite): EntityWrite {
 /** A company has no parent; a model or product has at most one, and it is a company. */
 function assertParent(write: EntityWrite, shape: Shape) {
   if (write.parentSlug === null) return;
-  if (write.kind === "company") throw new EditorialRuleError("A company has no parent company.");
+  if (write.kind === "company") throw new EditorialRuleError("A company has no parent company.", "entity.companyNoParent");
   const parent = shape.get(write.parentSlug);
-  if (!parent) throw new EditorialRuleError(`Unknown parent "${write.parentSlug}".`);
-  if (parent.kind !== "company") throw new EditorialRuleError(`The parent "${write.parentSlug}" must be a company.`);
+  if (!parent) throw new EditorialRuleError(`Unknown parent "${write.parentSlug}".`, "entity.unknownParent", { slug: write.parentSlug });
+  if (parent.kind !== "company") {
+    throw new EditorialRuleError(`The parent "${write.parentSlug}" must be a company.`, "entity.parentNotCompany", { slug: write.parentSlug });
+  }
 }
 
 /**
@@ -91,7 +107,7 @@ export class EntityCommandService {
           parentSlug: input.parentSlug ?? null,
           descriptions: input.descriptions ?? {},
         });
-        if (shape.has(write.slug)) throw new EditorialRuleError(`The entity "${write.slug}" already exists.`);
+        if (shape.has(write.slug)) throw new EditorialRuleError(`The entity "${write.slug}" already exists.`, "entity.exists", { slug: write.slug });
         assertParent(write, shape);
         shape.set(write.slug, { kind: write.kind, parentSlug: write.parentSlug });
         return write;
@@ -111,9 +127,9 @@ export class EntityCommandService {
       patches,
       (patch) => {
         const current = records.get(patch.slug);
-        if (!current) throw new EditorialRuleError(`Entity "${patch.slug}" not found.`);
+        if (!current) throw notFound(patch.slug);
         if (!Object.entries(patch).some(([field, value]) => field !== "slug" && value !== undefined)) {
-          throw new EditorialRuleError("Nothing to change: pass at least one field.");
+          throw new EditorialRuleError("Nothing to change: pass at least one field.", "change.nothing");
         }
         const descriptions: Partial<Record<Locale, string>> = { ...current.descriptions };
         for (const [locale, text] of Object.entries(patch.descriptions ?? {}) as Array<[Locale, string | null | undefined]>) {
@@ -130,7 +146,7 @@ export class EntityCommandService {
         });
         assertParent(write, shape);
         if (write.kind !== "company" && [...shape].some(([, other]) => other.parentSlug === write.slug)) {
-          throw new EditorialRuleError("A company with models or products stays a company.");
+          throw new EditorialRuleError("A company with models or products stays a company.", "entity.companyHasChildren");
         }
         shape.set(write.slug, { kind: write.kind, parentSlug: write.parentSlug });
         return write;
@@ -148,15 +164,23 @@ export class EntityCommandService {
     await validateEach(
       slugs,
       (slug) => {
-        if (!shape.has(slug)) throw new EditorialRuleError(`Entity "${slug}" not found.`);
+        if (!shape.has(slug)) throw notFound(slug);
         const stories = storyCounts.get(slug) ?? 0;
         if (stories > 0) {
-          throw new EditorialRuleError(`Entity "${slug}" is linked to ${stories} stor${stories === 1 ? "y" : "ies"}. Unlink it from them first.`);
+          throw new EditorialRuleError(
+            `Entity "${slug}" is linked to ${stories} stor${stories === 1 ? "y" : "ies"}. Unlink it from them first.`,
+            "entity.linked",
+            { slug, count: stories },
+          );
         }
         // Deleting a company together with its models and products is fine: they go first.
         const left = [...shape].filter(([other, value]) => value.parentSlug === slug && !slugs.includes(other)).length;
         if (left > 0) {
-          throw new EditorialRuleError(`Entity "${slug}" is the company of ${left} other entit${left === 1 ? "y" : "ies"}. Delete or move them first.`);
+          throw new EditorialRuleError(
+            `Entity "${slug}" is the company of ${left} other entit${left === 1 ? "y" : "ies"}. Delete or move them first.`,
+            "entity.hasChildren",
+            { slug, count: left },
+          );
         }
       },
       (slug) => slug,

@@ -465,6 +465,21 @@ describe("media", () => {
     expect(await editorial.listAssets()).toEqual([]);
   });
 
+  it("reads one asset by its path, and nothing for a missing or nested path, a public audience or a missing bucket", async () => {
+    const editorial = repository();
+    const asset = await editorial.uploadAsset({ name: "cover.png", mimeType: "image/png", bytes: png });
+    // R2 stamps the upload itself, a few milliseconds after the moment the repository reported.
+    expect(await editorial.findAsset(asset.path)).toEqual({ ...asset, createdAt: expect.stringMatching(/^\d{4}-\d\d-\d\dT[\d:.]+Z$/) });
+    expect(await editorial.findAsset("missing.png")).toBeNull();
+    await store.media.put("editorial-media/nested/other.png", png);
+    expect(await editorial.findAsset("nested/other.png")).toBeNull();
+    expect(await editorial.findAsset("../editorial-media/other.png")).toBeNull();
+    expect(await repository({ audience: "public" }).findAsset(asset.path)).toBeNull();
+    expect(await repository({ media: null }).findAsset(asset.path)).toBeNull();
+    await editorial.deleteAsset(asset.path);
+    expect(await editorial.findAsset(asset.path)).toBeNull();
+  });
+
   it("applies the limits of the Supabase bucket: image types and 8 MiB", async () => {
     const editorial = repository();
     await expect(editorial.uploadAsset({ name: "a.svg", mimeType: "image/svg+xml", bytes: png })).rejects.toThrow(/mime type is not supported/);

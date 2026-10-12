@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { CategoryRecord } from "@atlasnews/core/editorial/domain/category";
-import { runCategoryCapability } from "@/components/studio/categories/category-data";
 import { CategoryForm } from "@/components/studio/categories/category-form";
 import { isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
+import { runStudioCapability } from "@/server/studio-capability";
 
 export const metadata: Metadata = { robots: { index: false } };
 
@@ -17,7 +17,7 @@ export default async function EditCategoryPage({
   if (!isLocale(locale)) notFound();
 
   await requireEditor(locale);
-  const loaded = await runCategoryCapability(locale, "admin_get_category", { translationKey: key });
+  const loaded = await runStudioCapability(locale, "admin_get_category", { translationKey: key });
   if (!loaded.ok) {
     if (loaded.status === 400) notFound();
     throw new Error(loaded.error);

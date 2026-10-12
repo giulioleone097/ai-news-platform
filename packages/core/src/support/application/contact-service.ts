@@ -1,6 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
 import * as z from "zod/v4";
 import {
+  assertBatchSize,
+  batchLimit,
+  EditorialRuleError,
+  rejectRepeats,
+  validateEach,
+} from "../../editorial/domain/errors";
+import {
   contactIdSchema,
   contactPolicy,
   contactMessageInputSchema,
@@ -58,6 +65,12 @@ export class ContactMessageService {
     });
   }
 
+  async get(id: string) {
+    const [message] = await this.repository.findMany([contactIdSchema.parse(id)]);
+    if (!message) throw new ContactMessageError("not_found", "No contact message has this id.");
+    return message;
+  }
+
   /** How many messages still wait for an answer; the dashboard shows it. */
   countNew() {
     return this.repository.count("new");
@@ -71,5 +84,30 @@ export class ContactMessageService {
   async delete(id: string) {
     const found = await this.repository.delete(contactIdSchema.parse(id));
     if (!found) throw new ContactMessageError("not_found", "No contact message has this id.");
+  }
+
+  /** One status for several messages, all or nothing: an unknown id is reported by its position and nothing is written. */
+  async setStatusMany(ids: string[], status: ContactMessageStatus) {
+    await this.assertAllExist(ids);
+    await this.repository.setStatusMany(ids, contactStatusSchema.parse(status));
+  }
+
+  /** Deletes several messages, all or nothing. */
+  async deleteMany(ids: string[]) {
+    await this.assertAllExist(ids);
+    await this.repository.deleteMany(ids);
+  }
+
+  private async assertAllExist(ids: string[]) {
+    assertBatchSize(ids.length, batchLimit, "message");
+    rejectRepeats(ids, (id) => id, (id) => `The message "${id}" appears twice`);
+    const known = new Set((await this.repository.findMany(ids.map((id) => contactIdSchema.parse(id)))).map((message) => message.id));
+    await validateEach(
+      ids,
+      (id) => {
+        if (!known.has(id)) throw new EditorialRuleError("No contact message has this id.");
+      },
+      (id) => id,
+    );
   }
 }

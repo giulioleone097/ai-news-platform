@@ -81,19 +81,35 @@ export function normalizeCategoryText(
   const slug = (text.slug ?? "").trim() || slugify(name);
   const where = `(${locale})`;
   if (name.length < categoryLimits.name.min || name.length > categoryLimits.name.max) {
-    throw new EditorialRuleError(`Category name ${where} must be ${categoryLimits.name.min}-${categoryLimits.name.max} characters.`);
+    throw new EditorialRuleError(
+      `Category name ${where} must be ${categoryLimits.name.min}-${categoryLimits.name.max} characters.`,
+      "category.invalidName",
+      { locale, ...categoryLimits.name },
+    );
   }
   if (!slug || slug.length > categoryLimits.slug.max || !slugPattern.test(slug)) {
-    throw new EditorialRuleError(`Category slug ${where} must be lowercase letters, numbers and hyphens, at most ${categoryLimits.slug.max} characters.`);
+    throw new EditorialRuleError(
+      `Category slug ${where} must be lowercase letters, numbers and hyphens, at most ${categoryLimits.slug.max} characters.`,
+      "category.invalidSlug",
+      { locale, max: categoryLimits.slug.max },
+    );
   }
   if (description.length > categoryLimits.description.max) {
-    throw new EditorialRuleError(`Category description ${where} is at most ${categoryLimits.description.max} characters.`);
+    throw new EditorialRuleError(
+      `Category description ${where} is at most ${categoryLimits.description.max} characters.`,
+      "category.descriptionTooLong",
+      { locale, max: categoryLimits.description.max },
+    );
   }
   return { slug, name, description };
 }
 
 export function assertCategoryPosition(position: number) {
   if (!Number.isInteger(position) || position < 0 || position > categoryLimits.position.max) {
-    throw new EditorialRuleError(`Category position must be a whole number from 0 to ${categoryLimits.position.max}.`);
+    throw new EditorialRuleError(
+      `Category position must be a whole number from 0 to ${categoryLimits.position.max}.`,
+      "category.invalidPosition",
+      { max: categoryLimits.position.max },
+    );
   }
 }

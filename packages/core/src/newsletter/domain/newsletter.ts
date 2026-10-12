@@ -56,6 +56,9 @@ export const newsletterCampaignInputSchema = z.object({
 
 export type NewsletterCampaignInput = z.infer<typeof newsletterCampaignInputSchema>;
 
+/** The fields of a draft that an edit may change; the ones left out keep their stored value. */
+export type NewsletterCampaignPatch = Partial<Omit<z.input<typeof newsletterCampaignInputSchema>, "id">>;
+
 export type NewsletterCampaign = {
   id: string;
   locale: Locale;
@@ -102,6 +105,26 @@ export type NewsletterCampaignSummary = Pick<
   | "createdAt"
   | "updatedAt"
 >;
+
+/** What a list shows of a campaign: its state and counters, not the body or the sender. */
+export function summarizeNewsletterCampaign(campaign: NewsletterCampaignSummary): NewsletterCampaignSummary {
+  return {
+    id: campaign.id,
+    locale: campaign.locale,
+    status: campaign.status,
+    subject: campaign.subject,
+    scheduledFor: campaign.scheduledFor,
+    sentAt: campaign.sentAt,
+    recipientCount: campaign.recipientCount,
+    sentCount: campaign.sentCount,
+    deliveredCount: campaign.deliveredCount,
+    bounceCount: campaign.bounceCount,
+    complaintCount: campaign.complaintCount,
+    failureCount: campaign.failureCount,
+    createdAt: campaign.createdAt,
+    updatedAt: campaign.updatedAt,
+  };
+}
 
 export type NewsletterCampaignRecipient = {
   id: string;

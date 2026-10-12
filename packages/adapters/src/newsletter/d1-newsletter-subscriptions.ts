@@ -21,6 +21,21 @@ interface SubscriptionRow {
   created_at: string;
 }
 
+const columns = "id, email, source, locale, status, consented_at, unsubscribed_at, created_at";
+
+function toSubscription(row: SubscriptionRow): NewsletterSubscription {
+  return {
+    id: row.id,
+    email: row.email,
+    source: row.source,
+    locale: row.locale,
+    status: row.status,
+    consentedAt: row.consented_at,
+    unsubscribedAt: row.unsubscribed_at,
+    createdAt: row.created_at,
+  };
+}
+
 /** The Studio's view of the subscribers (list, unsubscribe) on D1. Joining the list goes through double opt-in only. */
 export class D1NewsletterSubscriptionRepository implements NewsletterRepository {
   private readonly delivery: D1NewsletterDeliveryRepository;
@@ -53,7 +68,7 @@ export class D1NewsletterSubscriptionRepository implements NewsletterRepository 
     const [page, count] = await this.database.batch([
       this.database
         .prepare(
-          `SELECT id, email, source, locale, status, consented_at, unsubscribed_at, created_at
+          `SELECT ${columns}
            FROM newsletter_subscriptions WHERE ${where}
            ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`,
         )
@@ -61,17 +76,16 @@ export class D1NewsletterSubscriptionRepository implements NewsletterRepository 
       this.database.prepare(`SELECT count(*) AS total FROM newsletter_subscriptions WHERE ${where}`).bind(...values),
     ]);
     const total = (count.results as { total: number }[])[0]?.total ?? 0;
-    const items = (page.results as unknown as SubscriptionRow[]).map((row): NewsletterSubscription => ({
-      id: row.id,
-      email: row.email,
-      source: row.source,
-      locale: row.locale,
-      status: row.status,
-      consentedAt: row.consented_at,
-      unsubscribedAt: row.unsubscribed_at,
-      createdAt: row.created_at,
-    }));
+    const items = (page.results as unknown as SubscriptionRow[]).map(toSubscription);
     return { items, total, offset, limit, hasMore: offset + items.length < total };
+  }
+
+  async findSubscription(id: string) {
+    const row = await this.database
+      .prepare(`SELECT ${columns} FROM newsletter_subscriptions WHERE id = ?`)
+      .bind(id)
+      .first<SubscriptionRow>();
+    return row ? toSubscription(row) : null;
   }
 
   async updateSubscriptionStatus(id: string, status: NewsletterStatus) {

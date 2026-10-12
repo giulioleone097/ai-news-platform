@@ -19,6 +19,7 @@ vi.mock("@/server/composition", async (importOriginal) => {
   return { ...actual, getStudioAdminEditorialRepository: mocks.repository };
 });
 
+import { getMessages } from "@/i18n";
 import { runEditorCapability } from "./capabilities";
 
 const identity = (role: string) => ({ userId: "u1", role, author: {}, isDemo: true });
@@ -85,6 +86,7 @@ describe("runEditorCapability statuses", () => {
       ok: false,
       status: 400,
       error: "Entity not found.",
+      code: "entity.notFound",
     });
   });
 
@@ -134,10 +136,65 @@ describe("operations capabilities", () => {
     for (const [name, input, message] of [
       ["admin_list_comments", {}, "The operational service is not configured or the request could not be completed."],
       ["admin_newsletter_list_campaigns", { locale: "en" }, "The operational service is not configured or the request could not be completed."],
-      ["admin_social_list", {}, "The operational service is not configured or the request could not be completed."],
     ] as const) {
       expect(await runEditorCapability(name, input), name).toEqual({ ok: false, status: 503, error: message });
     }
+  });
+
+  it("answer 503 with a code when the social outbox is not configured, so a screen can say so", async () => {
+    expect(await runEditorCapability("admin_social_list", {})).toEqual({
+      ok: false,
+      status: 503,
+      error: "Social outbox persistence is not configured.",
+      code: "social.notConfigured",
+    });
+  });
+});
+
+describe("the language of a refusal", () => {
+  it("is English for agents and the editor's own language for a Studio screen, with no raw English left", async () => {
+    mocks.editor.mockResolvedValue(null);
+    expect(await runEditorCapability("list_entities", { locale: "it" })).toMatchObject({
+      error: "Sign in to the Studio with an editor account.",
+    });
+    expect(await runEditorCapability("list_entities", { locale: "it" }, { locale: "it" })).toEqual({
+      ok: false,
+      status: 401,
+      error: getMessages("it").studio.refusals.signIn,
+    });
+
+    mocks.signedIn.mockResolvedValue(true);
+    expect(await runEditorCapability("list_entities", { locale: "it" }, { locale: "it" })).toMatchObject({
+      status: 403,
+      error: getMessages("it").studio.refusals.notEditor,
+    });
+  });
+
+  it("names no Zod wording for invalid arguments, and the rule's text for a refused rule", async () => {
+    mocks.editor.mockResolvedValue(identity("editor"));
+    const invalid = await runEditorCapability("admin_create_entity", { kind: "nonsense" }, { locale: "it" });
+    expect(invalid).toEqual({ ok: false, status: 400, error: getMessages("it").studio.refusals.invalidInput });
+
+    expect(await runEditorCapability("admin_get_entity", { slug: "does-not-exist" }, { locale: "it" })).toEqual({
+      ok: false,
+      status: 400,
+      error: getMessages("it").studio.ruleErrors["entity.notFound"],
+      code: "entity.notFound",
+    });
+  });
+
+  it("asks for confirmation and reports an unreachable store in the editor's language", async () => {
+    expect(await runEditorCapability("admin_delete_entity", { slug: entity.slug }, { locale: "it" })).toEqual({
+      ok: false,
+      status: 409,
+      error: getMessages("it").studio.refusals.needsConfirmation,
+    });
+    mocks.repository.mockRejectedValueOnce(new Error("secret connection string postgres://user:pw@host"));
+    expect(await runEditorCapability("admin_get_entity", { slug: "claude" }, { locale: "it" })).toEqual({
+      ok: false,
+      status: 503,
+      error: getMessages("it").studio.refusals.unavailable,
+    });
   });
 });
 

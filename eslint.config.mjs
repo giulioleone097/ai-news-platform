@@ -22,6 +22,14 @@ const otherApps = (self) => ({
   message: "An app must not import another app.",
 });
 
+// A Server Action reaches the content through a catalogue capability (`runStudioCapability`), which checks the
+// editor's scope, records who acted and asks for confirmation. Importing a core service or the composition root
+// would skip all three, so a new bypass fails lint. Reads in pages and the one upload helper in `server/` are not actions.
+const studioBypass = [
+  { group: ["@atlasnews/core/*/application/*"], message: "A Server Action runs a catalogue capability with runStudioCapability; it does not call a core service." },
+  { group: ["@/server/composition"], message: "A Server Action runs a catalogue capability with runStudioCapability; it does not build services or repositories." },
+];
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -33,6 +41,8 @@ const eslintConfig = defineConfig([
   { files: ["apps/mcp/**/*.{ts,tsx}"], rules: restrict(...framework, otherApps("mcp")) },
   { files: ["apps/jobs/**/*.{ts,tsx}"], rules: restrict(...framework, otherApps("jobs")) },
   { files: ["apps/web/**/*.{ts,tsx}"], rules: restrict(otherApps("web")) },
+  // The reader site's actions (a token-checked notification preference) have no editor session or capability; the Studio's and the OAuth consent's do.
+  { files: ["apps/web/src/app/**/*actions.ts"], ignores: ["**/(site)/**"], rules: restrict(otherApps("web"), ...studioBypass) },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

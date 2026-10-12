@@ -5,7 +5,7 @@ import * as z from "zod/v4";
 import { isLocale, locales } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { moderationTargetStatuses } from "@atlasnews/core/comments/domain/comment";
-import { runEditorCapability } from "@/server/capabilities";
+import { runStudioCapability } from "@/server/studio-capability";
 
 const moderationSchema = z.object({
   id: z.string().uuid(),
@@ -25,7 +25,8 @@ export async function moderateCommentAction(formData: FormData) {
 
   await requireEditor(input.locale);
   // The page's own form is the person's confirmation. The capability records the moderator as a user actor.
-  const outcome = await runEditorCapability(
+  const outcome = await runStudioCapability(
+    input.locale,
     "admin_moderate_comment",
     { id: input.id, status: input.status, reason: input.reason },
     { confirmed: true },

@@ -1,10 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { EditorialRuleError } from "../../editorial/domain/errors";
 import {
   NewsletterDeliveryConfigurationError,
   NewsletterDeliveryProviderError,
   newsletterCampaignInputSchema,
+  summarizeNewsletterCampaign,
   type NewsletterCampaignInput,
+  type NewsletterCampaignPatch,
   type NewsletterOutboxDelivery,
   type NewsletterProviderEvent,
 } from "../domain/newsletter";
@@ -50,8 +53,10 @@ export class NewsletterCampaignService {
     return { fromEmail: this.config.fromEmail, replyTo: this.config.replyTo };
   }
 
-  listCampaigns(input: { locale: "en" | "it"; limit?: number; offset?: number }) {
-    return this.repository.listCampaigns(input);
+  async listCampaigns(input: { locale: "en" | "it"; limit?: number; offset?: number }) {
+    const page = await this.repository.listCampaigns(input);
+    // The adapters read whole campaigns, the body and its HTML included; a list answers the summary it declares.
+    return { ...page, items: page.items.map(summarizeNewsletterCampaign) };
   }
 
   getCampaign(id: string) {
@@ -70,6 +75,47 @@ export class NewsletterCampaignService {
       );
     }
     return this.repository.saveDraft(parsed, z.uuid().parse(createdBy));
+  }
+
+  /**
+   * Changes some fields of a draft and keeps the others; the result is saved as the whole draft, so the
+   * sender and the rendering are checked as in `saveDraft`. Only a draft can be edited.
+   */
+  async patchDraft(id: string, patch: NewsletterCampaignPatch, createdBy: string) {
+    const changes = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
+    if (!Object.keys(changes).length) throw new EditorialRuleError("Nothing to change: pass at least one field of the draft.");
+    const current = await this.draftOf(id, "edited");
+    return this.saveDraft({
+      id: current.id,
+      locale: current.locale,
+      subject: current.subject,
+      preheader: current.preheader,
+      fromName: current.fromName,
+      fromEmail: current.fromEmail,
+      replyTo: current.replyTo ?? "",
+      contentMarkdown: current.contentMarkdown,
+      audienceLocale: current.audienceLocale,
+      audienceStatus: current.audienceStatus,
+      ...changes,
+    }, createdBy);
+  }
+
+  /** Removes a draft for good. A campaign that was queued, sent or cancelled stays as a record. */
+  async deleteDraft(id: string) {
+    const current = await this.draftOf(id, "deleted");
+    if (!(await this.repository.deleteDraft(current.id))) {
+      throw new EditorialRuleError("The campaign is no longer a draft, so it was not deleted.");
+    }
+    return current.id;
+  }
+
+  private async draftOf(id: string, verb: string) {
+    const campaign = await this.getCampaign(id);
+    if (!campaign) throw new EditorialRuleError("Newsletter campaign not found.");
+    if (campaign.status !== "draft") {
+      throw new EditorialRuleError(`Only a draft can be ${verb}; this campaign is ${campaign.status}.`);
+    }
+    return campaign;
   }
 
   sendNow(id: string) {
@@ -236,7 +282,7 @@ export class NewsletterDeliveryService {
       expiresAt,
     });
 
-    if (!requested.shouldSend || !requested.subscriptionId) return { accepted: true };
+    if (!requested.shouldSend || !requested.subscriptionId) return { accepted: true as const };
 
     const token = buildConfirmationToken(requested.subscriptionId, challenge.secret);
     const confirmationUrlObject = new URL(
@@ -270,7 +316,7 @@ export class NewsletterDeliveryService {
       });
       throw error;
     }
-    return { accepted: true };
+    return { accepted: true as const };
   }
 
   confirmSubscription(token: string) {

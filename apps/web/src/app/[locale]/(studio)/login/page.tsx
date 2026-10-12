@@ -90,6 +90,8 @@ export default async function LoginPage({
   const mode = getContentMode();
   const user = studioAvailable && mode === "sites" ? await getSignedInUser() : null;
   const providers = getSignInProviders();
+  // Signed in with an account that is not an editor: the page is no invitation to sign in again.
+  const signedInWithoutAccess = Boolean(user) && !editor;
 
   const errorMessages: Record<string, string> = {
     forbidden: messages.errors.forbiddenDescription,
@@ -108,8 +110,8 @@ export default async function LoginPage({
         <StudioBrand href={`/${locale}`} label="Studio" name={messages.common.brandName} />
 
         <div className="auth-head">
-          <h1 id="auth-title">{messages.auth.title}</h1>
-          <p>{messages.auth.description}</p>
+          <h1 id="auth-title">{signedInWithoutAccess ? messages.auth.signedInTitle : messages.auth.title}</h1>
+          <p>{signedInWithoutAccess ? messages.auth.signedInDescription : messages.auth.description}</p>
         </div>
 
         {callbackError ? (

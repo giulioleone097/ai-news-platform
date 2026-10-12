@@ -36,7 +36,7 @@ describe("Studio inbox actions", () => {
       "REDIRECT:/en/studio/inbox?status=new&updated=1",
     );
     expect(mocks.requireEditor).toHaveBeenCalledWith("en");
-    expect(mocks.run).toHaveBeenCalledWith("admin_update_contact_message", { id, status: "handled" }, { confirmed: true });
+    expect(mocks.run).toHaveBeenCalledWith("admin_update_contact_message", { id, status: "handled" }, { confirmed: true, locale: "en" });
   });
 
   it("says so when the capability refuses (invalid input, missing scope) or fails", async () => {
@@ -61,7 +61,7 @@ describe("Studio inbox actions", () => {
     await expect(deleteContactMessageAction(idleStudioActionState, form({ filter: "archived" }))).rejects.toThrow(
       "REDIRECT:/en/studio/inbox?status=archived&deleted=1",
     );
-    expect(mocks.run).toHaveBeenCalledWith("admin_delete_contact_message", { id }, { confirmed: true });
+    expect(mocks.run).toHaveBeenCalledWith("admin_delete_contact_message", { id }, { confirmed: true, locale: "en" });
 
     mocks.run.mockResolvedValue({ ok: false, status: 503, error: "The contact inbox is not configured." });
     expect(await deleteContactMessageAction(idleStudioActionState, form({ locale: "it" }))).toEqual({

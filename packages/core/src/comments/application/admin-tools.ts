@@ -22,6 +22,11 @@ export function createCommentAdminToolHandlers(
         limit: parsed.limit,
       });
     },
+    /** Null when no comment has this id. */
+    async admin_get_comment(input: unknown) {
+      const parsed = tools.admin_get_comment.inputSchema.parse(input);
+      return service.getModeration(parsed.id);
+    },
     async admin_list_comment_reports(input: unknown) {
       const parsed = tools.admin_list_comment_reports.inputSchema.parse(input);
       return { items: await service.listReports(parsed.commentId) };
@@ -30,6 +35,11 @@ export function createCommentAdminToolHandlers(
       const parsed = tools.admin_moderate_comment.inputSchema.parse(input);
       await service.moderate({ ...parsed, actor });
       return { moderatedId: parsed.id, status: parsed.status };
+    },
+    async admin_moderate_comments(input: unknown) {
+      const parsed = tools.admin_moderate_comments.inputSchema.parse(input);
+      await service.moderateMany({ ...parsed, actor });
+      return { moderatedIds: parsed.ids, status: parsed.status };
     },
     async admin_list_comment_audit(input: unknown) {
       const parsed = tools.admin_list_comment_audit.inputSchema.parse(input);

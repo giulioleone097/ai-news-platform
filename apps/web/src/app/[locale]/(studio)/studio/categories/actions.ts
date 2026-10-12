@@ -2,20 +2,15 @@
 
 import { redirect } from "next/navigation";
 import type { CategoryPatch, CategoryRecord, CategoryTextPatch } from "@atlasnews/core/editorial/domain/category";
-import { locales, isLocale, type Locale } from "@/i18n";
-import { runCategoryCapability } from "@/components/studio/categories/category-data";
+import { locales, type Locale } from "@/i18n";
 import type {
   CategoryActionState,
   CategoryFormValues,
   CategoryTextValues,
 } from "@/components/studio/categories/category-form-state";
 import type { CapabilityRunResult } from "@/server/capabilities";
+import { readLocale, runStudioCapability } from "@/server/studio-capability";
 import { categoryCopy } from "./copy";
-
-function readLocale(formData: FormData): Locale {
-  const value = formData.get("locale");
-  return isLocale(value) ? value : "en";
-}
 
 function readValues(formData: FormData): CategoryFormValues {
   const text = (name: string) => String(formData.get(name) ?? "");
@@ -75,13 +70,13 @@ async function updateCategory(
   translationKey: string,
   values: CategoryFormValues,
 ): Promise<CapabilityRunResult> {
-  const current = await runCategoryCapability(locale, "admin_get_category", { translationKey });
+  const current = await runStudioCapability(locale, "admin_get_category", { translationKey });
   if (!current.ok) return current;
 
   const patch = patchInput(translationKey, (current.result as { category: CategoryRecord }).category, values);
   // Nothing differs from the stored category: there is nothing to write, which counts as saved.
   if (Object.keys(patch).length === 1) return { ok: true, result: {} };
-  return runCategoryCapability(locale, "admin_update_category", patch);
+  return runStudioCapability(locale, "admin_update_category", patch);
 }
 
 export async function saveCategoryAction(
@@ -93,7 +88,7 @@ export async function saveCategoryAction(
   const values = readValues(formData);
   const outcome = translationKey
     ? await updateCategory(locale, translationKey, values)
-    : await runCategoryCapability(locale, "admin_create_category", createInput(values));
+    : await runStudioCapability(locale, "admin_create_category", createInput(values));
 
   if (!outcome.ok) {
     return {
@@ -112,7 +107,7 @@ export async function deleteCategoryAction(
   const locale = readLocale(formData);
   const translationKey = String(formData.get("translationKey") ?? "");
   // The person confirmed this exact delete in the page before the form was submitted.
-  const outcome = await runCategoryCapability(
+  const outcome = await runStudioCapability(
     locale,
     "admin_delete_category",
     { translationKey },

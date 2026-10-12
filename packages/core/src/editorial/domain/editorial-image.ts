@@ -1,3 +1,7 @@
+/** The image types and the size a media upload may have: the one list that the media service and the Studio share. */
+export const mediaImageTypes = ["image/avif", "image/gif", "image/jpeg", "image/png", "image/webp"] as const;
+export const maxMediaBytes = 8_388_608;
+
 const localMediaPath = /^\/media\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/;
 const storagePathPrefix = "/storage/v1/object/public/editorial-media/";
 /** Uploads on ChatGPT Sites live in R2 and are served by the site itself, from its own origin. */

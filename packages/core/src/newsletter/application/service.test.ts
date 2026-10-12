@@ -1,13 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
+import { EditorialRuleError } from "../../editorial/domain/errors";
 import {
+  NewsletterDeliveryConfigurationError,
   NewsletterDeliveryProviderError,
+  type NewsletterCampaign,
   type NewsletterOutboxDelivery,
 } from "../domain/newsletter";
 import type {
   NewsletterDeliveryProvider,
   NewsletterDeliveryRepository,
 } from "../domain/ports";
-import { NewsletterDeliveryService } from "./service";
+import { NewsletterCampaignService, NewsletterDeliveryService } from "./service";
 import { parseConfirmationToken, verifyUnsubscribeToken } from "./security";
 
 const campaignId = "33333333-3333-4333-8333-333333333333";
@@ -40,6 +43,7 @@ function repository(
     async getCampaign() { return null; },
     async listRecipients() { return []; },
     async saveDraft() { throw new Error("Not used in delivery tests."); },
+    async deleteDraft() { return false; },
     async queueCampaign() { throw new Error("Not used in delivery tests."); },
     async cancelCampaign() { throw new Error("Not used in delivery tests."); },
     async claimOutbox() { return []; },
@@ -206,5 +210,102 @@ describe("NewsletterDeliveryService", () => {
       providerMessageId: "email_123",
       reason: "complaint",
     }));
+  });
+});
+
+const author = "44444444-4444-4444-8444-444444444444";
+const draft: NewsletterCampaign = {
+  id: campaignId,
+  locale: "en",
+  status: "draft",
+  subject: "AI briefing",
+  preheader: "What changed",
+  fromName: "AtlasNews",
+  fromEmail: "briefing@example.com",
+  replyTo: null,
+  contentMarkdown: "## This week\n\nA sufficiently complete campaign body.",
+  contentHtml: "",
+  audienceLocale: "en",
+  audienceStatus: "active",
+  scheduledFor: null,
+  startedAt: null,
+  sentAt: null,
+  cancelledAt: null,
+  recipientCount: 0,
+  sentCount: 0,
+  deliveredCount: 0,
+  bounceCount: 0,
+  complaintCount: 0,
+  openCount: 0,
+  clickCount: 0,
+  failureCount: 0,
+  createdAt: "2026-10-11T10:00:00.000Z",
+  updatedAt: "2026-10-11T10:00:00.000Z",
+};
+
+describe("NewsletterCampaignService drafts", () => {
+  function campaigns(stored: NewsletterCampaign | null = draft, overrides: Partial<NewsletterDeliveryRepository> = {}) {
+    const saveDraft = vi.fn<NewsletterDeliveryRepository["saveDraft"]>(async (input) => ({ ...draft, ...input, replyTo: input.replyTo }));
+    const deleteDraft = vi.fn(async () => true);
+    const service = new NewsletterCampaignService(
+      repository({ getCampaign: async () => stored, saveDraft, deleteDraft, ...overrides }),
+      { fromEmail: "briefing@example.com", replyTo: null, suppressionSecret: secret },
+    );
+    return { service, saveDraft, deleteDraft };
+  }
+
+  it("changes some fields of a draft and saves it whole, keeping the others", async () => {
+    const { service, saveDraft } = campaigns({ ...draft, replyTo: "desk@example.com" });
+    const saved = await service.patchDraft(campaignId, { subject: "AI briefing, corrected", preheader: undefined }, author);
+    expect(saved.subject).toBe("AI briefing, corrected");
+    expect(saveDraft).toHaveBeenCalledWith({
+      id: campaignId,
+      locale: "en",
+      subject: "AI briefing, corrected",
+      preheader: "What changed",
+      fromName: "AtlasNews",
+      fromEmail: "briefing@example.com",
+      replyTo: "desk@example.com",
+      contentMarkdown: draft.contentMarkdown,
+      audienceLocale: "en",
+      audienceStatus: "active",
+    }, author);
+  });
+
+  it("clears the reply-to address when it is changed to an empty string", async () => {
+    const { service, saveDraft } = campaigns({ ...draft, replyTo: "desk@example.com" });
+    await service.patchDraft(campaignId, { replyTo: "" }, author);
+    expect(saveDraft).toHaveBeenCalledWith(expect.objectContaining({ replyTo: null }), author);
+  });
+
+  it("refuses an empty change, an unknown campaign, one that is no longer a draft and a foreign sender", async () => {
+    await expect(campaigns().service.patchDraft(campaignId, {}, author)).rejects.toThrow("Nothing to change");
+    await expect(campaigns(null).service.patchDraft(campaignId, { subject: "x" }, author))
+      .rejects.toEqual(new EditorialRuleError("Newsletter campaign not found."));
+    const sent = campaigns({ ...draft, status: "sent" });
+    await expect(sent.service.patchDraft(campaignId, { subject: "x" }, author))
+      .rejects.toEqual(new EditorialRuleError("Only a draft can be edited; this campaign is sent."));
+    expect(sent.saveDraft).not.toHaveBeenCalled();
+    const foreign = campaigns();
+    await expect(foreign.service.patchDraft(campaignId, { fromEmail: "other@example.com" }, author))
+      .rejects.toBeInstanceOf(NewsletterDeliveryConfigurationError);
+    expect(foreign.saveDraft).not.toHaveBeenCalled();
+  });
+
+  it("deletes a draft, and only a draft", async () => {
+    const { service, deleteDraft } = campaigns();
+    await expect(service.deleteDraft(campaignId)).resolves.toBe(campaignId);
+    expect(deleteDraft).toHaveBeenCalledWith(campaignId);
+
+    const scheduled = campaigns({ ...draft, status: "scheduled" });
+    await expect(scheduled.service.deleteDraft(campaignId))
+      .rejects.toEqual(new EditorialRuleError("Only a draft can be deleted; this campaign is scheduled."));
+    expect(scheduled.deleteDraft).not.toHaveBeenCalled();
+    await expect(campaigns(null).service.deleteDraft(campaignId)).rejects.toThrow("Newsletter campaign not found.");
+  });
+
+  it("reports a draft that was queued between the read and the delete", async () => {
+    const { service } = campaigns(draft, { deleteDraft: async () => false });
+    await expect(service.deleteDraft(campaignId)).rejects.toThrow("no longer a draft");
   });
 });

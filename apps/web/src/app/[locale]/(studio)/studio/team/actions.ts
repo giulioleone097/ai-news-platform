@@ -2,17 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { teamRoles, type TeamRole } from "@atlasnews/core/team/domain/team";
-import { isLocale, type Locale } from "@/i18n";
+import type { Locale } from "@/i18n";
 import type { StudioActionState } from "@/components/studio/action-state";
-import { runTeamCapability } from "@/components/studio/team/team-data";
 import type { InviteFormState } from "@/components/studio/team/team-state";
 import type { CapabilityRunResult } from "@/server/capabilities";
+import { readLocale, runStudioCapability } from "@/server/studio-capability";
 import { teamCopy } from "./copy";
-
-function readLocale(formData: FormData): Locale {
-  const value = formData.get("locale");
-  return isLocale(value) ? value : "en";
-}
 
 function readRole(formData: FormData): TeamRole {
   const value = String(formData.get("role") ?? "");
@@ -20,7 +15,7 @@ function readRole(formData: FormData): TeamRole {
 }
 
 /**
- * What the person sees when a capability refuses: its own message for a broken rule (400), a plain
+ * What the person sees when a capability refuses: its own message, in their language, for a broken rule (400), a plain
  * "admins only" for a missing permission (403, an editor who posted the form anyway), and the generic
  * failure for anything unexpected. The permission itself is checked inside the capability, not here.
  */
@@ -37,7 +32,7 @@ export async function inviteMemberAction(_previous: InviteFormState, formData: F
     role: readRole(formData),
   };
   const name = values.name.trim();
-  const outcome = await runTeamCapability(locale, "admin_invite_editor", {
+  const outcome = await runStudioCapability(locale, "admin_invite_editor", {
     email: values.email,
     role: values.role,
     ...(name ? { name } : {}),
@@ -48,7 +43,7 @@ export async function inviteMemberAction(_previous: InviteFormState, formData: F
 
 export async function changeRoleAction(_previous: StudioActionState, formData: FormData): Promise<StudioActionState> {
   const locale = readLocale(formData);
-  const outcome = await runTeamCapability(locale, "admin_update_editor", {
+  const outcome = await runStudioCapability(locale, "admin_update_editor", {
     id: String(formData.get("id") ?? ""),
     role: readRole(formData),
   });
@@ -59,7 +54,7 @@ export async function changeRoleAction(_previous: StudioActionState, formData: F
 export async function removeMemberAction(_previous: StudioActionState, formData: FormData): Promise<StudioActionState> {
   const locale = readLocale(formData);
   // The person confirmed this exact removal in the page before the form was submitted.
-  const outcome = await runTeamCapability(
+  const outcome = await runStudioCapability(
     locale,
     "admin_remove_editor",
     { id: String(formData.get("id") ?? "") },

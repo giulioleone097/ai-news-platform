@@ -1,11 +1,13 @@
 import type { Capability } from "./capability";
 import { articleCapabilities } from "./handlers/articles";
 import { categoryCapabilities } from "./handlers/categories";
+import { commentCapabilities } from "./handlers/comments";
 import { entityCapabilities } from "./handlers/entities";
 import { mediaCapabilities } from "./handlers/media";
+import { newsletterCapabilities } from "./handlers/newsletter";
 import { newsroomCapabilities } from "./handlers/newsroom";
-import { operationsCapabilities } from "./handlers/operations";
 import { publicCapabilities } from "./handlers/public";
+import { socialCapabilities } from "./handlers/social";
 import { supportCapabilities } from "./handlers/support";
 import { teamCapabilities } from "./handlers/team";
 
@@ -20,7 +22,9 @@ export const capabilities: readonly Capability[] = [
   ...entityCapabilities,
   ...mediaCapabilities,
   ...newsroomCapabilities,
-  ...operationsCapabilities,
+  ...commentCapabilities,
+  ...newsletterCapabilities,
+  ...socialCapabilities,
   ...supportCapabilities,
   ...teamCapabilities,
 ];

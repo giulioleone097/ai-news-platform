@@ -1,5 +1,9 @@
 import type { Locale } from "@/i18n";
+import { maxMediaBytes } from "@atlasnews/core/editorial/domain/editorial-image";
 import type { MarkdownEditorCopy } from "./markdown-editor";
+
+/** The largest image, as the media rules say it, for the sentences that tell the editor. */
+const maxMegabytes = maxMediaBytes / 1_048_576;
 
 export const studioSupplementalCopy = {
   en: {
@@ -38,7 +42,7 @@ export const studioSupplementalCopy = {
         dropHint: "Drop or paste images here to upload them.",
         uploading: "Uploading…",
         uploadType: "Choose a JPEG, PNG, WebP, GIF or AVIF image.",
-        uploadSize: "Choose an image of up to 8 MiB.",
+        uploadSize: `Choose an image of up to ${maxMegabytes} MiB.`,
         uploadBatch: "Upload up to 10 images at a time.",
         uploadError: "The image could not be uploaded. Try again.",
         uploadConfiguration: "Media storage is not configured, so images cannot be uploaded.",
@@ -82,7 +86,7 @@ export const studioSupplementalCopy = {
     confirmationRequested: "A fresh confirmation email was sent. The subscriber remains inactive until they confirm.",
     confirmationFailed: "The confirmation email could not be sent. Check the delivery configuration and try again.",
     mediaDropzone: "Drop an image or choose a file",
-    mediaUploadHelp: "AVIF, GIF, JPEG, PNG or WebP, up to 8 MB.",
+    mediaUploadHelp: `AVIF, GIF, JPEG, PNG or WebP, up to ${maxMegabytes} MB.`,
     mediaUploadAction: "Upload image",
     mediaOffTitle: "Image uploads are off",
     mediaOffBody: "Uploaded images can be reused as covers and inside articles.",
@@ -101,8 +105,11 @@ export const studioSupplementalCopy = {
     claimRequired: "Choose how firm the claim is.",
     shareOn: "Share on",
     optional: "optional",
-    titleHelp: "8–180 characters.",
-    excerptHelp: "20–360 characters, shown on cards.",
+    titleHelp: "{min}–{max} characters.",
+    excerptHelp: "{min}–{max} characters, shown on cards.",
+    translationOfLabel: "Translation of",
+    translationOfNone: "Not a translation",
+    translationOfHelp: "Link this article to the same story in the other language. The site then offers readers the other version.",
     slugHelp: "Leave empty to generate it from the title. It becomes the URL.",
     coverTitle: "Cover image",
     coverEmpty: "No cover chosen. The default AtlasNews picture is used.",
@@ -154,7 +161,7 @@ export const studioSupplementalCopy = {
         dropHint: "Trascina o incolla qui le immagini per caricarle.",
         uploading: "Caricamento…",
         uploadType: "Scegli un’immagine JPEG, PNG, WebP, GIF o AVIF.",
-        uploadSize: "Scegli un’immagine di massimo 8 MiB.",
+        uploadSize: `Scegli un’immagine di massimo ${maxMegabytes} MiB.`,
         uploadBatch: "Carica al massimo 10 immagini alla volta.",
         uploadError: "L’immagine non è stata caricata. Riprova.",
         uploadConfiguration: "Lo spazio media non è configurato, quindi non si possono caricare immagini.",
@@ -198,7 +205,7 @@ export const studioSupplementalCopy = {
     confirmationRequested: "È stata inviata una nuova email di conferma. L'iscritto resta inattivo fino alla conferma.",
     confirmationFailed: "Impossibile inviare l'email di conferma. Verifica la configurazione e riprova.",
     mediaDropzone: "Trascina un’immagine o scegli un file",
-    mediaUploadHelp: "AVIF, GIF, JPEG, PNG o WebP, fino a 8 MB.",
+    mediaUploadHelp: `AVIF, GIF, JPEG, PNG o WebP, fino a ${maxMegabytes} MB.`,
     mediaUploadAction: "Carica immagine",
     mediaOffTitle: "Il caricamento delle immagini è disattivato",
     mediaOffBody: "Le immagini caricate si riusano come copertine e negli articoli.",
@@ -217,8 +224,11 @@ export const studioSupplementalCopy = {
     claimRequired: "Scegli quanto è solida la notizia.",
     shareOn: "Condividi su",
     optional: "facoltativo",
-    titleHelp: "Da 8 a 180 caratteri.",
-    excerptHelp: "Da 20 a 360 caratteri, mostrato sulle card.",
+    titleHelp: "Da {min} a {max} caratteri.",
+    excerptHelp: "Da {min} a {max} caratteri, mostrato sulle card.",
+    translationOfLabel: "Traduzione di",
+    translationOfNone: "Non è una traduzione",
+    translationOfHelp: "Collega questo articolo alla stessa notizia nell’altra lingua. Il sito propone allora ai lettori l’altra versione.",
     slugHelp: "Lascia vuoto per generarlo dal titolo. Diventa l’URL.",
     coverTitle: "Immagine di copertina",
     coverEmpty: "Nessuna copertina scelta. Si usa l’immagine predefinita di AtlasNews.",

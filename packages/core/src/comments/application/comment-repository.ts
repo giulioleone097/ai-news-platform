@@ -6,7 +6,9 @@ import type {
   CreateCommentInput,
   CreatedComment,
   ModerateCommentInput,
+  ModerateCommentsInput,
   ModerationAuditPage,
+  ModerationComment,
   ModerationCommentPage,
   ModerationReport,
   OwnCommentPage,
@@ -46,10 +48,14 @@ export interface CommentRepository {
   deleteOwn(id: string, actor: OwnCommentMutationInput["actor"]): Promise<void>;
   report(input: CommentReportInput): Promise<void>;
   listModeration(query: ModerationCommentQuery): Promise<ModerationCommentPage>;
+  /** One comment as the moderation queue shows it, or null when no comment has this id. */
+  getModeration(id: string): Promise<ModerationComment | null>;
   /** How many comments are in `status`, for the moderation badge. */
   countByStatus(status: CommentStatus): Promise<number>;
   listReports(commentId: string): Promise<ModerationReport[]>;
   moderate(input: ModerateCommentInput): Promise<void>;
+  /** One transaction: every comment takes the status, or none does. */
+  moderateMany(input: ModerateCommentsInput): Promise<void>;
   listAudit(query: ModerationAuditQuery): Promise<ModerationAuditPage>;
   verifyNotificationSubscription(subscriptionId: string, tokenHash: string): Promise<void>;
   unsubscribeNotificationSubscription(subscriptionId: string, tokenHash: string): Promise<void>;

@@ -7,6 +7,7 @@ import type {
   SocialProvider,
   SocialProviderAdapter,
   SocialProviderResult,
+  SocialPublishPayload,
   WhatsAppProviderStatus,
 } from "./social-publication";
 
@@ -21,10 +22,24 @@ export interface SocialOutboxRepository {
     scheduledFor: string | null;
     maxAttempts: number;
   }): Promise<SocialOutboxJob>;
+  /**
+   * Replaces the payload, send time and attempt cap of a job that is pending and was never dispatched, when
+   * its revision is `expectedRevision` and its provider is `provider`. The job keeps its publication and idempotency key.
+   */
+  updatePending(input: {
+    id: string;
+    expectedRevision: number;
+    provider: SocialProvider;
+    payload: SocialPublishPayload;
+    availableAt: string;
+    maxAttempts: number;
+  }): Promise<SocialOutboxJob>;
   getById(id: string): Promise<SocialOutboxJob | null>;
   getByIdempotencyKey(idempotencyKey: string): Promise<SocialOutboxJob | null>;
   list(query: Required<Pick<SocialOutboxQuery, "limit" | "offset">> & SocialOutboxQuery): Promise<SocialOutboxPage>;
   cancelPending(id: string): Promise<SocialOutboxJob>;
+  /** One transaction: every job is cancelled, or none. Returns them in input order. */
+  cancelPendingMany(ids: string[]): Promise<SocialOutboxJob[]>;
   retryFailed(id: string): Promise<SocialOutboxJob>;
   claim(input: {
     workerToken: string;

@@ -89,3 +89,34 @@ describe("comment persistence security contract", () => {
     expect(migration).toContain("and dispatch_started_at is null;");
   });
 });
+
+describe("comment batch moderation migration", () => {
+  const batch = readFileSync(
+    join(process.cwd(), "supabase/migrations/20261016130000_comment_moderation_batch.sql"),
+    "utf8",
+  );
+
+  it("moderates every comment through the single-comment function, in one transaction", () => {
+    expect(batch).toContain("perform public.moderate_comment(v_id, p_status, p_reason, p_actor_kind, p_actor_user_id, p_actor_label)");
+    expect(batch).toContain("cardinality(p_comment_ids) not between 1 and 25");
+    expect(batch).toContain("security definer");
+  });
+
+  it("is callable by the service role only", () => {
+    expect(batch).toContain("from public, anon, authenticated;");
+    expect(batch).toContain("to service_role");
+    expect(batch).not.toMatch(/grant [^;]*to (anon|authenticated)/iu);
+  });
+});
+
+describe("newsletter draft deletion migration", () => {
+  const deletion = readFileSync(
+    join(process.cwd(), "supabase/migrations/20261016132000_newsletter_draft_delete.sql"),
+    "utf8",
+  );
+
+  it("lets an editor delete only a draft, and nobody else delete anything", () => {
+    expect(deletion).toContain("for delete to authenticated using ((select public.is_editor()) and status = 'draft')");
+    expect(deletion).not.toMatch(/to (anon|public)\b/iu);
+  });
+});

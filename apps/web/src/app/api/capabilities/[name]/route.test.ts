@@ -110,6 +110,15 @@ describe("POST /api/capabilities/{name}", () => {
     }
   });
 
+  it("gives an agent the stable code of a refused rule next to the English message", async () => {
+    mocks.run.mockResolvedValueOnce({ ok: false, status: 400, error: "Entity not found.", code: "entity.notFound" });
+    const response = await call();
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ ok: false, error: "Entity not found.", code: "entity.notFound" });
+    // The agents' endpoint takes no language: the runner is asked for English.
+    expect(mocks.run).toHaveBeenLastCalledWith(expect.any(String), expect.anything(), { confirmed: true });
+  });
+
   it("answers 405 to every other method", async () => {
     for (const handler of [GET, PUT, PATCH, DELETE]) {
       const response = handler();

@@ -6,15 +6,14 @@ import { getPublicSiteUrl } from "@atlasnews/adapters/config/env";
 import type { Locale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { parseUtcDateTimeInput } from "@/lib/editorial-datetime";
-import { getStudioEditorialRepositories } from "@/server/composition";
-import { previewSocialPublication } from "@atlasnews/core/social-publishing/application/preview";
-import { SocialPublishingError } from "@atlasnews/core/social-publishing/domain/errors";
+import type { CapabilityRunResult } from "@/server/capabilities";
+import { runStudioCapability } from "@/server/studio-capability";
 import {
-  publicSocialOutboxJob,
-  type EnqueueSocialPublicationInput,
-  type SocialProvider,
-} from "@atlasnews/core/social-publishing/domain/social-publication";
-import { createSocialPublishingRuntime } from "@/server/composition";
+  canonicalArticleUrl,
+  findPublication,
+  type DistributionPublication,
+} from "@atlasnews/core/editorial/domain/editorial-operations";
+import type { SocialOutboxStatus, SocialProvider } from "@atlasnews/core/social-publishing/domain/social-publication";
 import {
   parseSocialComposerForm,
   parseSocialQueueMutationForm,
@@ -22,6 +21,17 @@ import {
   type SocialComposerForm,
 } from "./social-form";
 import type { SocialComposerState } from "./types";
+
+type Failed = Extract<CapabilityRunResult, { ok: false }>;
+
+/** What the outbox capabilities return for a job (the part the Studio reads). */
+interface OutboxJob {
+  id: string;
+  publicationId: string;
+  provider: SocialProvider;
+  status: SocialOutboxStatus;
+  availableAt: string;
+}
 
 function actionMessage(locale: Locale, kind: "validation" | "configuration" | "persistence" | "ownership" | "confirm") {
   const messages = locale === "it" ? {
@@ -40,43 +50,38 @@ function actionMessage(locale: Locale, kind: "validation" | "configuration" | "p
   return messages[kind];
 }
 
-async function getAuthorizedPublication(locale: Locale, publicationId: string, provider: SocialProvider) {
-  const repositories = await getStudioEditorialRepositories();
-  const publications = await repositories.distribution.listPublications(locale);
-  return publications.find((publication) => (
-    publication.id === publicationId && publication.channel === provider
-  )) ?? null;
+/** The publications the editor's locale lists: the only ones a post may be about. */
+async function listPublications(locale: Locale) {
+  const listed = await runStudioCapability(locale, "admin_list_distribution", { locale });
+  return listed.ok ? { items: listed.result.items as DistributionPublication[] } : { failed: listed };
 }
 
-function canonicalArticleUrl(locale: Locale, slug: string) {
-  const base = getPublicSiteUrl();
-  if (base.protocol !== "https:" || base.username || base.password) return undefined;
-  return new URL(`/${locale}/articles/${encodeURIComponent(slug)}`, base).toString();
-}
-
-function enqueueInput(input: SocialComposerForm, articleSlug: string): EnqueueSocialPublicationInput {
+/**
+ * The post as the outbox capabilities take it. The article address is the canonical one of the publication's
+ * article (core builds it), never one the form typed.
+ */
+function postInput(input: SocialComposerForm, publication: DistributionPublication) {
+  const scheduledFor = input.scheduledFor ? parseUtcDateTimeInput(input.scheduledFor) : null;
   return {
     publicationId: input.publicationId,
     provider: input.provider,
     payload: {
       text: input.text,
-      articleUrl: canonicalArticleUrl(input.locale, articleSlug),
+      articleUrl: canonicalArticleUrl(getPublicSiteUrl(), input.locale, publication.articleSlug),
       recipient: input.provider === "whatsapp" ? input.recipient : undefined,
     },
-    scheduledFor: input.scheduledFor ? parseUtcDateTimeInput(input.scheduledFor) : null,
+    scheduledFor: scheduledFor ?? undefined,
   };
 }
 
-function failureState(locale: Locale, error: unknown): SocialComposerState {
-  if (error instanceof SocialPublishingError) {
-    const kind = error.code === "configuration_error"
-      ? "configuration"
-      : error.code === "invalid_input"
-        ? "validation"
-        : "persistence";
-    return { status: "error", message: actionMessage(locale, kind) };
-  }
-  return { status: "error", message: actionMessage(locale, "persistence") };
+/** The sentence for a refused capability call: the code says whether the post, the channel or the store is at fault. */
+function failureState(locale: Locale, outcome: Failed): SocialComposerState {
+  const kind = outcome.code === "social.notConfigured"
+    ? "configuration"
+    : outcome.code === "social.invalidInput"
+      ? "validation"
+      : "persistence";
+  return { status: "error", message: actionMessage(locale, kind) };
 }
 
 export async function submitSocialPublicationAction(
@@ -96,67 +101,70 @@ export async function submitSocialPublicationAction(
 
   const input = parsed.data;
   await requireEditor(input.locale);
-  const publication = await getAuthorizedPublication(
-    input.locale,
-    input.publicationId,
-    input.provider,
-  );
-  if (!publication) {
-    return { status: "error", message: actionMessage(input.locale, "ownership") };
-  }
+  const run = (name: string, body: unknown, confirmed = false) =>
+    runStudioCapability(input.locale, name, body, confirmed ? { confirmed } : {});
 
-  try {
-    const runtime = createSocialPublishingRuntime();
-    const command = enqueueInput(input, publication.articleSlug);
-    const preview = previewSocialPublication(command, runtime.providers);
+  const publications = await listPublications(input.locale);
+  if (publications.failed) return failureState(input.locale, publications.failed);
+  const publication = findPublication(publications.items, input.publicationId, input.provider);
+  if (!publication) return { status: "error", message: actionMessage(input.locale, "ownership") };
 
-    if (input.intent === "preview") {
-      return {
-        status: "preview",
-        message: preview.valid ? undefined : actionMessage(input.locale, "validation"),
-        preview: {
-          provider: preview.provider,
-          text: preview.text,
-          articleUrl: preview.articleUrl,
-          recipient: preview.recipient ? "[redacted]" : null,
-          scheduledFor: preview.scheduledFor,
-        },
-      };
-    }
+  const post = postInput(input, publication);
+  // The preview checks the post against its channel's rules; nothing is queued that it would refuse.
+  const previewed = await run("admin_social_preview", post);
+  if (!previewed.ok) return failureState(input.locale, previewed);
+  const preview = previewed.result.preview as {
+    provider: SocialProvider;
+    text: string;
+    articleUrl: string | null;
+    recipient: "[redacted]" | null;
+    scheduledFor: string | null;
+  };
 
-    if (!input.confirm) {
-      return {
-        status: "error",
-        message: actionMessage(input.locale, "confirm"),
-        fieldErrors: { confirm: [actionMessage(input.locale, "confirm")] },
-      };
-    }
-
-    const queued = input.intent === "requeue"
-      ? await runtime.service.requeue({
-          ...command,
-          id: input.jobId,
-          expectedRevision: input.expectedRevision,
-        }, true)
-      : await runtime.service.enqueue(command);
-    const persisted = await runtime.service.getById(queued.id);
-    if (!persisted || persisted.status !== queued.status) {
-      return { status: "error", message: actionMessage(input.locale, "persistence") };
-    }
-    const readback = publicSocialOutboxJob(persisted);
-    revalidatePath(`/${input.locale}/studio/distribution`);
+  if (input.intent === "preview") {
     return {
-      status: "queued",
-      readback: {
-        id: readback.id,
-        provider: readback.provider,
-        status: readback.status,
-        availableAt: readback.availableAt,
+      status: "preview",
+      preview: {
+        provider: preview.provider,
+        text: preview.text,
+        articleUrl: preview.articleUrl,
+        recipient: preview.recipient ? "[redacted]" : null,
+        scheduledFor: preview.scheduledFor,
       },
     };
-  } catch (error) {
-    return failureState(input.locale, error);
   }
+
+  if (!input.confirm) {
+    return {
+      status: "error",
+      message: actionMessage(input.locale, "confirm"),
+      fieldErrors: { confirm: [actionMessage(input.locale, "confirm")] },
+    };
+  }
+
+  // The confirm box on the form is the person's approval to queue this post.
+  const queued = input.intent === "requeue"
+    ? await run("admin_social_requeue", { ...post, id: input.jobId, expectedRevision: input.expectedRevision }, true)
+    : await run("admin_social_enqueue", post, true);
+  if (!queued.ok) return failureState(input.locale, queued);
+  const job = queued.result.job as OutboxJob;
+
+  // Read the job back from the store: a post is only reported as queued when it is there.
+  const stored = await run("admin_social_get", { id: job.id });
+  const readback = stored.ok ? stored.result.job as OutboxJob | null : null;
+  if (!readback || readback.status !== job.status) {
+    return { status: "error", message: actionMessage(input.locale, "persistence") };
+  }
+  revalidatePath(`/${input.locale}/studio/distribution`);
+  return {
+    status: "queued",
+    readback: {
+      id: readback.id,
+      provider: readback.provider,
+      status: readback.status,
+      availableAt: readback.availableAt,
+    },
+  };
 }
 
 async function mutateOwnedJob(formData: FormData, operation: "cancel" | "retry") {
@@ -166,30 +174,24 @@ async function mutateOwnedJob(formData: FormData, operation: "cancel" | "retry")
 
   const input = parsed.data;
   await requireEditor(input.locale);
+  const board = `/${input.locale}/studio/distribution`;
 
-  try {
-    const runtime = createSocialPublishingRuntime();
-    const [job, repositories] = await Promise.all([
-      runtime.service.getById(input.id),
-      getStudioEditorialRepositories(),
-    ]);
-    const publications = await repositories.distribution.listPublications(input.locale);
-    if (!job || !publications.some((publication) => publication.id === job.publicationId)) {
-      redirect(`/${input.locale}/studio/distribution?queueError=ownership`);
-    }
+  const [found, publications] = await Promise.all([
+    runStudioCapability(input.locale, "admin_social_get", { id: input.id }),
+    listPublications(input.locale),
+  ]);
+  if (!found.ok || publications.failed) redirect(`${board}?queueError=${operation}`);
+  // Only a job of one of this locale's publications can be cancelled or retried from here.
+  const job = found.result.job as OutboxJob | null;
+  if (!job || !findPublication(publications.items, job.publicationId)) redirect(`${board}?queueError=ownership`);
 
-    const updated = operation === "cancel"
-      ? await runtime.service.cancelPending(job.id, input.confirm)
-      : await runtime.service.retryFailed(job.id, input.confirm);
-    const expected = operation === "cancel" ? "cancelled" : "pending";
-    if (updated.status !== expected) throw new Error("Outbox read-back mismatch.");
-  } catch (error) {
-    if (error && typeof error === "object" && "digest" in error) throw error;
-    redirect(`/${input.locale}/studio/distribution?queueError=${operation}`);
-  }
+  // The queue buttons ask the person in a dialog before the form is sent.
+  const updated = await runStudioCapability(input.locale, `admin_social_${operation}`, { id: job.id }, { confirmed: true });
+  const expected = operation === "cancel" ? "cancelled" : "pending";
+  if (!updated.ok || (updated.result.job as OutboxJob).status !== expected) redirect(`${board}?queueError=${operation}`);
 
-  revalidatePath(`/${input.locale}/studio/distribution`);
-  redirect(`/${input.locale}/studio/distribution?queueUpdated=${operation}`);
+  revalidatePath(board);
+  redirect(`${board}?queueUpdated=${operation}`);
 }
 
 export async function cancelSocialOutboxAction(formData: FormData) {

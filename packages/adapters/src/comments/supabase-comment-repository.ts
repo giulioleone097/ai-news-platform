@@ -16,6 +16,7 @@ import {
   type CreateCommentInput,
   type CreatedComment,
   type ModerateCommentInput,
+  type ModerateCommentsInput,
   type ModerationAuditEvent,
   type ModerationComment,
   type ModerationReport,
@@ -121,6 +122,26 @@ function createdComment(row: z.infer<typeof createdCommentRowSchema>): CreatedCo
     deleteUntil: new Date(createdAt + commentPolicy.deleteWindowSeconds * 1_000).toISOString(),
     canEdit: true,
     canDelete: true,
+  };
+}
+
+const moderationColumns =
+  "id,article_id,locale,parent_id,body,author_display_name,author_kind,status,created_at,updated_at,edited_at";
+
+function moderationComment(row: z.infer<typeof moderationCommentRowSchema>, reportCount: number): ModerationComment {
+  return {
+    id: row.id,
+    articleId: row.article_id,
+    locale: row.locale,
+    parentId: row.parent_id,
+    body: row.body,
+    displayName: row.author_display_name,
+    authorKind: row.author_kind,
+    status: row.status,
+    reportCount,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    editedAt: row.edited_at,
   };
 }
 
@@ -278,9 +299,7 @@ export class SupabaseCommentRepository implements CommentRepository {
   async listModeration(query: ModerationCommentQuery) {
     let request = this.service()
       .from("comments")
-      .select(
-        "id,article_id,locale,parent_id,body,author_display_name,author_kind,status,created_at,updated_at,edited_at",
-      )
+      .select(moderationColumns)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(query.limit + 1);
@@ -313,20 +332,7 @@ export class SupabaseCommentRepository implements CommentRepository {
       }
     }
 
-    const items: ModerationComment[] = pageRows.map((row) => ({
-      id: row.id,
-      articleId: row.article_id,
-      locale: row.locale,
-      parentId: row.parent_id,
-      body: row.body,
-      displayName: row.author_display_name,
-      authorKind: row.author_kind,
-      status: row.status,
-      reportCount: counts.get(row.id) ?? 0,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      editedAt: row.edited_at,
-    }));
+    const items = pageRows.map((row) => moderationComment(row, counts.get(row.id) ?? 0));
     const last = pageRows.at(-1);
     return {
       items,
@@ -336,9 +342,36 @@ export class SupabaseCommentRepository implements CommentRepository {
     };
   }
 
+  async getModeration(id: string) {
+    const { data, error } = await this.service().from("comments").select(moderationColumns).eq("id", id).maybeSingle();
+    if (error) throw repositoryError(error);
+    if (!data) return null;
+    const [row] = requireRows([data], moderationCommentRowSchema);
+    const { count, error: reportError } = await this.service()
+      .from("comment_reports")
+      .select("id", { count: "exact", head: true })
+      .eq("comment_id", id)
+      .eq("status", "open");
+    if (reportError) throw repositoryError(reportError);
+    return moderationComment(row, count ?? 0);
+  }
+
   async moderate(input: ModerateCommentInput) {
     const { error } = await this.service().rpc("moderate_comment", {
       p_comment_id: input.id,
+      p_status: input.status,
+      p_reason: input.reason,
+      p_actor_kind: input.actor.kind,
+      p_actor_user_id: input.actor.userId,
+      p_actor_label: input.actor.label,
+    });
+    if (error) throw repositoryError(error);
+  }
+
+  /** One RPC, so the Postgres function moderates every comment in one transaction. */
+  async moderateMany(input: ModerateCommentsInput) {
+    const { error } = await this.service().rpc("moderate_comments_batch", {
+      p_comment_ids: input.ids,
       p_status: input.status,
       p_reason: input.reason,
       p_actor_kind: input.actor.kind,

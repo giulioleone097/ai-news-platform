@@ -30,6 +30,24 @@ import { listEntities } from "../specs/entities";
 import { searchArticles } from "../specs/search-articles";
 import { markUntrusted } from "../untrusted";
 
+/**
+ * The newest published articles over every locale, newest first. Without `query` they are
+ * simply the latest ones. The site search and the composer mentions both read through this.
+ */
+export async function searchPublishedAcrossLocales(
+  reader: Pick<PublicArticleReader, "listPublished">,
+  { query, perLocale, limit }: { query?: string; perLocale: number; limit: number },
+) {
+  const pages = await Promise.all(
+    locales.map((locale) => reader.listPublished({ locale, limit: perLocale, ...(query ? { query } : {}) })),
+  );
+  return pages
+    .flatMap((page) => page.items)
+    .sort((left, right) =>
+      (right.publishedAt ?? right.updatedAt).localeCompare(left.publishedAt ?? left.updatedAt))
+    .slice(0, limit);
+}
+
 export async function listPublishedArticleComments(
   reader: Pick<PublicArticleReader, "findBySlug">,
   comments: PublicCommentReader,
@@ -116,19 +134,12 @@ export const publicCapabilities = [
   }),
 
   implement(search, async ({ articles, site }, { query }) => {
-    const pages = await Promise.all(
-      locales.map((locale) => articles.listPublished({ locale, query, limit: 10 })),
-    );
-    const results = pages
-      .flatMap((page) => page.items)
-      .sort((left, right) =>
-        (right.publishedAt ?? right.updatedAt).localeCompare(left.publishedAt ?? left.updatedAt))
-      .slice(0, 10)
-      .map((article) => ({
-        id: `${article.locale}/${article.slug}`,
-        title: article.title,
-        url: site.absolute(articlePath(article)),
-      }));
+    const found = await searchPublishedAcrossLocales(articles, { query, perLocale: 10, limit: 10 });
+    const results = found.map((article) => ({
+      id: `${article.locale}/${article.slug}`,
+      title: article.title,
+      url: site.absolute(articlePath(article)),
+    }));
     return { results };
   }),
 

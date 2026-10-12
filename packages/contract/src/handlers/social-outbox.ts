@@ -90,6 +90,23 @@ export function createSocialPublishingMcpHandlers(input: {
         expectedRevision: integer(request.expectedRevision, undefined)!,
       }, true));
     },
+    social_outbox_update: async (value: unknown) => {
+      const request = object(value);
+      confirmed(request);
+      const payload = request.payload === undefined ? undefined : object(request.payload);
+      return publicSocialOutboxJob(await input.service.updatePending({
+        id: text(request.id, "id"),
+        expectedRevision: integer(request.expectedRevision, undefined)!,
+        payload: payload && {
+          text: optionalText(payload.text, "payload.text"),
+          articleUrl: optionalText(payload.articleUrl, "payload.articleUrl"),
+          recipient: optionalText(payload.recipient, "payload.recipient"),
+        },
+        // `null` asks for the next run, a missing field keeps the stored time.
+        scheduledFor: request.scheduledFor === null ? null : optionalText(request.scheduledFor, "scheduledFor"),
+        maxAttempts: integer(request.maxAttempts, undefined),
+      }));
+    },
     social_outbox_list: async (value: unknown) => {
       const request = object(value ?? {});
       const query: SocialOutboxQuery = {
@@ -125,6 +142,13 @@ export function createSocialPublishingMcpHandlers(input: {
       const request = object(value);
       confirmed(request);
       return publicSocialOutboxJob(await input.service.cancelPending(text(request.id, "id"), true));
+    },
+    social_outbox_cancel_many: async (value: unknown) => {
+      const request = object(value);
+      confirmed(request);
+      if (!Array.isArray(request.ids)) throw new SocialPublishingError("ids must be a list.", "invalid_input");
+      const jobs = await input.service.cancelPendingMany(request.ids.map((id) => text(id, "ids[]")), true);
+      return jobs.map(publicSocialOutboxJob);
     },
     social_outbox_retry: async (value: unknown) => {
       const request = object(value);

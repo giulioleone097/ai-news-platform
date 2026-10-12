@@ -7,7 +7,13 @@ const mocks = vi.hoisted(() => ({
   }),
 }));
 
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/navigation", () => ({
+  redirect: mocks.redirect,
+  // Next's own control-flow errors pass through; here that is the redirect above.
+  unstable_rethrow: (error: unknown) => {
+    if (error instanceof Error && error.message.startsWith("redirect:")) throw error;
+  },
+}));
 vi.mock("@/server/capabilities", () => ({ runEditorCapability: mocks.run }));
 
 import { batchLimit } from "@atlasnews/core/editorial/domain/errors";
@@ -39,7 +45,7 @@ describe("bulk article actions", () => {
     expect(mocks.run).toHaveBeenCalledWith(
       capability,
       { items: ids.map((id) => ({ id, locale: "en" })) },
-      { confirmed: true },
+      { confirmed: true, locale: "en" },
     );
     expect(result).toEqual({ status: "success", message });
   });

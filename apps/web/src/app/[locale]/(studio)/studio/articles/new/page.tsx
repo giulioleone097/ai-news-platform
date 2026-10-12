@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArticleForm } from "@/components/studio/article-form";
+import { translationChoices } from "@/components/studio/translation-choices";
 import { getMessages, isLocale } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { getStudioEditorialRepositories } from "@/server/composition";
@@ -17,10 +18,12 @@ export default async function NewArticlePage({
 
   await requireEditor(locale);
   const repositories = await getStudioEditorialRepositories();
-  const [englishCategories, italianCategories, entities] = await Promise.all([
+  const [englishCategories, italianCategories, entities, english, italian] = await Promise.all([
     repositories.articles.listCategories("en"),
     repositories.articles.listCategories("it"),
     repositories.entities.listEntities(locale),
+    repositories.articles.listForStudio("en"),
+    repositories.articles.listForStudio("it"),
   ]);
 
   return (
@@ -29,6 +32,7 @@ export default async function NewArticlePage({
       entities={entities}
       locale={locale}
       messages={getMessages(locale)}
+      translations={translationChoices({ en: english, it: italian })}
     />
   );
 }

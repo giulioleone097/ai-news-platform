@@ -65,7 +65,7 @@ describe("Studio entity actions use the editor capabilities", () => {
       officialUrl: "https://www.anthropic.com/claude",
       parentSlug: "anthropic",
       descriptions: { en: "Small and fast." },
-    });
+    }, { locale: "en" });
   });
 
   it("drops the parent when the new entity is a company", async () => {
@@ -78,7 +78,7 @@ describe("Studio entity actions use the editor capabilities", () => {
     expect(mocks.runEditorCapability).toHaveBeenCalledWith("admin_create_entity", {
       kind: "company",
       name: "Anthropic",
-    });
+    }, { locale: "en" });
   });
 
   it("updates only the changed fields and sends null for the cleared ones", async () => {
@@ -97,7 +97,7 @@ describe("Studio entity actions use the editor capabilities", () => {
       slug: "claude-haiku",
       officialUrl: null,
       descriptions: { en: "Small and fast, now.", it: null },
-    });
+    }, { locale: "en" });
   });
 
   it("does not call the update when nothing changed", async () => {
@@ -107,7 +107,7 @@ describe("Studio entity actions use the editor capabilities", () => {
       saveEntityAction(idle, entityForm({ slug: "claude-haiku" })),
     ).rejects.toThrow("REDIRECT:/en/studio/entities?saved=updated");
 
-    expect(mocks.runEditorCapability).not.toHaveBeenCalledWith("admin_update_entity", expect.anything());
+    expect(mocks.runEditorCapability).not.toHaveBeenCalledWith("admin_update_entity", expect.anything(), expect.anything());
   });
 
   it("returns a refusal to the form with the typed values kept", async () => {
@@ -149,7 +149,7 @@ describe("Studio entity actions use the editor capabilities", () => {
     expect(mocks.runEditorCapability).toHaveBeenCalledWith(
       "admin_delete_entity",
       { slug: "claude-haiku" },
-      { confirmed: true },
+      { confirmed: true, locale: "en" },
     );
   });
 

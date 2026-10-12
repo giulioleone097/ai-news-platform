@@ -259,6 +259,22 @@ describe("campaign drafts", () => {
     await expect(repository.saveDraft(draftInput({ id: crypto.randomUUID() }), editor)).rejects.toThrow("Unable to update newsletter draft");
   });
 
+  it("deletes a draft and nothing else: a queued, sent or unknown campaign stays", async () => {
+    const draft = await repository.saveDraft(draftInput(), editor);
+    const other = await repository.saveDraft(draftInput({ subject: "Another draft" }), editor);
+    expect(await repository.deleteDraft(draft.id)).toBe(true);
+    expect(await repository.getCampaign(draft.id)).toBeNull();
+    expect(await repository.getCampaign(other.id)).not.toBeNull();
+    expect(await repository.deleteDraft(draft.id)).toBe(false);
+    expect(await repository.deleteDraft(crypto.randomUUID())).toBe(false);
+
+    await addSubscriber("one@example.com");
+    const queued = await repository.queueCampaign(other.id, null);
+    expect(await repository.deleteDraft(other.id)).toBe(false);
+    expect(await repository.getCampaign(other.id)).toEqual(queued);
+    expect(await rows("SELECT id FROM newsletter_campaign_recipients WHERE campaign_id = ?", other.id)).toHaveLength(1);
+  });
+
   it("lists campaigns of one locale, newest first, with the total", async () => {
     const first = await repository.saveDraft(draftInput({ subject: "First" }), editor);
     await new Promise((resolve) => setTimeout(resolve, 5));

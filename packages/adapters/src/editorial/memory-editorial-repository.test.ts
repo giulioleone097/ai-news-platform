@@ -137,6 +137,18 @@ describe("MemoryEditorialRepository", () => {
     expect((await repository.listSubscriptions({ locale: "en" })).items[0].status).toBe("unsubscribed");
   });
 
+  it("reads one subscriber and one asset by id, and returns null for an unknown one", async () => {
+    const repository = new MemoryEditorialRepository();
+    await repository.subscribe("reader@example.com", "test", "en");
+    const { items: [created] } = await repository.listSubscriptions({ locale: "en" });
+    expect(await repository.findSubscription(created.id)).toEqual(created);
+    expect(await repository.findSubscription("unknown")).toBeNull();
+
+    const [asset] = await repository.listAssets();
+    expect(await repository.findAsset(asset.path)).toEqual(asset);
+    expect(await repository.findAsset("missing.png")).toBeNull();
+  });
+
   it("paginates newsletter subscriptions without truncating exports", async () => {
     const repository = new MemoryEditorialRepository();
     await repository.subscribe("first@example.com", "test", "en");

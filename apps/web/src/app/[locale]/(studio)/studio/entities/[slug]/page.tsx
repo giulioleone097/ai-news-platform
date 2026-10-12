@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { listEntityItems } from "@/components/studio/entities/entity-data";
 import { EntityDeleteButton } from "@/components/studio/entities/entity-delete-button";
 import { EntityForm } from "@/components/studio/entities/entity-form";
 import { isLocale } from "@/i18n";
 import type { EntityRecord } from "@atlasnews/core/editorial/domain/entity";
 import { requireEditor } from "@/lib/editor-auth";
-import { runEditorCapability } from "@/server/capabilities";
+import { runStudioCapability } from "@/server/studio-capability";
 import { entityCopy } from "../copy";
 
 export const metadata: Metadata = { robots: { index: false } };
@@ -21,19 +21,15 @@ export default async function EditEntityPage({
 
   await requireEditor(locale);
   const [entity, companies] = await Promise.all([
-    runEditorCapability("admin_get_entity", { slug }),
+    runStudioCapability(locale, "admin_get_entity", { slug }),
     listEntityItems(locale, "company"),
   ]);
   if (!entity.ok) {
-    if (entity.status === 401) redirect(`/${locale}/login`);
-    // The capability refuses a slug that names no entity with 400.
-    if (entity.status === 400) notFound();
+    // A slug that names no entity is refused as a not-found entity.
+    if (entity.code === "entity.notFound") notFound();
     throw new Error(entity.error);
   }
-  if (!companies.ok) {
-    if (companies.status === 401) redirect(`/${locale}/login`);
-    throw new Error(companies.error);
-  }
+  if (!companies.ok) throw new Error(companies.error);
 
   const record = (entity.result as { entity: EntityRecord }).entity;
   const copy = entityCopy[locale];

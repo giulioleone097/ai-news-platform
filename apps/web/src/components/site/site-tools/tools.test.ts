@@ -221,6 +221,7 @@ describe("the catalogue's outputs", () => {
     const { tools } = setup();
     await tools.open_article({ slug: "gpt-launch" });
     const results = {
+      search_articles: await tools.search_articles({ query: "open ai", limit: 2 }),
       filter_feed: await tools.filter_feed({ claimStatus: "test" }),
       open_article: await tools.open_article({ slug: "gpt-launch" }),
       read_open_article: await tools.read_open_article({}),
@@ -230,6 +231,10 @@ describe("the catalogue's outputs", () => {
       const spec = pageSpecs.find((candidate) => candidate.name === name)!;
       expect(() => spec.output.parse(result), name).not.toThrow();
     }
+    // The filters the results page cannot show are named in the result, and the schema allows both.
+    const filtered = await tools.search_articles({ query: "agenti", entity: "openai", claimStatus: "rumour" });
+    const search = pageSpecs.find((candidate) => candidate.name === "search_articles")!;
+    expect(search.output.parse(filtered)).toMatchObject({ notShownOnPage: ["entity", "claimStatus"] });
   });
 });
 

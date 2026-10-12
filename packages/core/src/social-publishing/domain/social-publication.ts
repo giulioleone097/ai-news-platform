@@ -57,6 +57,16 @@ export interface RequeueSocialPublicationInput
   expectedRevision: number;
 }
 
+/** Changes to a job that is still waiting in the queue; whatever is left out keeps its stored value. */
+export interface UpdatePendingSocialPublicationInput {
+  id: string;
+  expectedRevision: number;
+  payload?: Partial<SocialPublishPayload>;
+  /** A new send time; `null` means as soon as possible. */
+  scheduledFor?: string | null;
+  maxAttempts?: number;
+}
+
 export interface SocialOutboxQuery {
   provider?: SocialProvider;
   status?: SocialOutboxStatus;

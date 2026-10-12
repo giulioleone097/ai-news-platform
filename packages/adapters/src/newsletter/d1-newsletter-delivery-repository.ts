@@ -415,6 +415,12 @@ export class D1NewsletterDeliveryRepository implements NewsletterDeliveryReposit
     return mapCampaign(campaign);
   }
 
+  async deleteDraft(id: string) {
+    // A draft has no recipients or outbox rows yet, so the row goes alone; a campaign that left draft stays.
+    const result = await this.statement("DELETE FROM newsletter_campaigns WHERE id = ?1 AND status = 'draft'", id).run();
+    return result.meta.changes > 0;
+  }
+
   async queueCampaign(id: string, scheduledFor: string | null) {
     const operation = "queue newsletter campaign";
     const now = new Date().toISOString();

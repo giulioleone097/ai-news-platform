@@ -3,20 +3,20 @@
  * and selection, so the caret rules are testable without a browser.
  */
 
+import { maxMediaBytes, mediaImageTypes } from "@atlasnews/core/editorial/domain/editorial-image";
+import { mediaBatchLimit } from "@atlasnews/core/editorial/domain/errors";
+
 export type TextSelection = { start: number; end: number };
 export type TextEdit = { value: string; selection: TextSelection };
 
-/** The image types and size the Studio accepts (the same limits as the media upload action). */
-export const editorImageTypes = ["image/avif", "image/gif", "image/jpeg", "image/png", "image/webp"] as const;
-export const maxEditorImageBytes = 8_388_608;
 /** The batch limit the media capabilities use for one call. */
-export const maxEditorImagesPerDrop = 10;
+export const maxEditorImagesPerDrop = mediaBatchLimit;
 
 export type ImageFileProblem = "type" | "size";
 
 export function imageFileProblem(file: { type: string; size: number }): ImageFileProblem | null {
-  if (!(editorImageTypes as readonly string[]).includes(file.type)) return "type";
-  if (!file.size || file.size > maxEditorImageBytes) return "size";
+  if (!(mediaImageTypes as readonly string[]).includes(file.type)) return "type";
+  if (!file.size || file.size > maxMediaBytes) return "size";
   return null;
 }
 

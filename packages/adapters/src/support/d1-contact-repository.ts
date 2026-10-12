@@ -39,6 +39,8 @@ const countRequest = (scope: string, condition: string) => `
 
 const counter = (key: string) => `(SELECT request_count FROM contact_request_limits WHERE scope_key = ${key})`;
 
+const marks = (count: number) => Array.from({ length: count }, () => "?").join(", ");
+
 function toMessage(row: MessageRow): ContactMessage {
   return {
     id: row.id,
@@ -123,6 +125,15 @@ export class D1ContactMessageRepository implements ContactMessageRepository {
     return row?.total ?? 0;
   }
 
+  async findMany(ids: string[]) {
+    if (!ids.length) return [];
+    const { results } = await this.database
+      .prepare(`SELECT ${columns} FROM contact_messages WHERE id IN (${marks(ids.length)})`)
+      .bind(...ids)
+      .all<MessageRow>();
+    return results.map(toMessage);
+  }
+
   async setStatus(id: string, status: ContactMessageStatus) {
     const result = await this.database
       .prepare("UPDATE contact_messages SET status = ?2 WHERE id = ?1")
@@ -131,8 +142,22 @@ export class D1ContactMessageRepository implements ContactMessageRepository {
     return result.meta.changes > 0;
   }
 
+  /** One UPDATE, so every message changes or none does. */
+  async setStatusMany(ids: string[], status: ContactMessageStatus) {
+    if (!ids.length) return;
+    await this.database
+      .prepare(`UPDATE contact_messages SET status = ? WHERE id IN (${marks(ids.length)})`)
+      .bind(status, ...ids)
+      .run();
+  }
+
   async delete(id: string) {
     const result = await this.database.prepare("DELETE FROM contact_messages WHERE id = ?1").bind(id).run();
     return result.meta.changes > 0;
+  }
+
+  async deleteMany(ids: string[]) {
+    if (!ids.length) return;
+    await this.database.prepare(`DELETE FROM contact_messages WHERE id IN (${marks(ids.length)})`).bind(...ids).run();
   }
 }

@@ -21,16 +21,23 @@ function inbox(messages: ContactMessage[]): ContactMessageRepository {
       if (message) message.status = status;
       return Boolean(message);
     },
+    findMany: async (ids) => messages.filter((message) => ids.includes(message.id)),
+    setStatusMany: async (ids, status) => {
+      for (const message of messages) if (ids.includes(message.id)) message.status = status;
+    },
     delete: async (id) => {
       const index = messages.findIndex((item) => item.id === id);
       if (index >= 0) messages.splice(index, 1);
       return index >= 0;
     },
+    deleteMany: async (ids) => {
+      for (let index = messages.length - 1; index >= 0; index -= 1) if (ids.includes(messages[index].id)) messages.splice(index, 1);
+    },
   };
 }
 
-const stored = (): ContactMessage => ({
-  id: "6f1c2c1e-6a2b-4f7e-9d3e-1a2b3c4d5e6f",
+const stored = (id = "6f1c2c1e-6a2b-4f7e-9d3e-1a2b3c4d5e6f"): ContactMessage => ({
+  id,
   locale: "en",
   name: "Eve",
   email: "eve@example.com",
@@ -96,5 +103,64 @@ describe("contact inbox capabilities", () => {
     await expect(remove.run(ports(messages), remove.input.parse({ id: stored().id }), editor)).rejects.toBeInstanceOf(CapabilityFailure);
     await expect(update.run(ports(messages), update.input.parse({ id: stored().id, status: "new" }), editor))
       .rejects.toThrow("No contact message has this id.");
+  });
+
+  it("reads one message, marked as untrusted, and refuses an unknown id", async () => {
+    const get = find("admin_get_contact_message");
+    expect(get.scopes).toEqual(["newsroom.read"]);
+    const result = get.output.parse(await get.run(ports([stored()]), get.input.parse({ id: stored().id }), editor));
+    expect(result).toMatchObject({
+      message: { id: stored().id, body: injection },
+      contentTrust: { source: "anonymous-visitors", untrustedFields: ["message.name", "message.email", "message.subject", "message.body"] },
+    });
+    expect(get.description).toMatch(/untrusted/);
+    await expect(get.run(ports([]), get.input.parse({ id: stored().id }), editor)).rejects.toThrow("No contact message has this id.");
+  });
+
+  describe("batches", () => {
+    const first = "6f1c2c1e-6a2b-4f7e-9d3e-1a2b3c4d5e01";
+    const second = "6f1c2c1e-6a2b-4f7e-9d3e-1a2b3c4d5e02";
+    const missing = "6f1c2c1e-6a2b-4f7e-9d3e-1a2b3c4d5e99";
+    const inboxOf = () => [stored(first), stored(second)];
+
+    it("set one status for every message and say what happened to each", async () => {
+      const messages = inboxOf();
+      const update = find("admin_update_contact_messages");
+      const result = await update.run(ports(messages), update.input.parse({ ids: [first, second], status: "archived" }), editor);
+      expect(update.output.parse(result)).toEqual({
+        count: 2,
+        items: [
+          { index: 0, action: "updated", id: first, status: "archived" },
+          { index: 1, action: "updated", id: second, status: "archived" },
+        ],
+      });
+      expect(messages.map((message) => message.status)).toEqual(["archived", "archived"]);
+    });
+
+    it("delete them together, behind a confirmation", async () => {
+      const messages = inboxOf();
+      const remove = find("admin_delete_contact_messages");
+      expect(remove.annotations).toMatchObject({ destructiveHint: true });
+      expect(await remove.confirmation!.question(remove.input.parse({ ids: [first, second] }), ports(messages))).toContain("2 contact messages");
+      await remove.run(ports(messages), remove.input.parse({ ids: [first, second] }), editor);
+      expect(messages).toEqual([]);
+    });
+
+    it("write nothing when one id is unknown or repeated, and name the item", async () => {
+      const messages = inboxOf();
+      const update = find("admin_update_contact_messages");
+      await expect(update.run(ports(messages), update.input.parse({ ids: [first, missing], status: "handled" }), editor))
+        .rejects.toThrow(`#1 (${missing}): No contact message has this id.`);
+      const remove = find("admin_delete_contact_messages");
+      await expect(remove.run(ports(messages), remove.input.parse({ ids: [first, first] }), editor)).rejects.toThrow("also item #0");
+      expect(messages.map((message) => message.status)).toEqual(["new", "new"]);
+      expect(messages).toHaveLength(2);
+    });
+
+    it("take 1 to 25 ids", () => {
+      const update = find("admin_update_contact_messages");
+      expect(update.input.safeParse({ ids: [], status: "handled" }).success).toBe(false);
+      expect(update.input.safeParse({ ids: Array.from({ length: 26 }, (_, index) => `${first.slice(0, -2)}${String(index).padStart(2, "0")}`), status: "handled" }).success).toBe(false);
+    });
   });
 });

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   }),
   requireEditor: vi.fn(async () => ({ userId: "editor-1" })),
   runEditorCapability: vi.fn(),
+  authorize: vi.fn(),
   media: {
     writable: true,
     uploadAsset: vi.fn(),
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   repositories: vi.fn(),
 }));
 
+vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/lib/editor-auth", () => ({ requireEditor: mocks.requireEditor }));
@@ -21,8 +23,11 @@ vi.mock("@/lib/editorial-cache", () => ({
   articlesCacheTag: "articles",
   invalidatePublicEditorialCache: vi.fn(),
 }));
-vi.mock("@/server/capabilities", () => ({ runEditorCapability: mocks.runEditorCapability }));
-vi.mock("@/server/composition", () => ({ getStudioEditorialRepositories: mocks.repositories }));
+vi.mock("@/server/capabilities", () => ({
+  runEditorCapability: mocks.runEditorCapability,
+  authorizeEditorCapability: mocks.authorize,
+}));
+vi.mock("@/server/composition", () => ({ getStudioAdminEditorialRepository: mocks.repositories }));
 
 import { listEditorMediaAction, uploadEditorMediaAction } from "./actions";
 
@@ -47,6 +52,7 @@ describe("Studio Markdown editor media actions", () => {
     mocks.revalidatePath.mockClear();
     mocks.requireEditor.mockReset().mockResolvedValue({ userId: "editor-1" });
     mocks.runEditorCapability.mockReset();
+    mocks.authorize.mockReset().mockResolvedValue({ ok: true });
     mocks.media.writable = true;
     mocks.media.uploadAsset.mockReset().mockImplementation(async (input: { name: string; mimeType: string; bytes: Uint8Array }) => ({
       path: `stored-${input.name}`,
@@ -56,7 +62,7 @@ describe("Studio Markdown editor media actions", () => {
       size: input.bytes.length,
       createdAt: "2026-10-11T00:00:00.000Z",
     }));
-    mocks.repositories.mockReset().mockResolvedValue({ media: mocks.media });
+    mocks.repositories.mockReset().mockResolvedValue(mocks.media);
   });
 
   describe("listEditorMediaAction", () => {
@@ -82,7 +88,7 @@ describe("Studio Markdown editor media actions", () => {
         items: [{ path: "a.png", url: "/media-store/a.png", name: "a.png", mimeType: "image/png" }],
       });
       expect(mocks.requireEditor).toHaveBeenCalledWith("it");
-      expect(mocks.runEditorCapability).toHaveBeenCalledWith("admin_list_media", {});
+      expect(mocks.runEditorCapability).toHaveBeenCalledWith("admin_list_media", {}, { locale: "it" });
     });
 
     it("passes on the capability's refusal, such as a signed-in account without the scope", async () => {
@@ -104,6 +110,21 @@ describe("Studio Markdown editor media actions", () => {
       mocks.requireEditor.mockRejectedValueOnce(new Error("REDIRECT:/it/login"));
 
       await expect(uploadEditorMediaAction(uploadForm(pngFile()))).rejects.toThrow("REDIRECT:/it/login");
+      expect(mocks.media.uploadAsset).not.toHaveBeenCalled();
+    });
+
+    it("runs the scope check of admin_upload_media, and sends nobody who is signed out to the login page", async () => {
+      mocks.authorize.mockResolvedValueOnce({ ok: false, status: 401, error: "Sign in." });
+
+      await expect(uploadEditorMediaAction(uploadForm(pngFile()))).rejects.toThrow("REDIRECT:/it/login");
+      expect(mocks.authorize).toHaveBeenCalledWith("admin_upload_media", { locale: "it" });
+      expect(mocks.media.uploadAsset).not.toHaveBeenCalled();
+    });
+
+    it("stores nothing for an editor whose role lacks the scope", async () => {
+      mocks.authorize.mockResolvedValueOnce({ ok: false, status: 403, error: "No permission." });
+
+      await expect(uploadEditorMediaAction(uploadForm(pngFile()))).resolves.toEqual({ ok: false, error: "upload" });
       expect(mocks.media.uploadAsset).not.toHaveBeenCalled();
     });
 
@@ -162,6 +183,7 @@ describe("Studio Markdown editor media actions", () => {
     });
 
     it("reports a storage failure as an upload error", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
       mocks.media.uploadAsset.mockRejectedValueOnce(new Error("R2 unavailable"));
 
       await expect(uploadEditorMediaAction(uploadForm(pngFile()))).resolves.toEqual({ ok: false, error: "upload" });

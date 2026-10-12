@@ -21,6 +21,8 @@ export interface NewsletterDeliveryRepository {
   getCampaign(id: string): Promise<NewsletterCampaign | null>;
   listRecipients(campaignId: string, limit?: number): Promise<NewsletterCampaignRecipient[]>;
   saveDraft(input: NewsletterCampaignInput, createdBy: string): Promise<NewsletterCampaign>;
+  /** Removes a campaign that is still a draft; false when no draft has this id. */
+  deleteDraft(id: string): Promise<boolean>;
   queueCampaign(id: string, scheduledFor: string | null): Promise<NewsletterCampaign>;
   cancelCampaign(id: string): Promise<NewsletterCampaign>;
   claimOutbox(input: {

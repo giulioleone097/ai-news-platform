@@ -31,7 +31,7 @@ export const entityCapabilities = [
   implement(adminGetEntity, async (ports, { slug }) => {
     const { repository } = await entities(ports);
     const entity = (await repository.listEntityRecords()).find((record) => record.slug === slug);
-    if (!entity) throw new CapabilityFailure("Entity not found.");
+    if (!entity) throw new CapabilityFailure("Entity not found.", { code: "entity.notFound" });
     return { entity };
   }),
 

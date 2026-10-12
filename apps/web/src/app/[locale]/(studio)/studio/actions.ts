@@ -4,29 +4,24 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { StudioActionState } from "@/components/studio/action-state";
-import { editorImageTypes, maxEditorImageBytes } from "@/components/studio/markdown-media";
 import { studioFieldErrors } from "@/components/studio/field-errors";
 import { studioSupplementalCopy } from "@/components/studio/studio-copy";
 import { getMessages, locales } from "@/i18n";
 import { requireEditor } from "@/lib/editor-auth";
 import { parseUtcDateTimeInput } from "@/lib/editorial-datetime";
+import { isAllowedEditorialImageSource } from "@atlasnews/core/editorial/domain/editorial-image";
 import {
-  hasExpectedImageSignature,
-  isAllowedEditorialImageSource,
-} from "@atlasnews/core/editorial/domain/editorial-image";
-import {
+  articleLimits,
   articleStatuses,
   claimStatuses,
   normalizeStoryFields,
+  slugPattern,
   socialChannels,
   StoryFieldError,
 } from "@atlasnews/core/editorial/domain/article";
-import { getStudioEditorialRepositories } from "@/server/composition";
-import { invalidatePublicEditorialCache } from "@/lib/editorial-cache";
-import { runEditorCapability } from "@/server/capabilities";
-import { ArticleCommandService } from "@atlasnews/core/editorial/application/article-commands";
-import { MediaCommandService } from "@atlasnews/core/editorial/application/media-commands";
-import { EditorialRuleError } from "@atlasnews/core/editorial/domain/errors";
+import { uploadStudioMedia } from "@/server/media-upload";
+import { articleFieldOfCode, saveStudioArticle } from "@/server/studio-article";
+import { runStudioCapability } from "@/server/studio-capability";
 
 const imageSourceSchema = z
   .string()
@@ -41,27 +36,29 @@ const articleDraftSchema = z
   .object({
     id: z.string().trim().min(1).max(128).optional(),
     locale: z.enum(locales),
-    title: z.string().trim().min(8).max(180),
+    title: z.string().trim().min(articleLimits.title.min).max(articleLimits.title.max),
     slug: z
       .string()
       .trim()
-      .max(96)
-      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers and hyphens")
+      .max(articleLimits.slug.max)
+      .regex(slugPattern, "Use lowercase letters, numbers and hyphens")
       .optional()
       .or(z.literal("")),
-    excerpt: z.string().trim().min(20).max(360),
-    content: z.string().trim().min(20).max(100_000),
-    categorySlug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    excerpt: z.string().trim().min(articleLimits.excerpt.min).max(articleLimits.excerpt.max),
+    content: z.string().trim().min(articleLimits.content.min).max(articleLimits.content.max),
+    categorySlug: z.string().trim().regex(slugPattern),
     status: z.enum(articleStatuses),
     featured: z.boolean(),
     coverImage: imageSourceSchema,
-    coverAlt: z.string().trim().min(3).max(240),
+    coverAlt: z.string().trim().min(articleLimits.coverAlt.min).max(articleLimits.coverAlt.max),
     scheduledFor: z.string().trim().max(40).optional(),
     distribution: z
       .array(z.enum(socialChannels))
       .max(socialChannels.length)
       .transform((channels) => Array.from(new Set(channels))),
     claimStatus: z.enum(claimStatuses),
+    // The slug of the same story in the other language; blank means none. Left out, the link is not touched.
+    translationOf: z.string().trim().max(articleLimits.slug.max).regex(slugPattern).or(z.literal("")).optional(),
   })
   .superRefine((value, context) => {
     if (value.status !== "scheduled") return;
@@ -90,8 +87,6 @@ const mediaMutationSchema = z.object({
   path: z.string().trim().min(1).max(256).regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/),
 });
 
-const allowedMediaTypes = new Set<string>(editorImageTypes);
-
 export type EditorMediaItem = { path: string; url: string; name: string; mimeType: string };
 
 export type EditorMediaListResult =
@@ -101,13 +96,6 @@ export type EditorMediaListResult =
 export type EditorMediaUploadResult =
   | { ok: true; asset: EditorMediaItem }
   | { ok: false; error: "type" | "size" | "configuration" | "upload" };
-
-/** Public outputs are refreshed by the shared owner; the Studio pages that show the change are added here. */
-function revalidateEditorialPaths(locale: (typeof locales)[number], slug?: string) {
-  invalidatePublicEditorialCache({ locale, slugs: slug ? [slug] : [] });
-  revalidatePath(`/${locale}/studio`);
-  revalidatePath(`/${locale}/studio/articles`);
-}
 
 /** The story fields as the form posts them: blank key points and blank source rows are dropped. */
 function readStoryFields(formData: FormData) {
@@ -142,6 +130,7 @@ export async function saveArticleAction(
     scheduledFor: formData.get("scheduledFor") || undefined,
     distribution: formData.getAll("distribution"),
     claimStatus: formData.get("claimStatus"),
+    translationOf: formData.get("translationOf") ?? undefined,
   });
 
   const story = readStoryFields(formData);
@@ -174,38 +163,39 @@ export async function saveArticleAction(
   }
 
   const input = parsed.data;
-  const scheduledFor = input.scheduledFor
-    ? parseUtcDateTimeInput(input.scheduledFor)
-    : null;
   await requireEditor(input.locale);
-  const repositories = await getStudioEditorialRepositories();
-  const commands = new ArticleCommandService(repositories.articles);
-  let article;
+  const outcome = await saveStudioArticle({
+    id: input.id,
+    locale: input.locale,
+    title: input.title,
+    slug: input.slug || undefined,
+    excerpt: input.excerpt,
+    content: input.content,
+    categorySlug: input.categorySlug,
+    status: input.status,
+    featured: input.featured,
+    coverImage: input.coverImage || undefined,
+    coverAlt: input.coverAlt,
+    scheduledFor: input.scheduledFor ? parseUtcDateTimeInput(input.scheduledFor) : null,
+    distribution: input.distribution,
+    claimStatus: input.claimStatus,
+    translationOf: input.translationOf,
+    ...story,
+  });
 
-  try {
-    article = await commands.save({
-      id: input.id,
-      locale: input.locale,
-      title: input.title,
-      slug: input.slug || undefined,
-      excerpt: input.excerpt,
-      content: input.content,
-      categorySlug: input.categorySlug,
-      status: input.status,
-      featured: input.featured,
-      coverImage: input.coverImage || undefined,
-      coverAlt: input.coverAlt,
-      scheduledFor: input.status === "scheduled" ? scheduledFor : null,
-      distribution: input.distribution,
-      claimStatus: input.claimStatus,
-      ...story,
-    });
-  } catch {
-    return { status: "error", message: studioSupplementalCopy[input.locale].saveError };
+  if (!outcome.ok) {
+    // A refusal that is about one field is shown under it; any other is shown on top, in the editor's language.
+    const field = outcome.code && articleFieldOfCode[outcome.code];
+    return {
+      status: "error",
+      message: field ? studioSupplementalCopy[input.locale].validationError : outcome.error,
+      ...(field ? { fieldErrors: { [field]: [outcome.error] } } : {}),
+      // The article exists already when only going live failed: the next save updates it.
+      ...(outcome.articleId ? { articleId: outcome.articleId } : {}),
+    };
   }
 
-  revalidateEditorialPaths(input.locale, article.slug);
-  redirect(`/${input.locale}/studio/articles/${article.id}?saved=1`);
+  redirect(`/${input.locale}/studio/articles/${outcome.article.id}?saved=1`);
 }
 
 export async function deleteArticleAction(formData: FormData) {
@@ -215,13 +205,10 @@ export async function deleteArticleAction(formData: FormData) {
   });
 
   await requireEditor(input.locale);
-  const repositories = await getStudioEditorialRepositories();
-  const article = await repositories.articles.findById(input.id, input.locale);
-  if (!article) redirect(`/${input.locale}/studio/articles`);
-
-  await new ArticleCommandService(repositories.articles).delete(article.id);
-  revalidateEditorialPaths(input.locale, article.slug);
-  redirect(`/${input.locale}/studio/articles?deleted=1`);
+  // The person confirmed this deletion in the page's dialog before the form was sent.
+  const outcome = await runStudioCapability(input.locale, "admin_delete_article", { id: input.id, locale: input.locale }, { confirmed: true });
+  if (!outcome.ok && outcome.code !== "article.notFound") throw new Error(outcome.error);
+  redirect(outcome.ok ? `/${input.locale}/studio/articles?deleted=1` : `/${input.locale}/studio/articles`);
 }
 
 export async function updateNewsletterSubscriptionAction(formData: FormData) {
@@ -231,7 +218,7 @@ export async function updateNewsletterSubscriptionAction(formData: FormData) {
     status: formData.get("status"),
   });
   await requireEditor(input.locale);
-  const outcome = await runEditorCapability("admin_update_newsletter_subscription", { id: input.id, status: input.status });
+  const outcome = await runStudioCapability(input.locale, "admin_update_newsletter_subscription", { id: input.id, status: input.status });
   if (!outcome.ok) throw new Error(outcome.error);
   revalidatePath(`/${input.locale}/studio/newsletter`);
   redirect(`/${input.locale}/studio/newsletter?updated=1`);
@@ -240,25 +227,10 @@ export async function updateNewsletterSubscriptionAction(formData: FormData) {
 export async function uploadMediaAction(formData: FormData) {
   const locale = z.enum(locales).catch("en").parse(formData.get("locale"));
   await requireEditor(locale);
-  const asset = formData.get("asset");
-  if (!(asset instanceof File) || !asset.size || asset.size > maxEditorImageBytes || !allowedMediaTypes.has(asset.type)) {
-    redirect(`/${locale}/studio/media?error=file`);
-  }
-  const bytes = new Uint8Array(await asset.arrayBuffer());
-  if (!hasExpectedImageSignature(bytes, asset.type)) {
-    redirect(`/${locale}/studio/media?error=file`);
-  }
-
-  const repositories = await getStudioEditorialRepositories();
-  if (!repositories.media.writable) redirect(`/${locale}/studio/media?error=configuration`);
-  try {
-    await repositories.media.uploadAsset({
-      name: asset.name.slice(0, 160),
-      mimeType: asset.type,
-      bytes,
-    });
-  } catch {
-    redirect(`/${locale}/studio/media?error=upload`);
+  const outcome = await uploadStudioMedia(locale, formData.get("asset"));
+  if (!outcome.ok) {
+    // The media page tells a file that is not accepted apart from storage that is missing or failing.
+    redirect(`/${locale}/studio/media?error=${outcome.error === "type" || outcome.error === "size" ? "file" : outcome.error}`);
   }
   revalidatePath(`/${locale}/studio/media`);
   redirect(`/${locale}/studio/media?uploaded=1`);
@@ -270,14 +242,10 @@ export async function deleteMediaAction(formData: FormData) {
     path: formData.get("path"),
   });
   await requireEditor(input.locale);
-  const repositories = await getStudioEditorialRepositories();
-  try {
-    await new MediaCommandService(repositories.media).deleteOne(input.path);
-  } catch (error) {
-    if (!(error instanceof EditorialRuleError)) throw error;
-    // The media page only tells "in use" apart; any other refusal reads as a plain error.
-    redirect(`/${input.locale}/studio/media?error=${error.message.includes("referenced") ? "in-use" : "delete"}`);
-  }
+  // The person chose to delete this exact file on the media page.
+  const outcome = await runStudioCapability(input.locale, "admin_delete_media", { path: input.path }, { confirmed: true });
+  // The media page only tells "in use" apart; any other refusal reads as a plain error.
+  if (!outcome.ok) redirect(`/${input.locale}/studio/media?error=${outcome.code === "media.referenced" ? "in-use" : "delete"}`);
   revalidatePath(`/${input.locale}/studio/media`);
   redirect(`/${input.locale}/studio/media?deleted=1`);
 }
@@ -287,8 +255,9 @@ export async function deleteMediaAction(formData: FormData) {
  * editor check and the `newsroom.read` scope are the ones the MCP endpoint applies.
  */
 export async function listEditorMediaAction(locale: string): Promise<EditorMediaListResult> {
-  await requireEditor(z.enum(locales).catch("en").parse(locale));
-  const outcome = await runEditorCapability("admin_list_media", {});
+  const language = z.enum(locales).catch("en").parse(locale);
+  await requireEditor(language);
+  const outcome = await runStudioCapability(language, "admin_list_media", {});
   if (!outcome.ok) return { ok: false, error: outcome.error };
 
   const { writable, items } = outcome.result as { writable: boolean; items: EditorMediaItem[] };
@@ -300,33 +269,16 @@ export async function listEditorMediaAction(locale: string): Promise<EditorMedia
 }
 
 /**
- * Uploads one image dropped or pasted into the Markdown editor. The same checks and storage as
+ * Uploads one image dropped or pasted into the Markdown editor. The same rules and storage as
  * `uploadMediaAction`, returning the stored URL for the editor to insert instead of redirecting.
- * Images are up to 8 MiB, larger than the `admin_upload_media` capability takes over MCP.
  */
 export async function uploadEditorMediaAction(formData: FormData): Promise<EditorMediaUploadResult> {
   const locale = z.enum(locales).catch("en").parse(formData.get("locale"));
   await requireEditor(locale);
-  const asset = formData.get("asset");
-  if (!(asset instanceof File) || !allowedMediaTypes.has(asset.type)) return { ok: false, error: "type" };
-  if (!asset.size || asset.size > maxEditorImageBytes) return { ok: false, error: "size" };
-  const bytes = new Uint8Array(await asset.arrayBuffer());
-  if (!hasExpectedImageSignature(bytes, asset.type)) return { ok: false, error: "type" };
+  const outcome = await uploadStudioMedia(locale, formData.get("asset"));
+  if (!outcome.ok) return outcome;
 
-  const repositories = await getStudioEditorialRepositories();
-  if (!repositories.media.writable) return { ok: false, error: "configuration" };
-  try {
-    const stored = await new MediaCommandService(repositories.media).uploadOne({
-      name: asset.name.slice(0, 160),
-      mimeType: asset.type,
-      bytes,
-    });
-    revalidatePath(`/${locale}/studio/media`);
-    return {
-      ok: true,
-      asset: { path: stored.path, url: stored.url, name: stored.name, mimeType: stored.mimeType },
-    };
-  } catch {
-    return { ok: false, error: "upload" };
-  }
+  revalidatePath(`/${locale}/studio/media`);
+  const { path, url, name, mimeType } = outcome.asset;
+  return { ok: true, asset: { path, url, name, mimeType } };
 }

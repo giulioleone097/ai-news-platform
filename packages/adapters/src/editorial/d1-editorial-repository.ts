@@ -446,6 +446,11 @@ export class D1EditorialRepository
     return article ?? null;
   }
 
+  async findByTranslationKey(translationKey: string, locale: Locale) {
+    const [article] = await this.queryArticles(new Where().add("a.locale = ?", locale).add("a.translation_key = ?", translationKey));
+    return article ?? null;
+  }
+
   /** The articles that exist among `ids`, by id. */
   private async articlesById(ids: string[]) {
     if (!ids.length) return new Map<string, Article>();
@@ -494,7 +499,8 @@ export class D1EditorialRepository
     timestamp: string,
   ) {
     return {
-      translation_key: existing?.translationKey ?? input.translationKey ?? crypto.randomUUID(),
+      // A key the caller names links the article to its translation; without one the article keeps its own.
+      translation_key: input.translationKey ?? existing?.translationKey ?? crypto.randomUUID(),
       locale: input.locale,
       slug: slugify(input.slug || input.title),
       title: input.title.trim(),
@@ -1000,6 +1006,11 @@ export class D1EditorialRepository
     return this.options.newsletter.listSubscriptions(query);
   }
 
+  async findSubscription(id: string) {
+    this.assertEditorial();
+    return this.options.newsletter.findSubscription(id);
+  }
+
   async updateSubscriptionStatus(id: string, status: "unsubscribed") {
     this.assertEditorial();
     return this.options.newsletter.updateSubscriptionStatus(id, status);
@@ -1067,6 +1078,13 @@ export class D1EditorialRepository
       .sort((left, right) => right.uploaded.getTime() - left.uploaded.getTime())
       .slice(0, listedAssets)
       .map(mapAsset);
+  }
+
+  async findAsset(path: string) {
+    const bucket = this.options.media;
+    if (!bucket || this.options.audience !== "editorial" || !isMediaPath(path)) return null;
+    const object = await bucket.head(`${mediaPrefix}${path}`);
+    return object ? mapAsset(object) : null;
   }
 
   async isAssetReferenced(path: string) {

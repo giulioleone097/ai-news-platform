@@ -46,7 +46,7 @@ export class TeamService {
     assertTeamRole(role);
     const name = memberDisplayName(email, input.name);
     if ((await this.directory.list()).some((member) => member.email === email)) {
-      throw new TeamRuleError(teamMessages.alreadyMember);
+      throw new TeamRuleError(teamMessages.alreadyMember, "team.alreadyMember");
     }
     return this.directory.invite({ email, role, name });
   }
@@ -58,22 +58,22 @@ export class TeamService {
     if (member.role === role) return member;
     if (role !== "admin") this.assertNotLastAdmin(members, member);
     const updated = await this.directory.setRole(id, role);
-    if (!updated) throw new TeamRuleError(teamMessages.notFound);
+    if (!updated) throw new TeamRuleError(teamMessages.notFound, "team.notFound");
     return updated;
   }
 
   async remove(id: string, actor: TeamActor) {
     const members = await this.directory.list();
     const member = this.find(members, id);
-    if (isSelf(member, actor)) throw new TeamRuleError(teamMessages.removeSelf);
+    if (isSelf(member, actor)) throw new TeamRuleError(teamMessages.removeSelf, "team.removeSelf");
     this.assertNotLastAdmin(members, member);
-    if (!(await this.directory.remove(id))) throw new TeamRuleError(teamMessages.notFound);
+    if (!(await this.directory.remove(id))) throw new TeamRuleError(teamMessages.notFound, "team.notFound");
     return member;
   }
 
   private find(members: readonly TeamMember[], id: string) {
     const member = members.find((candidate) => candidate.id === id);
-    if (!member) throw new TeamRuleError(teamMessages.notFound);
+    if (!member) throw new TeamRuleError(teamMessages.notFound, "team.notFound");
     return member;
   }
 
@@ -81,7 +81,7 @@ export class TeamService {
   private assertNotLastAdmin(members: readonly TeamMember[], member: TeamMember) {
     if (!isActiveAdmin(member)) return;
     if (!members.some((other) => other.id !== member.id && isActiveAdmin(other))) {
-      throw new TeamRuleError(teamMessages.lastAdmin);
+      throw new TeamRuleError(teamMessages.lastAdmin, "team.lastAdmin");
     }
   }
 }

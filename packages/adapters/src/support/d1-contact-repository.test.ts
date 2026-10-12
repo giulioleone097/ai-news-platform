@@ -112,6 +112,25 @@ describe("D1ContactMessageRepository", () => {
     expect(await repository.count("handled")).toBe(0);
   });
 
+  it("reads, changes and deletes several messages in one statement, leaving the others alone", async () => {
+    const stored = [message({ subject: "One" }), message({ subject: "Two" }), message({ subject: "Three" })];
+    for (const item of stored) await repository.create({ message: item, requesterKey: contactRequesterKey(item.id) });
+    const [one, two, three] = stored.map((item) => item.id);
+
+    expect((await repository.findMany([one, three, crypto.randomUUID()])).map((item) => item.id).sort()).toEqual([one, three].sort());
+    expect(await repository.findMany([])).toEqual([]);
+
+    await repository.setStatusMany([one, two], "archived");
+    expect((await repository.list({ status: "archived", cursor: null, limit: 10 })).items.map((item) => item.id).sort()).toEqual([one, two].sort());
+    expect(await repository.count("new")).toBe(1);
+
+    await repository.deleteMany([one, two]);
+    expect((await repository.list({ status: null, cursor: null, limit: 10 })).items.map((item) => item.id)).toEqual([three]);
+    await repository.setStatusMany([], "handled");
+    await repository.deleteMany([]);
+    expect(await repository.count("new")).toBe(1);
+  });
+
   it("refuses a sender after its limit, without storing the message, and keeps other senders working", async () => {
     for (let index = 0; index < contactPolicy.requesterLimit; index += 1) {
       expect(await repository.create({ message: message(), requesterKey: sender })).toBe("created");

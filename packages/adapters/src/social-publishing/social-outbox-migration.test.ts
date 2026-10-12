@@ -54,3 +54,31 @@ describe("social outbox migration", () => {
     expect(migration).toContain("when 'failed' then 2");
   });
 });
+
+describe("social outbox edit migration", () => {
+  const edit = readFileSync(
+    new URL("../../../../supabase/migrations/20261016131000_social_outbox_edit.sql", import.meta.url),
+    "utf8",
+  ).toLowerCase();
+
+  it("edits only a pending, never dispatched job at the revision that was read", () => {
+    const update = edit.slice(edit.indexOf("create or replace function public.update_pending_social_outbox"), edit.indexOf("create or replace function public.cancel_social_outbox_batch"));
+    expect(update).toContain("and revision = p_expected_revision");
+    expect(update).toContain("and status = 'pending'");
+    expect(update).toContain("and dispatch_started_at is null");
+    expect(update).toContain("and provider = p_provider");
+    expect(update).toContain("revision = revision + 1");
+  });
+
+  it("cancels a batch by calling the single cancellation, so one refusal rolls every job back", () => {
+    expect(edit).toContain("return query select * from public.cancel_social_outbox(v_id)");
+    expect(edit).toContain("cardinality(p_ids) not between 1 and 25");
+  });
+
+  it("is callable by the service role only", () => {
+    expect(edit).toContain("revoke all on function public.update_pending_social_outbox(uuid, bigint, text, jsonb, timestamptz, integer)\n  from public, anon, authenticated;");
+    expect(edit).toContain("revoke all on function public.cancel_social_outbox_batch(uuid[]) from public, anon, authenticated;");
+    expect(edit).toContain("to service_role");
+    expect(edit).not.toMatch(/grant [^;]*to (anon|authenticated)/u);
+  });
+});

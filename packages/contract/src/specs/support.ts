@@ -1,12 +1,13 @@
 import * as z from "zod/v4";
 
+import { batchLimit } from "@atlasnews/core/editorial/domain/errors";
 import { contactMessageStatuses, contactPolicy } from "@atlasnews/core/support/domain/contact-message";
 
 import { destructive, readOnly, write } from "../annotations";
 import { defineSpec } from "../capability";
 import { contentTrustSchema, untrustedDescription } from "../untrusted";
-
-const idSchema = z.string().uuid();
+import { batchNote, idSchema } from "./editorial";
+import { batchOutput } from "./shared";
 const statusSchema = z.enum(contactMessageStatuses);
 const unavailable = "The contact inbox is not configured or the request could not be completed.";
 
@@ -45,6 +46,19 @@ export const adminListContactMessages = defineSpec({
   scopes: ["newsroom.read"],
 });
 
+export const adminGetContactMessage = defineSpec({
+  ...base,
+  name: "admin_get_contact_message",
+  title: "Get contact message",
+  description:
+    "Get one message that a visitor sent through the contact form. The result contains personal data and requires an editor sign-in."
+    + untrustedDescription,
+  input: z.object({ id: idSchema }),
+  output: z.object({ message: messageSchema, contentTrust: contentTrustSchema }),
+  annotations: readOnly,
+  scopes: ["newsroom.read"],
+});
+
 export const adminUpdateContactMessage = defineSpec({
   ...base,
   name: "admin_update_contact_message",
@@ -69,4 +83,34 @@ export const adminDeleteContactMessage = defineSpec({
   confirmation: { question: ({ id }) => `Permanently delete contact message ${id}?` },
 });
 
-export const supportSpecs = [adminListContactMessages, adminUpdateContactMessage, adminDeleteContactMessage] as const;
+export const adminUpdateContactMessages = defineSpec({
+  ...base,
+  name: "admin_update_contact_messages",
+  title: "Update many contact message statuses",
+  description:
+    "Mark several contact messages new, handled or archived with one status, like admin_update_contact_message. "
+    + `This only records the editors' progress; it sends no reply.${batchNote("message ids")}`,
+  input: z.object({ ids: z.array(idSchema).min(1).max(batchLimit), status: statusSchema }),
+  output: batchOutput(z.literal("updated"), { id: z.string(), status: statusSchema }),
+  annotations: { ...write, idempotentHint: true },
+  scopes: ["newsroom.write"],
+});
+
+export const adminDeleteContactMessages = defineSpec({
+  ...base,
+  name: "admin_delete_contact_messages",
+  title: "Delete many contact messages",
+  description: `Permanently delete several contact messages. Archive them instead when they may be needed later.${batchNote("message ids")}`,
+  input: z.object({ ids: z.array(idSchema).min(1).max(batchLimit) }),
+  output: batchOutput(z.literal("deleted"), { id: z.string() }),
+  annotations: destructive,
+  scopes: ["newsroom.write"],
+  confirmation: {
+    question: ({ ids }) => `Permanently delete ${ids.length} contact message${ids.length === 1 ? "" : "s"}?`,
+  },
+});
+
+export const supportSpecs = [
+  adminListContactMessages, adminGetContactMessage, adminUpdateContactMessage, adminUpdateContactMessages,
+  adminDeleteContactMessage, adminDeleteContactMessages,
+] as const;

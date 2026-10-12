@@ -8,8 +8,10 @@ import { toUtcDateTimeInput } from "@/lib/editorial-datetime";
 import type { Article, Category, ClaimStatus } from "@atlasnews/core/editorial/domain/article";
 import type { EntitySummary } from "@atlasnews/core/editorial/domain/entity";
 import {
+  articleLimits,
   articleStatuses,
   claimStatuses,
+  slugPattern,
   socialChannels,
 } from "@atlasnews/core/editorial/domain/article";
 import { saveArticleAction } from "@/app/[locale]/(studio)/studio/actions";
@@ -24,6 +26,7 @@ import { Note } from "./note";
 import { PageHead } from "./page-head";
 import { studioSupplementalCopy } from "./studio-copy";
 import { StudioSubmitButton } from "./studio-submit-button";
+import { counterpartLocale, type TranslationChoices } from "./translation-choices";
 
 const channelLabels = { linkedin: "LinkedIn", x: "X", whatsapp: "WhatsApp" } as const;
 
@@ -53,6 +56,7 @@ export function ArticleForm({
   locale,
   messages,
   saved = false,
+  translations,
 }: {
   article?: Article;
   categories: Record<Locale, Category[]>;
@@ -61,6 +65,8 @@ export function ArticleForm({
   messages: Messages;
   /** The save action redirected here with `?saved=1`. */
   saved?: boolean;
+  /** What the "Translation of" field offers in each language, and the choice already made. */
+  translations: { choices: TranslationChoices; selected: string };
 }) {
   const [state, formAction] = useActionState(saveArticleAction, idleStudioActionState);
   const [articleLocale, setArticleLocale] = useState<Locale>(article?.locale ?? locale);
@@ -73,9 +79,15 @@ export function ArticleForm({
   const [coverAlt, setCoverAlt] = useState(article?.coverAlt ?? "");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [claimStatus, setClaimStatus] = useState<ClaimStatus | "">(article?.claimStatus ?? "");
+  const [translationOf, setTranslationOf] = useState(translations.selected);
   const wide = useSyncExternalStore(subscribeToWide, isWide, () => false);
   const copy = studioSupplementalCopy[locale];
   const optional = <span className="studio-field__optional"> ({copy.optional})</span>;
+  const withRange = (text: string, limit: { min: number; max: number }) =>
+    text.replace("{min}", String(limit.min)).replace("{max}", String(limit.max));
+  const translationChoices = translations.choices[counterpartLocale(articleLocale)];
+  // When creating worked but going live failed, the article exists: the next save updates it.
+  const articleId = state.articleId ?? article?.id;
 
   const fieldHasError = (name: string) => Boolean(state.fieldErrors?.[name]?.length);
   const fieldErrorId = (name: string) => `article-${name}-error`;
@@ -97,7 +109,7 @@ export function ArticleForm({
 
   return (
     <form className="studio-editor" action={formAction} noValidate>
-      {article ? <input name="id" type="hidden" value={article.id} /> : null}
+      {articleId ? <input name="id" type="hidden" value={articleId} /> : null}
 
       <PageHead
         back={{ href: `/${locale}/studio/articles`, label: messages.studio.articles }}
@@ -125,12 +137,12 @@ export function ArticleForm({
             <input
               {...fieldAccessibility("title", "article-title-help")}
               defaultValue={article?.title}
-              maxLength={180}
-              minLength={8}
+              maxLength={articleLimits.title.max}
+              minLength={articleLimits.title.min}
               name="title"
               required
             />
-            <small className="studio-field__hint" id="article-title-help">{copy.titleHelp}</small>
+            <small className="studio-field__hint" id="article-title-help">{withRange(copy.titleHelp, articleLimits.title)}</small>
             {fieldError("title")}
           </label>
 
@@ -139,9 +151,9 @@ export function ArticleForm({
             <input
               {...fieldAccessibility("slug", "article-slug-help")}
               defaultValue={article?.slug}
-              maxLength={96}
+              maxLength={articleLimits.slug.max}
               name="slug"
-              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+              pattern={slugPattern.source.slice(1, -1)}
             />
             <small className="studio-field__hint" id="article-slug-help">{copy.slugHelp}</small>
             {fieldError("slug")}
@@ -152,13 +164,13 @@ export function ArticleForm({
             <textarea
               {...fieldAccessibility("excerpt", "article-excerpt-help")}
               defaultValue={article?.excerpt}
-              maxLength={360}
-              minLength={20}
+              maxLength={articleLimits.excerpt.max}
+              minLength={articleLimits.excerpt.min}
               name="excerpt"
               required
               rows={3}
             />
-            <small className="studio-field__hint" id="article-excerpt-help">{copy.excerptHelp}</small>
+            <small className="studio-field__hint" id="article-excerpt-help">{withRange(copy.excerptHelp, articleLimits.excerpt)}</small>
             {fieldError("excerpt")}
           </label>
         </section>
@@ -246,6 +258,7 @@ export function ArticleForm({
                     const nextLocale = event.target.value as Locale;
                     setArticleLocale(nextLocale);
                     setCategorySlug(categories[nextLocale][0]?.slug ?? "");
+                    setTranslationOf("");
                   }}
                   value={articleLocale}
                 >
@@ -255,6 +268,25 @@ export function ArticleForm({
               )}
               {fieldError("locale")}
             </label>
+
+            {translationChoices.length || translationOf ? (
+              <label className="studio-field">
+                <span>{copy.translationOfLabel}{optional}</span>
+                <select
+                  {...fieldAccessibility("translationOf", "article-translation-help")}
+                  name="translationOf"
+                  onChange={(event) => setTranslationOf(event.target.value)}
+                  value={translationOf}
+                >
+                  <option value="">{copy.translationOfNone}</option>
+                  {translationChoices.map((choice) => (
+                    <option key={choice.slug} value={choice.slug}>{choice.title}</option>
+                  ))}
+                </select>
+                <small className="studio-field__hint" id="article-translation-help">{copy.translationOfHelp}</small>
+                {fieldError("translationOf")}
+              </label>
+            ) : null}
 
             <label className="studio-field">
               <span>{messages.studio.claimStatusLabel}</span>
@@ -394,8 +426,8 @@ export function ArticleForm({
                 <span>{copy.coverAltLabel}</span>
                 <input
                   {...fieldAccessibility("coverAlt", "article-cover-alt-help")}
-                  maxLength={240}
-                  minLength={3}
+                  maxLength={articleLimits.coverAlt.max}
+                  minLength={articleLimits.coverAlt.min}
                   name="coverAlt"
                   onChange={(event) => setCoverAlt(event.target.value)}
                   required

@@ -4,6 +4,7 @@ import { CapabilityFailure, implement } from "../capability";
 import {
   adminDeleteMedia,
   adminDeleteMediaAssets,
+  adminGetMedia,
   adminListMedia,
   adminUploadMedia,
   adminUploadMediaAssets,
@@ -24,6 +25,12 @@ export const mediaCapabilities = [
   implement(adminListMedia, async (ports) => {
     const repository = await ports.editorial();
     return { writable: repository.writable, items: (await repository.listAssets()).map((asset) => ({ ...asset })) };
+  }),
+
+  implement(adminGetMedia, async (ports, { path }) => {
+    const asset = await (await ports.editorial()).findAsset(path);
+    if (!asset) throw new CapabilityFailure("Media asset not found.");
+    return { asset: { ...asset } };
   }),
 
   implement(adminUploadMedia, async (ports, { name, mimeType, dataBase64 }) => {
