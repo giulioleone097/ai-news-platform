@@ -1,11 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { OwnComment, PublicComment } from "@atlasnews/core/comments/domain/comment";
-import {
-  CommentForm,
-  commentCopy,
-  mergeCommentViews,
-} from "./comments-widget";
+import { commentCopy } from "./comment-copy";
+import { CommentForm } from "./comment-form";
+import { mergeCommentViews } from "./comment-views";
+import { InlineEditForm } from "./owner-management";
 
 const articleId = "f0d16765-a03d-4c55-9e1c-fd6c6c87557f";
 
@@ -93,5 +92,22 @@ describe("comment owner UX", () => {
     expect(views.publicEntries.map(({ comment }) => comment.id)).toEqual([approvedId, otherId]);
     expect(views.publicEntries[0]?.ownership?.status).toBe("approved");
     expect(views.standaloneOwned.map((comment) => comment.id)).toEqual([pendingId]);
+  });
+
+  it("labels the inline edit fields in the language of the widget", () => {
+    const edit = (language: "en" | "it") => renderToStaticMarkup(
+      <InlineEditForm
+        busy={false}
+        comment={owned("014fb7a4-97db-4566-9200-13bf795c78fd", "approved")}
+        onCancel={() => undefined}
+        onSubmit={() => undefined}
+        text={commentCopy[language]}
+      />,
+    );
+
+    expect(edit("en")).toContain('aria-label="Display name"');
+    expect(edit("en")).toContain('aria-label="Comment"');
+    expect(edit("it")).toContain('aria-label="Nome visualizzato"');
+    expect(edit("it")).toContain('aria-label="Commento"');
   });
 });
