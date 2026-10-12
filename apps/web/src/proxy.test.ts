@@ -82,7 +82,7 @@ describe("proxy framing policy", () => {
     }
     // /studio without a locale is redirected to the default locale first; the redirect is not framable content.
     const redirect = await proxy(new NextRequest("https://atlasnews.test/studio"));
-    expect(redirect.status).toBe(308);
+    expect(redirect.status).toBe(307);
   });
 
   it("leaves public pages to the general rule", async () => {
@@ -90,6 +90,42 @@ describe("proxy framing policy", () => {
       const response = await proxy(new NextRequest(`https://atlasnews.test${path}`));
       expect(response.headers.get("x-frame-options"), path).toBeNull();
     }
+  });
+});
+
+describe("proxy locale redirect", () => {
+  beforeEach(() => {
+    mocks.getSupabaseEnvironment.mockReset();
+    mocks.getSupabaseEnvironment.mockReturnValue(null);
+  });
+
+  const visit = (path: string, acceptLanguage?: string) => proxy(new NextRequest(
+    `https://atlasnews.test${path}`,
+    acceptLanguage ? { headers: { "accept-language": acceptLanguage } } : undefined,
+  ));
+
+  it("sends / to the language the browser prefers, temporarily", async () => {
+    const italian = await visit("/", "it-IT,it;q=0.9,en;q=0.8");
+    expect(italian.status).toBe(307);
+    expect(italian.headers.get("location")).toBe("https://atlasnews.test/it");
+    expect(italian.headers.get("vary")).toContain("Accept-Language");
+
+    const english = await visit("/", "en-US,en;q=0.9");
+    expect(english.headers.get("location")).toBe("https://atlasnews.test/en");
+  });
+
+  it("falls back to English without a usable header and keeps the rest of the path and the query", async () => {
+    expect((await visit("/")).headers.get("location")).toBe("https://atlasnews.test/en");
+    expect((await visit("/", "de")).headers.get("location")).toBe("https://atlasnews.test/en");
+
+    const deep = await visit("/latest?page=2", "it");
+    expect(deep.headers.get("location")).toBe("https://atlasnews.test/it/latest?page=2");
+  });
+
+  it("leaves prefixed routes alone whatever the browser prefers", async () => {
+    const response = await visit("/en/latest", "it");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
   });
 });
 

@@ -52,7 +52,7 @@ async function callAdmin(name, args) {
   return result.payload.result.structuredContent;
 }
 
-const root = await get("/", 308);
+const root = await get("/", 307);
 assert(new URL(root.headers.get("location"), baseUrl).pathname === "/en", "Root locale redirect failed.");
 const home = await get("/en", 200);
 assert(/AtlasNews/.test(await home.text()), "English home body is incomplete.");

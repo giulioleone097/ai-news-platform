@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getContentMode, getSupabaseEnvironment } from "@atlasnews/adapters/config/env";
-import { defaultLocale, isLocale, locales } from "@/i18n";
+import { isLocale, locales } from "@/i18n";
+import { preferredLocale } from "@/lib/accept-language";
 
 const PUBLIC_FILE = /\.[a-z0-9]+$/i;
 
@@ -76,11 +77,13 @@ async function route(request: NextRequest) {
   if (shouldLocalize(pathname)) {
     const localeSegment = pathname.split("/")[1];
     if (!isLocale(localeSegment)) {
+      // The language is the browser's choice, so the redirect is temporary and varies by that header.
+      const locale = preferredLocale(request.headers.get("accept-language"));
       const destination = request.nextUrl.clone();
-      destination.pathname = pathname === "/"
-        ? `/${defaultLocale}`
-        : `/${defaultLocale}${pathname}`;
-      return NextResponse.redirect(destination, 308);
+      destination.pathname = pathname === "/" ? `/${locale}` : `/${locale}${pathname}`;
+      const redirect = NextResponse.redirect(destination, 307);
+      redirect.headers.append("Vary", "Accept-Language");
+      return redirect;
     }
   }
 
