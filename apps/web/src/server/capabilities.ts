@@ -9,10 +9,10 @@ import {
   scopesForRole,
   siteLinks,
   sourceUnavailableMessage,
+  type Capability,
   type CapabilityErrorCode,
   type CapabilityPorts,
   type Principal,
-  type Scope,
 } from "@atlasnews/contract";
 import { locales, type Locale } from "@atlasnews/core/locale";
 import { getMessages } from "@/i18n";
@@ -147,10 +147,18 @@ function refreshAfterWrite(invalidations: Map<Locale, Set<string>>) {
   }
 }
 
-type EditorAccess = { ok: true; editor: EditorIdentity; principal: Principal };
+type EditorAccess = { ok: true; editor: EditorIdentity; principal: Principal; capability: Capability };
 
-/** The signed-in editor as the caller capabilities see: 401 with nobody signed in, 403 without an editor profile. */
-async function resolveEditor(options: CapabilityRunOptions): Promise<EditorAccess | Refusal> {
+/**
+ * Who may run `name`, as every caller sees it: 401 with nobody signed in, 403 for a signed-in account
+ * without an editor profile or without a scope the capability needs, 404 for a name the page does not offer.
+ * `runEditorCapability` starts here. So does a Studio write that cannot be a capability call (the media
+ * upload takes the file itself, not base64), so it is refused for the same reasons and not by a copy of the rule.
+ */
+export async function authorizeEditorCapability(
+  name: string,
+  options: CapabilityRunOptions = {},
+): Promise<EditorAccess | Refusal> {
   const editor = await getEditorIdentity();
   if (!editor) {
     return (await isSignedIn())
@@ -163,34 +171,12 @@ async function resolveEditor(options: CapabilityRunOptions): Promise<EditorAcces
     scopes: scopesForRole(editor.role),
     authorId: editor.author.id,
   };
-  return { ok: true, editor, principal };
-}
-
-/** 403 unless the editor's role grants every scope that `subject` (a capability name, an upload) needs. */
-function lacksScopes(
-  principal: Principal,
-  required: readonly Scope[],
-  subject: string,
-  options: CapabilityRunOptions,
-): Refusal | null {
-  return hasScopes(principal, required)
-    ? null
-    : refuse(options, 403, `This account lacks the ${required.join(", ")} permission that ${subject} needs.`, "noPermission");
-}
-
-/**
- * The scope check that a capability gets, for a Studio write that cannot be one: the editor must be
- * signed in with an editor profile whose role grants `required`. Used by the media upload (see
- * `media-upload.ts`); every other write goes through `runEditorCapability`.
- */
-export async function requireEditorScopes(
-  required: readonly Scope[],
-  subject: string,
-  options: CapabilityRunOptions = {},
-): Promise<EditorAccess | Refusal> {
-  const access = await resolveEditor(options);
-  if (!access.ok) return access;
-  return lacksScopes(access.principal, required, subject, options) ?? access;
+  const capability = pageCapabilities.get(name);
+  if (!capability) return refuse(options, 404, `Unknown capability ${name}.`, "unknownAction");
+  if (!hasScopes(principal, capability.scopes)) {
+    return refuse(options, 403, `This account lacks the ${capability.scopes.join(", ")} permission that ${name} needs.`, "noPermission");
+  }
+  return { ok: true, editor, principal, capability };
 }
 
 export async function runEditorCapability(
@@ -198,14 +184,9 @@ export async function runEditorCapability(
   input: unknown,
   options: CapabilityRunOptions = {},
 ): Promise<CapabilityRunResult> {
-  const access = await resolveEditor(options);
+  const access = await authorizeEditorCapability(name, options);
   if (!access.ok) return access;
-  const { editor, principal } = access;
-
-  const capability = pageCapabilities.get(name);
-  if (!capability) return refuse(options, 404, `Unknown capability ${name}.`, "unknownAction");
-  const denied = lacksScopes(principal, capability.scopes, name, options);
-  if (denied) return denied;
+  const { editor, principal, capability } = access;
 
   const parsed = capability.input.safeParse(input ?? {});
   if (!parsed.success) {
