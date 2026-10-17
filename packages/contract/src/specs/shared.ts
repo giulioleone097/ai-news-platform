@@ -5,7 +5,7 @@ import { claimStatuses, slugPattern } from "@atlasnews/core/editorial/domain/art
 import { entityKinds } from "@atlasnews/core/editorial/domain/entity";
 
 /** The newsroom MCP App that renders article tools in hosts that support MCP Apps. */
-export const newsroomAppUri = "ui://atlasnews/newsroom-v1.html";
+export const newsroomAppUri = "ui://atlasnews/newsroom-v2.html";
 
 export const localeSchema = z
   .enum(locales)

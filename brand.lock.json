@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "sourceRepository": "giulioleone097/leoneis-agent-marketplace",
+  "inputSha256": {
+    "brand/registry.json": "d736b7cd62ada556e1733734285603f306c4653d7f00f11727cf6c450f676254",
+    "brand/tokens.json": "6b71c368d365d0e415367dc28cd8eea01b14ae68012cc22db34125c1c9aa6aed",
+    "scripts/brand.py": "f4eedac00a4da21f9d563335e0128a7cc8211edb9a7fcb8ffd875ec5b3816b3b",
+    "scripts/geometry.py": "a43329dd8013d0d0a3b90ad1d7432f3ad4a6704f65df1c0a3f40b4b431cdccdc"
+  },
+  "destinationsSha256": "625080a0427c0078940be3062c19bb61afc4ba33ae8d9a8e2658e83b0a7bfbb7",
+  "assets": {
+    "apps/web/public/brand-mark.svg": {
+      "source": "brand/generated/atlasnews/mark.svg",
+      "sha256": "47ced3f99c0c7b1909af5d34cbb30ac55c44e81d267042c48658bc098ebe546c"
+    },
+    "apps/web/public/icon.svg": {
+      "source": "brand/generated/atlasnews/logo.svg",
+      "sha256": "6e7ae1dd3907133e3e6dbbdd43ca6330ff04529780023acbf8e5bfa72010287c"
+    },
+    "apps/web/public/mcp/atlasnews-icon.svg": {
+      "source": "brand/generated/atlasnews/mono.svg",
+      "sha256": "dfc91c64d6fb7c58cfd2e3c362534753bbda801aa940828c4c35a8bbaa48d511"
+    },
+    "plugins/atlasnews/assets/icon-dark.svg": {
+      "source": "brand/generated/atlasnews/mono.svg",
+      "sha256": "dfc91c64d6fb7c58cfd2e3c362534753bbda801aa940828c4c35a8bbaa48d511"
+    },
+    "plugins/atlasnews/assets/icon.svg": {
+      "source": "brand/generated/atlasnews/mono.svg",
+      "sha256": "dfc91c64d6fb7c58cfd2e3c362534753bbda801aa940828c4c35a8bbaa48d511"
+    },
+    "plugins/atlasnews/assets/logo-dark.svg": {
+      "source": "brand/generated/atlasnews/dark.svg",
+      "sha256": "4eefa7d1e75d58a686c62feb5f47bf57a010ce6c7983cbd96f657d0e9b3d9584"
+    },
+    "plugins/atlasnews/assets/logo.svg": {
+      "source": "brand/generated/atlasnews/logo.svg",
+      "sha256": "6e7ae1dd3907133e3e6dbbdd43ca6330ff04529780023acbf8e5bfa72010287c"
+    },
+    "plugins/atlasnews/assets/mark.svg": {
+      "source": "brand/generated/atlasnews/mark.svg",
+      "sha256": "47ced3f99c0c7b1909af5d34cbb30ac55c44e81d267042c48658bc098ebe546c"
+    }
+  }
+}

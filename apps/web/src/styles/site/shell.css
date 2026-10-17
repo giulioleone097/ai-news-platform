@@ -34,28 +34,12 @@
 }
 
 .brand__mark {
-  display: inline-flex;
+  display: inline-block;
   width: 1.75rem;
   height: 1.75rem;
   flex: none;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 0.125rem;
-  padding-bottom: 0.375rem;
-  border-radius: 0.375rem;
-  background: var(--accent);
+  background: url("/brand-mark.svg") center / contain no-repeat;
 }
-
-.brand__mark i {
-  width: 0.1875rem;
-  border-radius: 1px;
-  background: var(--on-accent);
-}
-
-.brand__mark i:nth-child(1) { height: 0.375rem; }
-.brand__mark i:nth-child(2) { height: 0.5625rem; }
-.brand__mark i:nth-child(3) { height: 0.75rem; }
-.brand__mark i:nth-child(4) { height: 0.9375rem; }
 
 .site-header .brand {
   grid-area: brand;

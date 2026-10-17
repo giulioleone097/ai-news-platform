@@ -3,7 +3,7 @@ import { locales } from "@atlasnews/core/locale";
 import { newsroomClient } from "./newsroom-client";
 import { parseDeepLink, renderMarkdown } from "./widget-helpers";
 
-const styles = `
+const styles = (brandIconUrl: string) => `
 :root{color-scheme:light dark;--accent:#ffd60a;--on-accent:#111214;--bg:var(--color-background-primary,#fff);--bg2:var(--color-background-secondary,#f6f6f4);
 --fg:var(--color-text-primary,#111214);--fg2:var(--color-text-secondary,#5c5c5c);--line:var(--color-border-primary,rgba(0,0,0,.12));
 --radius:var(--border-radius-lg,0.5rem);font-family:var(--font-sans,ui-sans-serif,system-ui,sans-serif);}
@@ -14,7 +14,7 @@ body{padding:calc(0.75rem + var(--inset-top,0rem)) calc(0.875rem + var(--inset-r
 button,input{font:inherit;color:inherit}button{cursor:pointer;border:1px solid var(--line);background:var(--bg2);border-radius:0.5rem;padding:0.375rem 0.75rem;font-weight:600}
 button[aria-pressed=true]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .bar{display:flex;gap:0.625rem;align-items:center;flex-wrap:wrap;margin-bottom:0.75rem}.brand{font-weight:800;letter-spacing:-.03em}
-.brand::before{content:"";display:inline-block;width:.72em;height:.72em;margin-right:.4em;border-radius:.2em;background:var(--accent)}
+.brand::before{content:"";display:inline-block;width:1em;height:1em;margin-right:.4em;vertical-align:middle;background:url(${JSON.stringify(brandIconUrl)}) center / contain no-repeat}
 .search{flex:1;min-width:10rem}.search input{width:100%;border:1px solid var(--line);border-radius:0.25rem;padding:0.4375rem 0.75rem;background:var(--bg)}
 .locales{display:flex;gap:0.25rem}.chips{display:flex;gap:0.375rem;overflow-x:auto;padding-bottom:0.5rem;margin-bottom:0.375rem}.chips button{white-space:nowrap}
 .card{border-top:1px solid var(--line);padding:0.75rem 0.125rem;cursor:pointer}.card:hover h3{text-decoration:underline var(--accent);text-decoration-thickness:.16em;text-underline-offset:.14em}
@@ -38,5 +38,5 @@ export function renderNewsroomWidget(options: { siteOrigin: string; version: str
   if (/<\/script/i.test(script)) throw new Error("Newsroom widget script must not contain a closing script tag.");
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AtlasNews</title><style>${styles}</style></head><body><div id="app" aria-live="polite"></div><script>${script}</script></body></html>`;
+<title>AtlasNews</title><style>${styles(new URL("/brand-mark.svg", options.siteOrigin).href)}</style></head><body><div id="app" aria-live="polite"></div><script>${script}</script></body></html>`;
 }
