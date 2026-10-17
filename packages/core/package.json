@@ -10,7 +10,7 @@
     "remark-gfm": "4.0.1",
     "remark-parse": "11.0.0",
     "unified": "11.0.5",
-    "zod": "^4.4.3"
+    "zod": "^4.6.5"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

@@ -9,7 +9,7 @@
   "dependencies": {
     "@atlasnews/core": "workspace:*",
     "@supabase/supabase-js": "^2.117.3",
-    "zod": "^4.4.3"
+    "zod": "^4.6.5"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
