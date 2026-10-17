@@ -2,44 +2,44 @@
   "schemaVersion": 1,
   "sourceRepository": "giulioleone097/leoneis-agent-marketplace",
   "inputSha256": {
-    "brand/registry.json": "d736b7cd62ada556e1733734285603f306c4653d7f00f11727cf6c450f676254",
+    "brand/registry.json": "8a7e4c54779d02eb67779edb742fad7e9b72bbecb281292890b6c17ea1e3d64e",
     "brand/tokens.json": "6b71c368d365d0e415367dc28cd8eea01b14ae68012cc22db34125c1c9aa6aed",
-    "scripts/brand.py": "f4eedac00a4da21f9d563335e0128a7cc8211edb9a7fcb8ffd875ec5b3816b3b",
-    "scripts/geometry.py": "a43329dd8013d0d0a3b90ad1d7432f3ad4a6704f65df1c0a3f40b4b431cdccdc"
+    "scripts/brand.py": "a876d24367a48d4eaed8ed749405cc3b1d5e7b46b4006cf9c8ed80d3b17d0ed1",
+    "scripts/geometry.py": "6dffbb73dd986f47865305d13513e338c5739c76b829c005fff08ec52f597260"
   },
   "destinationsSha256": "625080a0427c0078940be3062c19bb61afc4ba33ae8d9a8e2658e83b0a7bfbb7",
   "assets": {
     "apps/web/public/brand-mark.svg": {
       "source": "brand/generated/atlasnews/mark.svg",
-      "sha256": "47ced3f99c0c7b1909af5d34cbb30ac55c44e81d267042c48658bc098ebe546c"
+      "sha256": "6e0b66297cf13ac2f9f640cf66850e3998b16e53614c96ab3a2b7bfd6da842e2"
     },
     "apps/web/public/icon.svg": {
       "source": "brand/generated/atlasnews/logo.svg",
-      "sha256": "6e7ae1dd3907133e3e6dbbdd43ca6330ff04529780023acbf8e5bfa72010287c"
+      "sha256": "a789f29fb55765e46c2195acbd123f02a1e79572a296f130f7707091b63b8315"
     },
     "apps/web/public/mcp/atlasnews-icon.svg": {
       "source": "brand/generated/atlasnews/mono.svg",
-      "sha256": "dfc91c64d6fb7c58cfd2e3c362534753bbda801aa940828c4c35a8bbaa48d511"
+      "sha256": "f917bf9ddf88e384e425c1042e07cb97295c09d3e90cb0b9a41301af8e1295bc"
     },
     "plugins/atlasnews/assets/icon-dark.svg": {
       "source": "brand/generated/atlasnews/mono.svg",
-      "sha256": "dfc91c64d6fb7c58cfd2e3c362534753bbda801aa940828c4c35a8bbaa48d511"
+      "sha256": "f917bf9ddf88e384e425c1042e07cb97295c09d3e90cb0b9a41301af8e1295bc"
     },
     "plugins/atlasnews/assets/icon.svg": {
       "source": "brand/generated/atlasnews/mono.svg",
-      "sha256": "dfc91c64d6fb7c58cfd2e3c362534753bbda801aa940828c4c35a8bbaa48d511"
+      "sha256": "f917bf9ddf88e384e425c1042e07cb97295c09d3e90cb0b9a41301af8e1295bc"
     },
     "plugins/atlasnews/assets/logo-dark.svg": {
       "source": "brand/generated/atlasnews/dark.svg",
-      "sha256": "4eefa7d1e75d58a686c62feb5f47bf57a010ce6c7983cbd96f657d0e9b3d9584"
+      "sha256": "a915ba26ff850ecfcf11bcedf74adc39037a85d5f3c1a98bb4802892278bfd80"
     },
     "plugins/atlasnews/assets/logo.svg": {
       "source": "brand/generated/atlasnews/logo.svg",
-      "sha256": "6e7ae1dd3907133e3e6dbbdd43ca6330ff04529780023acbf8e5bfa72010287c"
+      "sha256": "a789f29fb55765e46c2195acbd123f02a1e79572a296f130f7707091b63b8315"
     },
     "plugins/atlasnews/assets/mark.svg": {
       "source": "brand/generated/atlasnews/mark.svg",
-      "sha256": "47ced3f99c0c7b1909af5d34cbb30ac55c44e81d267042c48658bc098ebe546c"
+      "sha256": "6e0b66297cf13ac2f9f640cf66850e3998b16e53614c96ab3a2b7bfd6da842e2"
     }
   }
 }
