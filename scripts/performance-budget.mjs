@@ -16,7 +16,7 @@ const nextRoot = join(webRoot, ".next");
 const serverRoot = join(nextRoot, "server", "app");
 const sitesRoot = join(webRoot, "dist");
 const publicBudget = 145 * 1024;
-// ceiling: the article page measures 144.2 KB (brotli) on the Sites build; the framework, vinext and the app
+// ceiling: the article page measures 141.8 KB (brotli) on the Sites build; the framework, vinext and the app
 // entry are 131 KB of it and are not ours to shrink. Lower it with every vinext upgrade that makes them smaller.
 const sitesPublicBudget = 148 * 1024;
 const cssBudget = 35 * 1024;
