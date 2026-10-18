@@ -1,7 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
-import { Mail } from "lucide-react";
+import { useActionState, type ReactNode } from "react";
 import {
   subscribeToNewsletter,
   type NewsletterState,
@@ -16,10 +15,13 @@ const initialNewsletterState: NewsletterState = {
 export function NewsletterForm({
   locale,
   copy,
+  icon,
   source = "site",
 }: {
   locale: Locale;
   copy: Messages["newsletter"];
+  /** Server-rendered so the icon library stays out of the client bundle. */
+  icon: ReactNode;
   source?: string;
 }) {
   const [state, action, pending] = useActionState(
@@ -32,7 +34,7 @@ export function NewsletterForm({
   return (
     <section className="newsletter" id="newsletter" aria-labelledby="newsletter-band-title">
       <div className="newsletter__intro">
-        <Mail aria-hidden="true" />
+        {icon}
         <h2 id="newsletter-band-title">{copy.title}</h2>
         <p>{copy.description}</p>
       </div>

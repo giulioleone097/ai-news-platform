@@ -1,7 +1,7 @@
 /* The Studio confirmation: a native modal dialog that looks like the agent-approval dialog. */
 .confirm-dialog {
   width: min(32rem, calc(100vw - 2rem));
-  padding: 1.25rem;
+  padding: var(--space-5);
   margin: auto;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
@@ -14,23 +14,23 @@
 }
 
 .confirm-dialog__title {
-  margin: 0 0 0.5rem;
-  font-size: 1.125rem;
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-title);
   overflow-wrap: anywhere;
 }
 
 .confirm-dialog__line {
-  margin: 0 0 1rem;
+  margin: 0 0 var(--space-4);
   color: var(--fg-muted);
-  font-size: 0.9375rem;
+  font-size: var(--text-ui);
 }
 
 .confirm-dialog__actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 .confirm-dialog__line + .confirm-dialog__actions {

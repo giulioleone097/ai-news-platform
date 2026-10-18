@@ -24,7 +24,7 @@
 
 .article-editor__publish {
   order: 2;
-  padding-top: 1.25rem;
+  padding-top: var(--space-5);
   border-top: 1px solid var(--line);
 }
 
@@ -37,35 +37,35 @@
   display: flex;
   min-height: 2.75rem;
   align-items: center;
-  font-size: 0.9375rem;
+  font-size: var(--text-ui);
   font-weight: 600;
   cursor: pointer;
 }
 
 .article-editor__extras-body {
   display: grid;
-  gap: 1rem;
-  padding-bottom: 1.25rem;
+  gap: var(--space-4);
+  padding-bottom: var(--space-5);
 }
 
 .article-editor__share {
   display: grid;
   min-width: 0;
-  gap: 0.5rem;
+  gap: var(--space-2);
   padding: 0;
   border: 0;
 }
 
 .article-editor__share > legend {
   padding: 0;
-  margin-bottom: 0.5rem;
-  font-size: 0.9375rem;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-ui);
   font-weight: 600;
 }
 
 .article-editor__danger {
   order: 5;
-  padding-block: 1rem;
+  padding-block: var(--space-4);
   border-top: 1px solid var(--line);
 }
 
@@ -82,7 +82,7 @@
 .article-claim {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .article-claim__select {
@@ -93,13 +93,13 @@
 .article-claim__glyph {
   display: inline-flex;
   flex: none;
-  font-size: 1.25rem;
+  font-size: var(--text-title-large);
 }
 
 /* Cover: a thumbnail or an empty state, the library button, a URL as the fallback. */
 .article-cover {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--space-3);
   justify-items: start;
 }
 
@@ -114,13 +114,13 @@
 
 .article-cover__empty {
   color: var(--fg-muted);
-  font-size: 0.9375rem;
+  font-size: var(--text-ui);
 }
 
 .article-cover__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .article-cover__url > summary {
@@ -128,7 +128,7 @@
   min-height: 2.25rem;
   align-items: center;
   color: var(--fg-muted);
-  font-size: 0.875rem;
+  font-size: var(--text-ui-small);
   font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 0.2em;
@@ -136,13 +136,14 @@
 }
 
 .article-cover__url[open] > summary {
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
-/* Below the two-column layout Save and Cancel stay in reach as a bar fixed to the bottom of the screen. */
-@media (max-width: 63.99rem) {
+/* Below the two-column layout Save and Cancel stay in reach as a bar fixed to the bottom of the screen, side by side
+   while both fit and one above the other at a large text size. */
+@container studio (width < 50rem) {
   .article-editor {
-    padding-bottom: 4.5rem;
+    padding-bottom: calc(var(--space-16) + var(--space-2));
   }
 
   .article-editor__actions {
@@ -151,8 +152,8 @@
     right: 0;
     bottom: 0;
     left: 0;
-    grid-template-columns: 1fr 1fr;
-    padding: 0.625rem var(--gutter) calc(0.625rem + env(safe-area-inset-bottom));
+    grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr));
+    padding: var(--space-2-5) var(--gutter) calc(var(--space-2-5) + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
     background: var(--bg);
   }
@@ -162,15 +163,15 @@
   }
 }
 
-@media (min-width: 64rem) {
+@container studio (width >= 50rem) {
   .article-editor {
-    grid-template-columns: minmax(0, 1fr) 19rem;
+    grid-template-columns: minmax(0, 1fr) var(--side-column);
     grid-template-areas:
       "intro panel"
       "body panel";
     align-content: start;
     align-items: start;
-    column-gap: 2rem;
+    column-gap: var(--space-8);
   }
 
   .article-editor__intro {
@@ -189,7 +190,7 @@
     display: grid;
     grid-area: panel;
     max-height: calc(100svh - 2rem);
-    padding: 1rem;
+    padding: var(--space-4);
     overflow-y: auto;
     border-radius: var(--radius);
     background: var(--bg-sunken);
@@ -207,7 +208,7 @@
   /* Save follows the settings it acts on, so it is in view when the page opens and when the panel sticks;
      the extras and Delete scroll below it. */
   .article-editor__actions {
-    padding-block: 1rem;
+    padding-block: var(--space-4);
     border-top: 1px solid var(--line);
   }
 
@@ -225,7 +226,7 @@
   }
 
   .article-editor__extras-body {
-    padding-bottom: 1rem;
+    padding-bottom: var(--space-4);
   }
 }
 

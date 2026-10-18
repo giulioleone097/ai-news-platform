@@ -26,8 +26,47 @@
   --radius-sm: var(--atlasnews-rounded-sm);
   --radius: var(--atlasnews-rounded-md);
   --radius-lg: var(--atlasnews-rounded-lg);
-  --gutter: clamp(var(--atlasnews-spacing-gutter-mobile), 4vw, var(--atlasnews-spacing-gutter-desktop));
-  --shell: 80rem;
+  /* The type scale (DESIGN.md typography). Every font-size in the stylesheets is one of these, or em. */
+  --text-label: var(--atlasnews-typography-label-font-size);
+  --text-ui-small: var(--atlasnews-typography-ui-small-font-size);
+  --text-ui: var(--atlasnews-typography-ui-font-size);
+  --text-base: var(--atlasnews-typography-base-font-size);
+  --text-title: var(--atlasnews-typography-title-font-size);
+  --text-deck: var(--atlasnews-typography-deck-font-size);
+  --text-body: var(--atlasnews-typography-body-font-size);
+  --text-title-large: var(--atlasnews-typography-title-large-font-size);
+  --text-headline-small: var(--atlasnews-typography-headline-small-font-size);
+  --text-headline: var(--atlasnews-typography-headline-font-size);
+  --text-headline-large: var(--atlasnews-typography-headline-large-font-size);
+  --text-display-mobile: var(--atlasnews-typography-display-mobile-font-size);
+  --text-display: var(--atlasnews-typography-display-font-size);
+  /* Fluid headings grow from the phone size to the wide one. The middle term is rem plus vw, so a reader who
+     raises their text size still gets larger headings. */
+  --text-headline-fluid: clamp(var(--text-headline), 1.25rem + 1.6vw, var(--text-headline-large));
+  --text-display-fluid: clamp(var(--text-display-mobile), 1.2rem + 3.2vw, var(--text-display));
+  /* The spacing scale (DESIGN.md spacing): --space-N is N quarter-rems, with half steps for chips and controls. */
+  --space-0-5: var(--atlasnews-spacing-0-5);
+  --space-1: var(--atlasnews-spacing-1);
+  --space-1-5: var(--atlasnews-spacing-1-5);
+  --space-2: var(--atlasnews-spacing-2);
+  --space-2-5: var(--atlasnews-spacing-2-5);
+  --space-3: var(--atlasnews-spacing-3);
+  --space-4: var(--atlasnews-spacing-4);
+  --space-5: var(--atlasnews-spacing-5);
+  --space-6: var(--atlasnews-spacing-6);
+  --space-8: var(--atlasnews-spacing-8);
+  --space-10: var(--atlasnews-spacing-10);
+  --space-12: var(--atlasnews-spacing-12);
+  --space-16: var(--atlasnews-spacing-16);
+  /* The gutter never takes more than a sixteenth of a phone screen each side, even at a large text size. */
+  --gutter: clamp(min(var(--atlasnews-spacing-gutter-mobile), 6.25vw), 4vw, var(--atlasnews-spacing-gutter-desktop));
+  --shell: var(--atlasnews-spacing-shell);
+  --measure: var(--atlasnews-spacing-measure);
+  --side-column: var(--atlasnews-spacing-side-column);
+  /* The focus ring, and the room a scrolling row leaves so the ring is not clipped. */
+  --focus-ring: 0.1875rem;
+  --focus-offset: 0.125rem;
+  --focus-room: calc(var(--focus-ring) + var(--focus-offset));
   --ease: 160ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
@@ -42,18 +81,18 @@
     --line-strong: var(--atlasnews-color-night-rule-strong);
     --line-control: var(--atlasnews-color-night-control);
     /* The light-page semantic colors are too dark to read as text on night, so each gets a lighter twin. */
-    --success: #6fcf8a;
-    --warning: #f08a3c;
-    --danger: #ff8a7d;
-    --info: #8fb6ff;
+    --success: var(--atlasnews-color-night-success);
+    --warning: var(--atlasnews-color-night-warning);
+    --danger: var(--atlasnews-color-night-danger);
+    --info: var(--atlasnews-color-night-info);
     --focus: var(--atlasnews-color-marker);
   }
 }
 
 /* Very wide screens get a wider shell instead of wider margins. */
-@media (min-width: 110rem) {
+@media (width >= 110rem) {
   :root {
-    --shell: 90rem;
+    --shell: var(--atlasnews-spacing-shell-wide);
   }
 }
 
@@ -81,7 +120,7 @@ body {
   color: var(--fg);
   background: var(--bg);
   font-family: var(--font-ui);
-  font-size: 1rem;
+  font-size: var(--text-base);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -110,7 +149,7 @@ a {
 
 /* The browser's own small is 83% of its parent, which drops a 13px line to under 11px. */
 small {
-  font-size: 0.8125rem;
+  font-size: var(--text-label);
 }
 
 img,
@@ -125,6 +164,7 @@ ol {
   list-style: none;
 }
 
+/* A word longer than the line (large text on a phone) breaks instead of pushing the page sideways. */
 h1,
 h2,
 h3,
@@ -133,6 +173,7 @@ h4 {
   letter-spacing: -0.02em;
   line-height: 1.15;
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 ::selection {
@@ -141,8 +182,8 @@ h4 {
 }
 
 :focus-visible {
-  outline: 0.1875rem solid var(--focus);
-  outline-offset: 0.125rem;
+  outline: var(--focus-ring) solid var(--focus);
+  outline-offset: var(--focus-offset);
   border-radius: var(--radius-sm);
 }
 
@@ -151,10 +192,12 @@ h4 {
     scroll-behavior: auto;
   }
 
+  /* One iteration too: an infinite animation at 1ms would flicker, so a loading skeleton just holds still. */
   *,
   *::before,
   *::after {
     animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
   }
 }
@@ -179,11 +222,11 @@ h4 {
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
-  padding: 0.625rem 0.875rem;
+  padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius);
   color: var(--on-accent);
   background: var(--accent);
-  font-size: 0.9375rem;
+  font-size: var(--text-ui);
   font-weight: 600;
   transform: translateY(-200%);
 }
@@ -192,22 +235,50 @@ h4 {
   transform: translateY(0);
 }
 
+/* The wordmark: the brand mark and the name. The reader site, Studio and the sign-in pages share it; the mark is the
+   brand's own artwork (brand.lock.json), so its orange never becomes a UI colour. */
+.brand {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-title);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.brand__mark {
+  display: inline-block;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+  background: url("/brand-mark.svg") center / contain no-repeat;
+}
+
+@media (pointer: coarse) {
+  .brand {
+    min-height: 2.75rem;
+  }
+}
+
 /* Buttons. The default is the secondary outline; one primary per view. */
 .button {
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--fg);
   border-radius: var(--radius);
   color: var(--fg);
   background: transparent;
-  font-size: 0.9375rem;
+  font-size: var(--text-ui);
   font-weight: 600;
   line-height: 1.2;
-  white-space: nowrap;
+  /* A label stays on one line wherever it fits; at a large text size it wraps rather than overflow. */
+  text-align: center;
   transition: background-color var(--ease), border-color var(--ease), color var(--ease);
 }
 
@@ -253,8 +324,8 @@ h4 {
 
 .button--small {
   min-height: 2.25rem;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
+  padding: var(--space-1-5) var(--space-3);
+  font-size: var(--text-ui-small);
 }
 
 /* Touch screens: every button is a 44px target. */
@@ -274,12 +345,12 @@ h4 {
 .input {
   width: 100%;
   min-height: 2.75rem;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line-control);
   border-radius: var(--radius-sm);
   color: var(--fg);
   background: var(--bg);
-  font-size: 1rem;
+  font-size: var(--text-base);
   line-height: 1.4;
 }
 
@@ -300,9 +371,9 @@ h4 {
 .status {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: var(--space-1-5);
   color: var(--fg);
-  font-size: 0.8125rem;
+  font-size: var(--text-label);
   font-weight: 600;
   line-height: 1.3;
   white-space: nowrap;
@@ -357,11 +428,11 @@ h4 {
 
 /* Three sizes: a row keeps the base, a card is a step up, the lead and the article head carry the signature. */
 .status--card {
-  font-size: 0.875rem;
+  font-size: var(--text-ui-small);
 }
 
 .status--lead {
-  font-size: 0.9375rem;
+  font-size: var(--text-ui);
   font-weight: 700;
 }
 
@@ -371,7 +442,7 @@ h4 {
 
 /* Feedback under a form. Empty until there is something to say. */
 .form-message {
-  font-size: 0.875rem;
+  font-size: var(--text-ui-small);
   font-weight: 500;
 }
 
@@ -390,12 +461,12 @@ h4 {
 .empty-state {
   display: grid;
   justify-items: start;
-  gap: 0.5rem;
-  padding: 2.5rem 0;
+  gap: var(--space-2);
+  padding: var(--space-10) 0;
 }
 
 .empty-state h2 {
-  font-size: 1.25rem;
+  font-size: var(--text-title-large);
 }
 
 .empty-state p {
@@ -404,5 +475,5 @@ h4 {
 }
 
 .empty-state .button {
-  margin-top: 0.75rem;
+  margin-top: var(--space-3);
 }

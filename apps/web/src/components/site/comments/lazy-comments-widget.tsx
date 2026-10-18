@@ -1,13 +1,13 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { Locale } from "@/i18n";
 import styles from "./lazy-comments-widget.module.css";
 
-const DeferredCommentsWidget = dynamic(
-  () => import("./comments-widget").then((module) => module.CommentsWidget),
-  { ssr: false },
+// Only rendered after the reader scrolls near it, so it is never part of the server render and
+// plain React.lazy gives the same split without next/dynamic's loadable shim.
+const DeferredCommentsWidget = lazy(() =>
+  import("./comments-widget").then((module) => ({ default: module.CommentsWidget })),
 );
 
 export function LazyCommentsWidget({
@@ -42,7 +42,11 @@ export function LazyCommentsWidget({
 
   return (
     <div className={styles.boundary} id="comments" ref={boundaryRef}>
-      {active ? <DeferredCommentsWidget articleId={articleId} locale={locale} /> : null}
+      {active ? (
+        <Suspense fallback={null}>
+          <DeferredCommentsWidget articleId={articleId} locale={locale} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

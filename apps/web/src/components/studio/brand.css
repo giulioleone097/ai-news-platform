@@ -1,31 +1,7 @@
-/* The wordmark, shared by the Studio sidebar and the sign-in pages (same rules as the reader site's header). */
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1.125rem;
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1;
-}
-
-.brand__mark {
-  display: inline-block;
-  width: 1.75rem;
-  height: 1.75rem;
-  flex: none;
-  background: url("/brand-mark.svg") center / contain no-repeat;
-}
-
+/* Studio's label beside the wordmark (globals.css), in the sidebar and on the sign-in pages. */
 .brand__label {
   color: var(--fg-muted);
-  font-size: 0.875rem;
+  font-size: var(--text-ui-small);
   font-weight: 500;
   letter-spacing: 0;
-}
-
-@media (pointer: coarse) {
-  .brand {
-    min-height: 2.75rem;
-  }
 }

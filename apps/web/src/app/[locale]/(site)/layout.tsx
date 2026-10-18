@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Mail } from "lucide-react";
 import "@/styles/site/shell.css";
 import "@/styles/site/feed.css";
 import { NewsletterForm } from "@/components/site/newsletter-form";
@@ -22,7 +23,7 @@ export default async function SiteLayout({
       <SiteHeader locale={locale} />
       {children}
       <div className="site-shell">
-        <NewsletterForm locale={locale} copy={getMessages(locale).newsletter} source={`site-${locale}`} />
+        <NewsletterForm locale={locale} copy={getMessages(locale).newsletter} icon={<Mail aria-hidden="true" />} source={`site-${locale}`} />
       </div>
       <SiteFooter locale={locale} />
       <SiteTools />

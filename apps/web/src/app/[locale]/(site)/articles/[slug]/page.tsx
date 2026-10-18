@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cache } from "react";
-import { ChevronLeft, ExternalLink } from "lucide-react";
+import { Bookmark, Check, ChevronLeft, Copy, ExternalLink, Share2 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import "@/styles/site/article.css";
 import { MarkdownRenderer } from "@/components/markdown/markdown-renderer";
@@ -287,8 +287,24 @@ export default async function ArticlePage({
                 <span>{article.readingMinutes} {messages.article.minuteRead}</span>
               </p>
               <div className="article-actions">
-                <BookmarkButton articleId={article.id} copy={messages.bookmark} />
-                <ShareActions url={url} title={article.title} labels={messages.share} />
+                <BookmarkButton
+                  articleId={article.id}
+                  copy={messages.bookmark}
+                  icons={{
+                    idle: <Bookmark aria-hidden="true" fill="none" />,
+                    saved: <Bookmark aria-hidden="true" fill="currentColor" />,
+                  }}
+                />
+                <ShareActions
+                  url={url}
+                  title={article.title}
+                  labels={messages.share}
+                  icons={{
+                    share: <Share2 aria-hidden="true" />,
+                    copy: <Copy aria-hidden="true" />,
+                    copied: <Check aria-hidden="true" />,
+                  }}
+                />
               </div>
             </div>
           </header>

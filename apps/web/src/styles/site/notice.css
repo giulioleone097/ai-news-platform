@@ -6,9 +6,9 @@
   width: min(100%, var(--shell));
   align-content: start;
   justify-items: start;
-  gap: 1rem;
+  gap: var(--space-4);
   margin-inline: auto;
-  padding: clamp(3rem, 9vw, 6rem) var(--gutter);
+  padding: clamp(var(--space-12), 9vw, var(--space-16)) var(--gutter);
 }
 
 /* Without the site header and footer around it the block is centred on the page. */
@@ -21,7 +21,7 @@
 }
 
 .notice h1 {
-  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  font-size: var(--text-headline-fluid);
   font-weight: 800;
   letter-spacing: -0.03em;
 }
@@ -29,14 +29,14 @@
 .notice p {
   max-width: 36rem;
   color: var(--fg-muted);
-  font-size: 1.0625rem;
+  font-size: var(--text-deck);
 }
 
 .notice__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  padding-top: 0.5rem;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
 }
 
 .notice__actions form {
@@ -45,17 +45,17 @@
 
 .notice__other {
   width: 100%;
-  margin-top: 1rem;
-  padding-top: 1.5rem;
+  margin-top: var(--space-4);
+  padding-top: var(--space-6);
   border-top: 1px solid var(--line);
 }
 
 .notice__other h2 {
-  font-size: 1.125rem;
+  font-size: var(--text-title);
 }
 
 .notice__other p {
-  padding-top: 0.25rem;
+  padding-top: var(--space-1);
 }
 
 .notice__other a {
@@ -70,7 +70,7 @@
   text-decoration-thickness: 0.16em;
 }
 
-@media (max-width: 30rem) {
+@media (width < 30rem) {
   .notice__actions,
   .notice__actions > *,
   .notice__actions form .button {
@@ -79,5 +79,5 @@
 }
 
 .notice .brand {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-6);
 }
