@@ -26,14 +26,16 @@
     "design:lint": "designmd lint --format json DESIGN.md",
     "design:tokens:write": "node scripts/design-tokens.mjs --write",
     "design:tokens:check": "node scripts/design-tokens.mjs",
+    "design:css": "node scripts/design-css.mjs",
     "plugin:check": "node scripts/validate-plugin.mjs",
     "plugin:release": "node scripts/validate-plugin.mjs --release",
     "perf:budget": "node scripts/performance-budget.mjs",
     "smoke:runtime": "node scripts/runtime-smoke.mjs",
+    "responsive:check": "node scripts/responsive-check.mjs",
     "supabase:start": "supabase start",
     "supabase:reset": "supabase db reset --local",
     "supabase:status": "supabase status",
-    "check": "export NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-http://localhost:3000} && pnpm run design:lint && pnpm run design:tokens:check && pnpm run plugin:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run build:sites && pnpm run perf:budget"
+    "check": "export NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-http://localhost:3000} && pnpm run design:lint && pnpm run design:tokens:check && pnpm run design:css && pnpm run plugin:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run build:sites && pnpm run perf:budget"
   },
   "devDependencies": {
     "@google/design.md": "0.4.0",
@@ -43,6 +45,7 @@
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
+    "playwright-core": "1.56.1",
     "supabase": "2.120.0",
     "typescript": "^5",
     "vitest": "^4.1.11"

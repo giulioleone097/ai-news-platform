@@ -1,23 +1,26 @@
 /* The story fields of the article form: key points, sources and linked entities. */
+/* A query container: a source's two columns follow the form's own width, which the side panel narrows. */
 .story-fieldset {
+  container-type: inline-size;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
-  gap: 0.75rem;
+  gap: var(--space-3);
   padding: 0;
   border: 0;
 }
 
 .story-fieldset > legend {
   padding: 0;
-  margin-bottom: 0.25rem;
-  font-size: 0.9375rem;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-ui);
   font-weight: 600;
 }
 
 .story-source {
   display: grid;
-  gap: 0.75rem;
-  padding-top: 0.75rem;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--line);
 }
 
@@ -25,12 +28,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.875rem;
+  gap: var(--space-3);
+  font-size: var(--text-ui-small);
   font-weight: 600;
 }
 
-@media (min-width: 40rem) {
+@container (width >= 32rem) {
   .story-source {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -42,9 +45,9 @@
 }
 
 .story-entity-group > h3 {
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--space-1);
   color: var(--fg-muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-label);
   font-weight: 500;
   letter-spacing: 0;
 }
@@ -54,7 +57,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0 1rem;
+  gap: 0 var(--space-4);
   border-bottom: 1px solid var(--line);
 }
 
@@ -65,7 +68,7 @@
 /* "Main" sits in the row's right corner; the shared check primitive draws the radio. */
 .story-entity__primary {
   min-height: 2.25rem;
-  font-size: 0.875rem;
+  font-size: var(--text-ui-small);
 }
 
 .story-entity__primary:has(input:disabled) {

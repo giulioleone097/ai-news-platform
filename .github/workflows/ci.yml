@@ -38,7 +38,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Validate design system
-        run: pnpm run design:lint && pnpm run design:tokens:check
+        run: pnpm run design:lint && pnpm run design:tokens:check && pnpm run design:css
 
       - name: Validate agent plugin
         run: pnpm run plugin:check

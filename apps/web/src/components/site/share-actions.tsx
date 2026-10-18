@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
-import { Check, Copy, Share2 } from "lucide-react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import type { Messages } from "@/i18n";
 import { buildSocialLinks } from "@/lib/social-links";
 
@@ -9,15 +8,20 @@ const noSubscription = () => () => {};
 const hasWebShare = () => typeof navigator.share === "function";
 const noWebShare = () => false;
 
-/** Share and copy-link controls: quiet icon buttons that sit on the article byline row. */
+/**
+ * Share and copy-link controls: quiet icon buttons that sit on the article byline row.
+ * The icons arrive as server-rendered nodes so the icon library stays out of the client bundle.
+ */
 export function ShareActions({
   url,
   title,
   labels,
+  icons,
 }: {
   url: string;
   title: string;
   labels: Messages["share"];
+  icons: { share: ReactNode; copy: ReactNode; copied: ReactNode };
 }) {
   const [copied, setCopied] = useState(false);
   const links = buildSocialLinks({ url, title });
@@ -42,7 +46,7 @@ export function ShareActions({
     <div className="article-actions__group" role="group" aria-label={labels.groupLabel}>
       {canShare ? (
         <button className="article-action" type="button" onClick={() => void share()} aria-label={labels.action} title={labels.action}>
-          <Share2 aria-hidden="true" />
+          {icons.share}
         </button>
       ) : null}
       <a className="article-action" href={links.linkedin} target="_blank" rel="noreferrer" aria-label={labels.linkedInLabel} title={labels.linkedInLabel}>
@@ -61,7 +65,7 @@ export function ShareActions({
         aria-label={copied ? labels.copiedLabel : labels.copyLinkLabel}
         title={labels.copyLinkLabel}
       >
-        {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+        {copied ? icons.copied : icons.copy}
       </button>
     </div>
   );
